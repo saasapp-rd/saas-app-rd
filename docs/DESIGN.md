@@ -1,44 +1,63 @@
 # Design System
 
-> Living document. Update whenever visual decisions are made or a style guide is provided.
+> Living document. Update whenever visual decisions are made.
 
 ## Brand Reference
 - Primary reference: [seattleacademy.org](https://www.seattleacademy.org)
-- Full style guide: _pending — to be provided_
+- Style guide: delivered 2026-04-28 (color palette + logos)
 
-## Current Color Palette
-| Token | Value | Usage |
-|---|---|---|
-| Navy 900 | `#0a1628` | Page backgrounds |
-| Navy 800 | `#0f2240` | Gradient mid |
-| Navy 700 | `#1a3a5c` | Gradient end |
-| Red accent | `#dc2626` | Dividers, badges, highlights |
-| Blue 200 | `#bfdbfe` | Taglines, secondary text |
-| White | `#ffffff` | Primary headings |
+## Color Palette
+| Token | Hex | PMS | Usage |
+|---|---|---|---|
+| SAAS Red | `#A6192E` | 187 C | Primary brand color, headers, buttons, accents |
+| Athletic Red | `#CE2033` | 1795 C | Hover states, animated dots, highlights |
+| Dark Red | `#810D1E` | 1815 CP | Active/pressed states, deep accents |
+| Dark Grey | `#3D3D3D` | 447 C | Body text, headings, footers |
+| Light Grey | `#EAEAEA` | Cool Grey 1 | Backgrounds, dividers, ghost buttons |
+| White | `#FFFFFF` | — | Page backgrounds, text on red |
+
+## Tailwind Tokens
+```
+saas-red           → #A6192E
+saas-red-athletic  → #CE2033
+saas-red-dark      → #810D1E
+saas-grey          → #3D3D3D
+saas-grey-light    → #EAEAEA
+```
 
 ## Typography
 | Role | Font | Weight | Notes |
 |---|---|---|---|
-| Body / UI | Inter (Google Fonts) | 400, 600, 700 | Applied globally via `app/layout.tsx` |
-| Headings | Inter | 700 (bold) | Tight tracking |
-| Subheadings | Inter | 300 (light) | Wide tracking |
+| All UI | Inter (Google Fonts) | 400–900 | Applied globally via `app/layout.tsx` |
+| Wordmark | Inter Black | 900 | SAAS letters, tight tracking -0.03em |
+| Subtext | Inter Bold | 700 | Wide tracking 0.3em+, small caps |
+| Body | Inter Regular | 400 | Taglines, descriptions |
 
-## Spacing & Layout
-- Max content width: `max-w-2xl` (42rem)
-- Base padding: `px-6`
-- Full-height pages: `min-h-screen`
+## Logo Assets
+- Logo files: `public/images/` (pending upload)
+- Wordmark: SAAS + "Seattle Academy" lockup
+- Mascot: Cardinal (red/black/yellow)
+- Athletics logo: SAAS + Cardinal head
+- Use text fallback until images uploaded
 
-## Component Patterns
-- **Pill badges**: rounded-full, border + bg at 10% opacity, small caps tracking
-- **Dividers**: gradient fade + rotated diamond center icon
-- **Backgrounds**: diagonal gradient + dot grid overlay at 6% opacity
+## Button Styles
+| Style | Background | Border | Text | Use for |
+|---|---|---|---|---|
+| Solid | `#A6192E` | — | White | Primary CTA |
+| Outlined | Transparent | `2px #A6192E` | `#A6192E` | Secondary action |
+| Ghost | `#EAEAEA` | — | `#3D3D3D` | Tertiary / cancel |
+
+## Layout
+- Mobile-first, max content width: `280–320px` on phone
+- Min touch target: `py-4` (48px height) on buttons
+- Page background: White `#FFFFFF`
+- Top bar: SAAS Red `#A6192E` with white text
 
 ## Design Decisions Log
 | Date | Decision | Reason |
 |---|---|---|
-| 2026-04-27 | Navy + red palette | Matches Seattle Academy brand |
-| 2026-04-27 | Inter font | Clean, professional, free via Google Fonts |
-| 2026-04-27 | No email capture on Coming Soon | User preference |
-
----
-_Update this file whenever new components, colors, or fonts are added._
+| 2026-04-27 | Initial navy + red palette | Placeholder before style guide |
+| 2026-04-28 | Switched to official SAAS brand colors | Style guide delivered |
+| 2026-04-28 | White page background | Cleaner for admin app context |
+| 2026-04-28 | Inter font | Clean, professional, matches brand weight |
+| 2026-04-28 | Mobile-first layout | Primary use case is phone/tablet |
