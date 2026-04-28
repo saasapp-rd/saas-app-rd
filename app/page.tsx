@@ -23,8 +23,12 @@ export default function Home() {
         {/* Logo wordmark — replace with <Image> once logo file is added */}
         <div className="mb-8 select-none">
           <div
-            className="text-8xl font-black leading-none tracking-tight"
-            style={{ color: '#A6192E', letterSpacing: '-0.03em' }}
+            className="font-black leading-none"
+            style={{
+              color: '#A6192E',
+              letterSpacing: '-0.03em',
+              fontSize: 'clamp(4rem, 22vw, 7rem)',
+            }}
           >
             SAAS
           </div>
@@ -105,7 +109,7 @@ export default function Home() {
             Outlined — Secondary
           </button>
 
-          {/* Option C — Ghost / Subtle */}
+          {/* Option C — Ghost */}
           <button
             className="w-full py-4 rounded-xl text-sm font-semibold tracking-wide transition-all active:opacity-70"
             style={{ backgroundColor: '#EAEAEA', color: '#3D3D3D' }}
