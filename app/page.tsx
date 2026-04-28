@@ -1,3 +1,5 @@
+import Image from 'next/image'
+
 export default function Home() {
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#FFFFFF' }}>
@@ -20,24 +22,16 @@ export default function Home() {
       {/* Hero */}
       <main className="flex-1 flex flex-col items-center justify-center px-6 py-10 text-center">
 
-        {/* Logo wordmark — replace with <Image> once logo file is added */}
-        <div className="mb-8 select-none">
-          <div
-            className="font-black leading-none"
-            style={{
-              color: '#A6192E',
-              letterSpacing: '-0.03em',
-              fontSize: 'clamp(4rem, 22vw, 7rem)',
-            }}
-          >
-            SAAS
-          </div>
-          <div
-            className="text-[10px] font-bold tracking-[0.35em] mt-1.5 uppercase"
-            style={{ color: '#3D3D3D' }}
-          >
-            Seattle Academy
-          </div>
+        {/* SAAS Logo */}
+        <div className="mb-8">
+          <Image
+            src="/images/SAASLogo.png"
+            alt="SAAS Seattle Academy"
+            width={280}
+            height={93}
+            priority
+            className="w-full max-w-[280px] h-auto"
+          />
         </div>
 
         {/* Divider */}
@@ -84,7 +78,7 @@ export default function Home() {
           <br />one spreadsheet at a time
         </p>
 
-        {/* Button style showcase */}
+        {/* Button styles */}
         <div className="w-full max-w-[280px] space-y-3">
           <p
             className="text-[9px] font-bold tracking-[0.3em] uppercase mb-4 text-center"
@@ -93,7 +87,6 @@ export default function Home() {
             Button Styles
           </p>
 
-          {/* Option A — Solid */}
           <button
             className="w-full py-4 rounded-xl text-white text-sm font-semibold tracking-wide transition-opacity active:opacity-80"
             style={{ backgroundColor: '#A6192E' }}
@@ -101,7 +94,6 @@ export default function Home() {
             Solid — Primary Action
           </button>
 
-          {/* Option B — Outlined */}
           <button
             className="w-full py-4 rounded-xl text-sm font-semibold tracking-wide bg-transparent transition-all active:opacity-70"
             style={{ border: '2px solid #A6192E', color: '#A6192E' }}
@@ -109,7 +101,6 @@ export default function Home() {
             Outlined — Secondary
           </button>
 
-          {/* Option C — Ghost */}
           <button
             className="w-full py-4 rounded-xl text-sm font-semibold tracking-wide transition-all active:opacity-70"
             style={{ backgroundColor: '#EAEAEA', color: '#3D3D3D' }}
