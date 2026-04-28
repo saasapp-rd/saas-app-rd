@@ -1,55 +1,130 @@
 export default function Home() {
   return (
-    <main
-      className="min-h-screen flex items-center justify-center relative overflow-hidden"
-      style={{ background: 'linear-gradient(135deg, #0a1628 0%, #0f2240 50%, #1a3a5c 100%)' }}
-    >
-      {/* Subtle dot grid */}
-      <div
-        className="absolute inset-0 opacity-[0.06]"
-        style={{
-          backgroundImage: 'radial-gradient(circle, #ffffff 1px, transparent 1px)',
-          backgroundSize: '32px 32px',
-        }}
-      />
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: '#FFFFFF' }}>
 
-      <div className="relative z-10 text-center px-6 max-w-2xl mx-auto">
+      {/* Top bar */}
+      <header
+        className="px-5 py-3.5 flex items-center justify-between"
+        style={{ backgroundColor: '#A6192E' }}
+      >
+        <span className="text-white text-xs font-bold tracking-[0.25em] uppercase">
+          Seattle Academy
+        </span>
+        <div className="flex gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-white opacity-40" />
+          <span className="w-1.5 h-1.5 rounded-full bg-white opacity-70" />
+          <span className="w-1.5 h-1.5 rounded-full bg-white opacity-100" />
+        </div>
+      </header>
+
+      {/* Hero */}
+      <main className="flex-1 flex flex-col items-center justify-center px-6 py-10 text-center">
+
+        {/* Logo wordmark — replace with <Image> once logo file is added */}
+        <div className="mb-8 select-none">
+          <div
+            className="text-8xl font-black leading-none tracking-tight"
+            style={{ color: '#A6192E', letterSpacing: '-0.03em' }}
+          >
+            SAAS
+          </div>
+          <div
+            className="text-[10px] font-bold tracking-[0.35em] mt-1.5 uppercase"
+            style={{ color: '#3D3D3D' }}
+          >
+            Seattle Academy
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div className="flex items-center gap-3 w-full max-w-[280px] mb-8">
+          <div className="flex-1 h-px" style={{ backgroundColor: '#EAEAEA' }} />
+          <div
+            className="w-2 h-2 rotate-45 flex-shrink-0"
+            style={{ backgroundColor: '#A6192E' }}
+          />
+          <div className="flex-1 h-px" style={{ backgroundColor: '#EAEAEA' }} />
+        </div>
 
         {/* Coming Soon pill */}
-        <div className="inline-flex items-center gap-2 mb-10 px-4 py-1.5 rounded-full border border-red-500/30 bg-red-500/10">
-          <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
-          <span className="text-xs font-semibold tracking-[0.2em] text-red-400 uppercase">
+        <div
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-6"
+          style={{ backgroundColor: '#EAEAEA' }}
+        >
+          <span
+            className="w-1.5 h-1.5 rounded-full animate-pulse flex-shrink-0"
+            style={{ backgroundColor: '#CE2033' }}
+          />
+          <span
+            className="text-[10px] font-bold tracking-[0.25em] uppercase"
+            style={{ color: '#A6192E' }}
+          >
             Coming Soon
           </span>
         </div>
 
         {/* App name */}
-        <h1 className="text-6xl md:text-8xl font-bold text-white tracking-tight leading-none mb-4">
-          SAAS RD
-          <span className="block text-4xl md:text-5xl font-light text-blue-300 mt-2 tracking-widest">
-            APP
-          </span>
+        <h1
+          className="text-2xl font-bold mb-3 leading-snug"
+          style={{ color: '#3D3D3D' }}
+        >
+          SAAS RD App
         </h1>
 
-        {/* Red divider */}
-        <div className="flex items-center justify-center gap-2 my-8">
-          <div className="h-px w-16 bg-gradient-to-r from-transparent to-red-600" />
-          <div className="w-2 h-2 rotate-45 bg-red-600" />
-          <div className="h-px w-16 bg-gradient-to-l from-transparent to-red-600" />
-        </div>
-
         {/* Tagline */}
-        <p className="text-lg md:text-xl text-blue-200/75 font-light leading-relaxed max-w-md mx-auto">
+        <p
+          className="text-sm leading-relaxed max-w-[260px] mb-12"
+          style={{ color: '#3D3D3D', opacity: 0.6 }}
+        >
           Helping administrators do their job
-          <br />
-          <em className="not-italic text-blue-100/90">one spreadsheet at a time</em>
+          <br />one spreadsheet at a time
         </p>
 
-        {/* Footer credit */}
-        <p className="mt-16 text-xs tracking-widest text-white/20 uppercase">
-          Seattle Academy of Arts &amp; Sciences
+        {/* Button style showcase */}
+        <div className="w-full max-w-[280px] space-y-3">
+          <p
+            className="text-[9px] font-bold tracking-[0.3em] uppercase mb-4 text-center"
+            style={{ color: '#3D3D3D', opacity: 0.35 }}
+          >
+            Button Styles
+          </p>
+
+          {/* Option A — Solid */}
+          <button
+            className="w-full py-4 rounded-xl text-white text-sm font-semibold tracking-wide transition-opacity active:opacity-80"
+            style={{ backgroundColor: '#A6192E' }}
+          >
+            Solid — Primary Action
+          </button>
+
+          {/* Option B — Outlined */}
+          <button
+            className="w-full py-4 rounded-xl text-sm font-semibold tracking-wide bg-transparent transition-all active:opacity-70"
+            style={{ border: '2px solid #A6192E', color: '#A6192E' }}
+          >
+            Outlined — Secondary
+          </button>
+
+          {/* Option C — Ghost / Subtle */}
+          <button
+            className="w-full py-4 rounded-xl text-sm font-semibold tracking-wide transition-all active:opacity-70"
+            style={{ backgroundColor: '#EAEAEA', color: '#3D3D3D' }}
+          >
+            Ghost — Tertiary
+          </button>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="px-6 py-5 text-center border-t" style={{ borderColor: '#EAEAEA' }}>
+        <p
+          className="text-[9px] tracking-[0.2em] uppercase"
+          style={{ color: '#3D3D3D', opacity: 0.3 }}
+        >
+          © 2026 Seattle Academy of Arts &amp; Sciences
         </p>
-      </div>
-    </main>
+      </footer>
+
+    </div>
   )
 }
