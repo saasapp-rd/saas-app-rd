@@ -1,13 +1,15 @@
 # Priorities & Next Steps
 
-**Last updated: 2026-04-28**
+**Last updated: 2026-04-29**
 
 ---
 
 ## Build Phases
 
 ### Phase 0 — Foundation (unblocked today)
-- [ ] Auth: Clerk + Google Workspace SSO
+- [ ] Auth: next-auth v5 + Google Workspace SSO (domain-restricted to @seattleacademy.org)
+- [ ] Google Cloud Console: OAuth app configured, redirect URI registered
+- [ ] Vercel env vars set: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, NEXTAUTH_SECRET, NEXTAUTH_URL
 - [ ] Database: Supabase schema (students, blocks, courses, rosters, users)
 - [ ] CSV import pipeline: school_calendar, course_schedule, student_roster
 - [ ] Manual CRUD admin UI: users, students, classes, coordinator assignments
@@ -60,6 +62,9 @@ Full spec: `docs/MISSING_STUDENTS_SPEC.md`
 - [x] Tracking docs created
 - [x] Missing Students spec completed and locked
 - [x] Architecture decisions locked
+- [x] Auth decision: next-auth + Google OAuth (no Clerk)
+- [ ] Google Cloud Console OAuth app setup (tech team)
+- [ ] Vercel env vars set (tech team)
 - [ ] Begin Phase 0 — Foundation
 
 ## Decisions Still Open
@@ -77,3 +82,5 @@ Full spec: `docs/MISSING_STUDENTS_SPEC.md`
 | 2026-04-28 | Design system locked |
 | 2026-04-28 | Architecture decisions locked |
 | 2026-04-28 | Missing Students full spec locked |
+| 2026-04-28 | Missing Students UI map published |
+| 2026-04-29 | Auth decision: next-auth + Google OAuth (Clerk dropped) |
