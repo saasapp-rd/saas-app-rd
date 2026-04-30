@@ -1,6 +1,6 @@
 # Architecture, Security & Database Design
 
-**Last updated: 2026-04-28**
+**Last updated: 2026-04-29**
 
 ---
 
@@ -11,11 +11,62 @@
 | Frontend | Next.js 15 (App Router) | Deployed on Vercel |
 | Language | TypeScript (strict) | |
 | Styling | Tailwind CSS v3 | SAAS brand tokens configured |
-| Auth | Clerk | Google Workspace SSO, MFA |
+| Auth | next-auth v5 + Google OAuth | Google Workspace SSO — no passwords stored |
 | Database | Supabase (Postgres) | RLS, storage, US-based, SOC2 |
 | Hosting | Vercel | Auto-deploy from GitHub `main` |
 | Source control | GitHub | `saasapp-rd/saas-app-rd` |
 | Reporting layer | Axiom (view layer on Veracross) | Read-only; source of attendance data |
+
+---
+
+## Auth Design
+
+### Why next-auth + Google, not Clerk
+
+- All users are on a single Google Workspace domain (`@seattleacademy.org`)
+- One-click Google sign-in — no passwords, no Clerk-hosted UI
+- Domain restriction enforced server-side — no outside accounts can sign in
+- Roles live in Supabase, not an external vendor
+- Free — no per-MAU pricing
+
+### How it works
+
+1. User clicks "Sign in with Google"
+2. Google authenticates against `@seattleacademy.org` Workspace
+3. `next-auth` callback checks domain — rejects non-SAAS emails
+4. App looks up user in `users` table by email:
+   - **Found** → role loaded, session created
+   - **Not found** → if teacher/student (CSV-seeded) → role assigned; else access denied
+5. Role attached to session and used for all RLS and UI gating
+
+### Role Pre-Population
+
+Admin, Dean, Coordinator, Counselor accounts are seeded in the database
+before launch. First login auto-assigns the correct role — zero setup for them.
+
+Teachers and students are seeded via CSV import. They sign in once and
+land in the correct view immediately.
+
+### Environment Variables (Vercel Dashboard)
+
+| Variable | Where it comes from |
+|---|---|
+| `GOOGLE_CLIENT_ID` | Google Cloud Console → OAuth 2.0 credentials |
+| `GOOGLE_CLIENT_SECRET` | Google Cloud Console → OAuth 2.0 credentials |
+| `NEXTAUTH_SECRET` | Generate with: `openssl rand -base64 32` |
+| `NEXTAUTH_URL` | `https://saas-app-rd.vercel.app` |
+
+### Google Cloud Console Setup
+
+**Authorized redirect URI to add:**
+```
+https://saas-app-rd.vercel.app/api/auth/callback/google
+```
+
+For local development, also add:
+```
+http://localhost:3000/api/auth/callback/google
+```
 
 ---
 
@@ -225,8 +276,8 @@ created_at  timestamp
 | Report missing (roster) | ✓ | — | — | — | — | — |
 | Report welfare concern | — | ✓ | ✓ | ✓ | ✓ | ✓ |
 | View block incident feed | — | — | ✓ | — | — | ✓ |
-| Triage imperfect attendance | — | — | ✓ | — | — | ✓ |
-| Run 6-step workflow | — | — | ✓ | — | — | ✓ |
+| Triage imperfect attendance | — | — | ✓ | — | ✓ | ✓ |
+| Run 6-step workflow | — | — | ✓ | — | ✓ | ✓ |
 | Claim "student is with me" | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Add shared update | — | — | ✓ | ✓ | ✓ | ✓ |
 | Add private update | — | — | — | ✓ | ✓ | ✓ |
@@ -254,7 +305,7 @@ created_at  timestamp
 ## Security Posture
 
 - [ ] Environment variables: Vercel dashboard only, never committed
-- [ ] Clerk + Google Workspace SSO — no passwords stored
+- [ ] next-auth + Google Workspace SSO — no passwords stored, domain-restricted
 - [ ] Supabase Row Level Security on all tables
 - [ ] HTTPS enforced by Vercel
 - [ ] No student PII in URL parameters
@@ -310,7 +361,7 @@ All manual changes are logged with user + timestamp for audit trail.
 | Trigger | Threshold |
 |---|---|
 | Same block missed repeatedly | 3× same block within 2 weeks |
-| Multi-block same day | 2+ blocks on same day |
+| Multi-block same day | 2+ blocks missed on same day |
 | Weekly threshold | 4+ incidents in rolling 5-day window |
 | No text response | 0 responses in last 4 incidents |
 | Unresolved incident | Any incident open 24h+ |
