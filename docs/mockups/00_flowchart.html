@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SAAS RD App — UI Flowchart</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background: #F2F2F2;
+    color: #3D3D3D;
+    padding: 40px 32px;
+  }
+
+  .page-header {
+    margin-bottom: 40px;
+  }
+  .page-eyebrow {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: #A6192E;
+    margin-bottom: 4px;
+  }
+  .page-title {
+    font-size: 32px;
+    font-weight: 800;
+    color: #3D3D3D;
+    margin-bottom: 6px;
+  }
+  .page-desc {
+    font-size: 12px;
+    color: #3D3D3D;
+    opacity: 0.5;
+  }
+
+  .charts-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+  }
+
+  .chart-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 28px 32px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.07);
+  }
+  .chart-eyebrow {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: #A6192E;
+    margin-bottom: 4px;
+  }
+  .chart-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: #3D3D3D;
+    margin-bottom: 4px;
+  }
+  .chart-desc {
+    font-size: 11px;
+    color: #3D3D3D;
+    opacity: 0.5;
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+  .chart-wrap {
+    overflow-x: auto;
+    display: flex;
+    justify-content: center;
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #EAEAEA;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    font-weight: 600;
+    color: #3D3D3D;
+  }
+  .legend-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  footer {
+    margin-top: 40px;
+    font-size: 9px;
+    color: #999;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  @media print {
+    body { background: #fff; padding: 16px; }
+    .chart-card { box-shadow: 0 0 0 1px #ddd; break-inside: avoid; }
+    .charts-grid { gap: 24px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div class="page-eyebrow">SAAS RD App &middot; UI Flowchart &middot; For Feedback Only</div>
+  <div class="page-title">UI Flow &amp; Navigation</div>
+  <div class="page-desc">Four charts covering: Login &amp; role routing &mdash; Period mode &amp; entry points &mdash; Report flow &amp; auto-escalation &mdash; Coordinator 6-step workflow &amp; resolution</div>
+</div>
+
+<div class="charts-grid">
+
+  <!-- ── Chart 1: Login & Role Routing ─────────────────────────────────────── -->
+  <div class="chart-card">
+    <div class="chart-eyebrow">Chart 1 of 4</div>
+    <div class="chart-title">Login &amp; Role Routing</div>
+    <div class="chart-desc">Every user enters through Google Sign-In. The app checks the domain, looks up their role in the database, and routes them to the correct view. Roles are pre-seeded for Admin / Dean / Coordinator / Counselor. Teachers and students arrive via CSV import.</div>
+    <div class="chart-wrap">
+      <div class="mermaid">
+%%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#A6192E',
+  'primaryTextColor': '#fff',
+  'primaryBorderColor': '#810D1E',
+  'lineColor': '#A6192E',
+  'secondaryColor': '#EAEAEA',
+  'secondaryTextColor': '#3D3D3D',
+  'secondaryBorderColor': '#CCCCCC',
+  'tertiaryColor': '#FFF8E0',
+  'tertiaryTextColor': '#3D3D3D',
+  'tertiaryBorderColor': '#F0C040',
+  'noteBkgColor': '#FFF0F0',
+  'noteTextColor': '#A6192E',
+  'fontFamily': 'Inter, system-ui, sans-serif',
+  'fontSize': '13px'
+}}}%%
+flowchart TD
+    A([" Open App "]):::start --> B["Sign in with Google"]
+    B --> C{{"@seattleacademy.org\ndomain?"}}:::decision
+    C -->|"No — wrong domain"| D(["Access Denied"]):::blocked
+    C -->|"Yes — valid"| E{{"Role in\ndatabase?"}}:::decision
+    E -->|"Not found"| F(["Access Denied\nContact admin"]):::blocked
+    E -->|"Teacher"| T["Teacher View"]:::teacher
+    E -->|"Staff"| S["Staff View"]:::staff
+    E -->|"Coordinator"| CO["Coordinator View"]:::coord
+    E -->|"Counselor"| CL["Counselor View"]:::counselor
+    E -->|"Dean"| D2["Dean View"]:::dean
+    E -->|"Admin"| AD["Admin View"]:::admin
+
+    T --> T1["Block roster\n(current block only)"]:::teacher
+    T --> T2["Welfare concern form\n(lunch & community time)"]:::teacher
+
+    S --> S1["Welfare concern form\n(lunch & community time)"]:::staff
+    S --> S2["With Me / Found\n(any time)"]:::staff
+
+    CO --> CO1["Triage dashboard"]:::coord
+    CO --> CO2["Incident feed"]:::coord
+    CO --> CO3["6-step workflow"]:::coord
+
+    CL --> CL1["Caseload dashboard"]:::counselor
+    CL --> CL2["All-student search"]:::counselor
+    CL --> CL3["Flag management"]:::counselor
+
+    D2 --> D21["Pattern dashboard\n(all students)"]:::dean
+    D2 --> D22["Active incidents\n(all students)"]:::dean
+
+    AD --> AD1["All above views"]:::admin
+    AD --> AD2["User & student CRUD"]:::admin
+    AD --> AD3["CSV import"]:::admin
+    AD --> AD4["Coordinator assignment"]:::admin
+
+    classDef start fill:#A6192E,stroke:#810D1E,color:#fff,font-weight:700
+    classDef decision fill:#3D3D3D,stroke:#1A1A1A,color:#fff,font-weight:700
+    classDef blocked fill:#EAEAEA,stroke:#CCCCCC,color:#888,font-weight:600
+    classDef teacher fill:#E3F2FD,stroke:#1565C0,color:#0D47A1,font-weight:600
+    classDef staff fill:#E8F5E9,stroke:#2E7D32,color:#1B5E20,font-weight:600
+    classDef coord fill:#FFF0F0,stroke:#A6192E,color:#A6192E,font-weight:600
+    classDef counselor fill:#FFF8E0,stroke:#F0C040,color:#6B4C00,font-weight:600
+    classDef dean fill:#F3E5F5,stroke:#7B1FA2,color:#4A148C,font-weight:600
+    classDef admin fill:#3D3D3D,stroke:#1A1A1A,color:#fff,font-weight:600
+      </div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#A6192E;"></div> App / System</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#1565C0;opacity:0.5;"></div> Teacher</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#2E7D32;opacity:0.5;"></div> Staff</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#A6192E;opacity:0.3;"></div> Coordinator</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#F0C040;"></div> Counselor</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#7B1FA2;opacity:0.4;"></div> Dean</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#3D3D3D;"></div> Admin</div>
+    </div>
+  </div>
+
+  <!-- ── Chart 2: Period Mode & Entry Points ────────────────────────────────── -->
+  <div class="chart-card">
+    <div class="chart-eyebrow">Chart 2 of 4</div>
+    <div class="chart-title">Period Mode &amp; Entry Points</div>
+    <div class="chart-desc">The app detects the current time automatically and switches modes. No manual toggling required. The period determines which reporting flows are available and what the default urgency level is.</div>
+    <div class="chart-wrap">
+      <div class="mermaid">
+%%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#A6192E',
+  'primaryTextColor': '#fff',
+  'primaryBorderColor': '#810D1E',
+  'lineColor': '#3D3D3D',
+  'secondaryColor': '#EAEAEA',
+  'secondaryTextColor': '#3D3D3D',
+  'fontFamily': 'Inter, system-ui, sans-serif',
+  'fontSize': '13px'
+}}}%%
+flowchart LR
+    TIME{{"Current\nTime"}}:::decision
+
+    TIME -->|"8:15–9:30\n9:40–10:55\n11:40–12:55\n1:45–3:00"| BLK["BLOCK\nPERIOD"]:::block
+    TIME -->|"10:55–11:40"| LUN["LUNCH"]:::welfare
+    TIME -->|"12:55–1:45"| COM["COMMUNITY\nTIME"]:::welfare
+
+    BLK --> BLK1["Teacher sees:\nClass roster for current block"]:::teacher
+    BLK --> BLK2["Coordinator sees:\nImperfect attendance triage\n+ Incident feed"]:::coord
+    BLK --> BLK3["Staff sees:\nWith Me / Found only\n(no roster access)"]:::staff
+    BLK --> BLK4["Default urgency:\nROUTINE"]:::routine
+
+    LUN --> WC1["ALL roles see:\nWelfare Concern form\n(student search — no roster)"]:::welfare2
+    LUN --> WC2["Default urgency:\nELEVATED"]:::elevated
+
+    COM --> WC1
+    COM --> WC3["Default urgency:\nELEVATED"]:::elevated
+
+    BLK1 --> R1["Report Missing\n(from roster)"]:::action
+    WC1 --> R2["Report Welfare Concern\n(by name search)"]:::action
+
+    R1 --> ESC["Auto-Escalation\nLogic"]:::system
+    R2 --> ESC
+
+    classDef decision fill:#3D3D3D,stroke:#1A1A1A,color:#fff,font-weight:700
+    classDef block fill:#E3F2FD,stroke:#1565C0,color:#0D47A1,font-weight:700
+    classDef welfare fill:#FFF0F0,stroke:#CE2033,color:#A6192E,font-weight:700
+    classDef welfare2 fill:#FFF8F8,stroke:#EAEAEA,color:#3D3D3D,font-weight:600
+    classDef teacher fill:#E3F2FD,stroke:#1565C0,color:#0D47A1,font-weight:600
+    classDef coord fill:#FFF0F0,stroke:#A6192E,color:#A6192E,font-weight:600
+    classDef staff fill:#E8F5E9,stroke:#2E7D32,color:#1B5E20,font-weight:600
+    classDef routine fill:#FFF8E0,stroke:#F0C040,color:#6B4C00,font-weight:700
+    classDef elevated fill:#FFF0F0,stroke:#CE2033,color:#A6192E,font-weight:700
+    classDef action fill:#A6192E,stroke:#810D1E,color:#fff,font-weight:700
+    classDef system fill:#3D3D3D,stroke:#1A1A1A,color:#fff,font-weight:600
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Chart 3: Report Flow & Auto-Escalation ─────────────────────────────── -->
+  <div class="chart-card">
+    <div class="chart-eyebrow">Chart 3 of 4</div>
+    <div class="chart-title">Report Flow &amp; Auto-Escalation</div>
+    <div class="chart-desc">How a teacher's report becomes an incident. Context tags determine urgency automatically — no coordinator judgment call needed for the initial level. Counselor destination triggers a 10-minute confirmation timer before auto-escalating.</div>
+    <div class="chart-wrap">
+      <div class="mermaid">
+%%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#A6192E',
+  'primaryTextColor': '#fff',
+  'primaryBorderColor': '#810D1E',
+  'lineColor': '#3D3D3D',
+  'fontFamily': 'Inter, system-ui, sans-serif',
+  'fontSize': '13px'
+}}}%%
+flowchart TD
+    START(["Teacher selects\nmissing student"]):::start
+
+    START --> RT{{"Report\nType?"}}:::decision
+
+    RT -->|"Absent from start"| ABS["Absent from Start"]:::neutral
+    RT -->|"Left and didn't return"| LEFT["Left & Didn't Return"]:::neutral
+
+    LEFT --> CTX{{"Context\nTag?"}}:::decision
+
+    CTX -->|"Bathroom\nNurse\nOffice\nUnknown"| R1["ROUTINE"]:::routine
+    CTX -->|"Upset / stormed out\nEmotional / distressed\nPhysical concern\nLeft campus"| E1["ELEVATED"]:::elevated
+    CTX -->|"Counselor"| C1["ROUTINE\n+ verification"]:::routine
+
+    C1 --> PING["Auto-ping\ncounseling office"]:::system
+    PING --> TIMER{{"Counselor\nconfirms\nwithin 10 min?"}}:::decision
+    TIMER -->|"Yes — confirmed"| R2["ROUTINE\nincident stays open"]:::routine
+    TIMER -->|"No — no response"| E2["Auto-escalate\nto ELEVATED"]:::elevated
+
+    ABS --> HIST{{"Student has\nElevated flag?"}}:::decision
+    R1 --> HIST
+    HIST -->|"Yes"| E3["Override to\nELEVATED"]:::elevated
+    HIST -->|"No"| RR["ROUTINE"]:::routine
+
+    LUN(["Lunch / Community\nTime Report"]):::welfare --> E4["Always\nELEVATED"]:::elevated
+
+    RR --> OPEN["Incident Opens"]:::system
+    E1 --> OPEN
+    E2 --> OPEN
+    E3 --> OPEN
+    E4 --> OPEN
+    R2 --> OPEN
+
+    OPEN --> NOTIFY{{"Notify\nwho?"}}:::decision
+    NOTIFY -->|"Routine"| N1["Assigned coordinator\nfor that block"]:::coord
+    NOTIFY -->|"Elevated"| N2["Coordinator\n+ Division leadership"]:::elevated
+    NOTIFY -->|"Emergency"| N3["Coordinator\n+ Leadership\n+ Counseling"]:::emergency
+
+    classDef start fill:#A6192E,stroke:#810D1E,color:#fff,font-weight:700
+    classDef decision fill:#3D3D3D,stroke:#1A1A1A,color:#fff,font-weight:700
+    classDef neutral fill:#F5F5F5,stroke:#CCCCCC,color:#3D3D3D,font-weight:600
+    classDef routine fill:#FFF8E0,stroke:#F0C040,color:#6B4C00,font-weight:700
+    classDef elevated fill:#FFF0F0,stroke:#CE2033,color:#A6192E,font-weight:700
+    classDef emergency fill:#A6192E,stroke:#810D1E,color:#fff,font-weight:700
+    classDef welfare fill:#FFF0F0,stroke:#CE2033,color:#A6192E,font-weight:700
+    classDef system fill:#3D3D3D,stroke:#1A1A1A,color:#fff,font-weight:600
+    classDef coord fill:#FFF0F0,stroke:#A6192E,color:#A6192E,font-weight:600
+      </div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#FFF8E0;border:1px solid #F0C040;"></div> Routine — coordinator notified</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#FFF0F0;border:1px solid #CE2033;"></div> Elevated — coordinator + leadership</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#A6192E;"></div> Emergency — all parties</div>
+    </div>
+  </div>
+
+  <!-- ── Chart 4: 6-Step Workflow & Resolution ──────────────────────────────── -->
+  <div class="chart-card">
+    <div class="chart-eyebrow">Chart 4 of 4</div>
+    <div class="chart-title">Coordinator 6-Step Workflow &amp; Resolution</div>
+    <div class="chart-desc">Once an incident is open, the coordinator runs a structured 6-step workflow. Steps 1, 2, and 6 generate communications automatically. At any point — before step 6 — any staff member can mark the student found, which immediately closes remaining steps as N/A and resolves the incident.</div>
+    <div class="chart-wrap">
+      <div class="mermaid">
+%%{init: {'theme': 'base', 'themeVariables': {
+  'primaryColor': '#A6192E',
+  'primaryTextColor': '#fff',
+  'primaryBorderColor': '#810D1E',
+  'lineColor': '#3D3D3D',
+  'fontFamily': 'Inter, system-ui, sans-serif',
+  'fontSize': '13px'
+}}}%%
+flowchart TD
+    OPEN(["Incident Opens\n(any level)"]):::start
+
+    OPEN --> FOUND_EARLY{{"Student found\nbefore workflow?"}}:::decision
+    FOUND_EARLY -->|"Yes — anyone\nmarks found"| RESOLVE
+
+    FOUND_EARLY -->|"No"| S1
+
+    S1["STEP 1\nMissing students email\nsent to all staff\n— AUTO —"]:::auto
+    S1 --> S2
+
+    S2["STEP 2\nText message\nsent to student\n— AUTO —"]:::auto
+    S2 --> S3
+
+    S3["STEP 3\nWait for response\n10-minute timer"]:::wait
+    S3 --> RESP{{"Response\nreceived?"}}:::decision
+    RESP -->|"Yes — student\nchecks in"| RESOLVE
+    RESP -->|"No — timer\nexpires"| S4
+
+    S4["STEP 4\nPhysical search\nUS → AC → Stream\nVB → MS → Gym"]:::manual
+    S4 --> FOUND4{{"Found during\nsearch?"}}:::decision
+    FOUND4 -->|"Yes"| LOC["Log location\nwhere found"]:::log
+    LOC --> EXCUSE{{"Absence\nexcused?"}}:::decision
+    EXCUSE -->|"Yes / No / Pending"| RESOLVE
+    FOUND4 -->|"No — all\nlocations checked"| S5
+
+    S5["STEP 5\nIntercom page\n— coordinator logs —"]:::manual
+    S5 --> FOUND5{{"Student\nresponded?"}}:::decision
+    FOUND5 -->|"Yes"| RESOLVE
+    FOUND5 -->|"No"| S6
+
+    S6["STEP 6\nParent + teacher +\ndean email\n— AUTO —"]:::auto
+    S6 --> RESOLVE
+
+    RESOLVE(["INCIDENT RESOLVED\nAll open steps → N/A\nLocation + excused status logged\nIncident history saved\nPattern data updated"]):::resolved
+
+    ANYONE(["Any staff member\nat any point:\nWith Me / Found"]):::action
+    ANYONE --> FOUND_EARLY
+
+    classDef start fill:#3D3D3D,stroke:#1A1A1A,color:#fff,font-weight:700
+    classDef decision fill:#3D3D3D,stroke:#1A1A1A,color:#fff,font-weight:700
+    classDef auto fill:#A6192E,stroke:#810D1E,color:#fff,font-weight:700
+    classDef wait fill:#FFF8E0,stroke:#F0C040,color:#6B4C00,font-weight:700
+    classDef manual fill:#FFF0F0,stroke:#A6192E,color:#A6192E,font-weight:700
+    classDef log fill:#E8F5E9,stroke:#2E7D32,color:#1B5E20,font-weight:600
+    classDef resolved fill:#1B5E20,stroke:#0D3D14,color:#fff,font-weight:700
+    classDef action fill:#CE2033,stroke:#A6192E,color:#fff,font-weight:700
+      </div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#A6192E;"></div> Auto-generated (no coordinator action needed)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#FFF8E0;border:1px solid #F0C040;"></div> Wait / timer step</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#FFF0F0;border:1px solid #A6192E;"></div> Coordinator logs manually</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#CE2033;"></div> Any staff — available at all times</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#1B5E20;"></div> Resolved — incident closed</div>
+    </div>
+  </div>
+
+</div>
+
+<footer style="margin-top:40px;">
+  SAAS RD App &middot; UI Flowchart &middot; For feedback only &mdash; not final &middot; Print: Landscape, A4
+</footer>
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    securityLevel: 'loose',
+    flowchart: {
+      curve: 'basis',
+      padding: 20,
+      nodeSpacing: 50,
+      rankSpacing: 60,
+      useMaxWidth: false,
+    }
+  });
+</script>
+</body>
+</html>
