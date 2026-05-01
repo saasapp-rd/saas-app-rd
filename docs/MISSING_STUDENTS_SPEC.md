@@ -1,6 +1,6 @@
 # Missing Students Tracker — Product Spec
 
-**Status: LOCKED — 2026-04-28**
+**Status: LOCKED — 2026-04-29**
 **Replaces:** 20-person email chain to missingstudents@seattleacademy.org
 
 ---
@@ -14,6 +14,8 @@ context-aware safety system that:
 - Routes urgency automatically without requiring staff judgment calls
 - Centralizes the "students of concern" list that currently isn't used
 - Adds a welfare concern channel for lunch and community time
+- Eliminates duplicate emails across coordinators for the same student
+- Works on mobile so coordinators can act while walking buildings
 
 ---
 
@@ -21,19 +23,36 @@ context-aware safety system that:
 
 | Role | Primary surface | Key responsibilities |
 |---|---|---|
-| Teacher | Block roster / welfare form | Report missing from roster; welfare concern during lunch/community |
-| Faculty/Staff | Student search | Report welfare concerns; view and claim active missing students |
-| Coordinator | Block triage + active missing | Run 6-step workflow, triage, escalate, resolve |
-| Counselor | Caseload + all-student view | Claim, flag management, private notes, view all active missing |
-| Dean | Pattern dashboard + active missing | Full workflow, triage, patterns, all students (grade default) |
-| Admin | Full system | All of the above + user/schedule management |
-| Super Admin | Full system + configuration | All of the above + templates + audit log |
+| Teacher | Block roster view | Report missing students from current class |
+| Faculty/Staff | Missing list + welfare concern | Report welfare concerns; claim/found any student |
+| Coordinator | Block incident feed + triage | Run 6-step workflow, claim, escalate, resolve |
+| Counselor | Missing list + caseload dashboard | Claim students, manage concern flags, private notes |
+| Dean | Missing list + pattern dashboard | Patterns, flags, escalations — involved for elevated only |
+| Admin | Full system | All of the above + configuration |
+
+---
+
+## Landing Page After Login
+
+**All roles except student land on `/missing` — the shared active incidents list.**
+
+From there, each role navigates to their specific view:
+- Teacher → My Roster (report new missing)
+- Staff → Welfare Concern form
+- Coordinator → Triage & 6-step workflow
+- Counselor → Caseload dashboard
+- Dean → Pattern dashboard
+- Admin → Admin panel
+
+This ensures the first thing everyone sees is the current state of student safety —
+not a role-specific view they may not need right now.
 
 ---
 
 ## Period Modes
 
-App behavior changes automatically based on current time. No manual switching.
+App behavior changes automatically based on current time.
+No manual switching required.
 
 ```
 8:15 –  9:30   BLOCK      Missing from class flow (routine default)
@@ -44,31 +63,18 @@ App behavior changes automatically based on current time. No manual switching.
 1:45 –  3:00   BLOCK      Missing from class flow (routine default)
 ```
 
----
-
-## Active Missing Students — Visibility Tiers
-
-| Tier | Who | Sees | Level shown |
-|---|---|---|---|
-| 1 | Teacher | Own block students + own reports only | No — shows "Missing" only |
-| 2 | Staff | All active missing students | No — shows "Missing" only |
-| 3 | Coordinator+ | All active missing students | Yes — Routine / Elevated / Emergency |
-
-### Teacher/Staff Detail View
-When Teacher or Staff taps View → on a missing student they see:
-- Student name, block, time reported
-- Shared updates only
-- With Me / Found actions
-No severity level, no escalation status, no private notes visible.
+### Block 1 Special Rule
+No email home for Block 1 absences. Students absent at the start of Block 1
+are frequently late arrivals, not truly missing. Email home suppressed for
+Block 1; coordinator still texts and searches, but no parent email unless
+student is confirmed still missing after in-person search.
 
 ---
 
-## Reporting — All Roles
+## Teacher View — Block Period
 
-**Any logged-in user can report a missing student at any time.**
-
-### Teacher — Block Period (Roster Flow)
-App auto-detects current block and shows teacher's roster.
+### Roster Screen
+App auto-detects current block and shows teacher's roster for that block only.
 
 ```
 Block 3 — 11:40am
@@ -84,8 +90,10 @@ Who is missing?
 [ Report Missing (0) ]
 ```
 
-Tap to select, tap again to deselect. One submit reports all selected students.
-Teachers do NOT see present/absent — they take attendance in Veracross.
+- Tap to select, tap again to deselect
+- Button count updates live
+- Teachers do NOT see present/absent status — they take attendance in Veracross
+- One submission reports all selected students
 
 ### Report Type (per student)
 ```
@@ -97,12 +105,17 @@ Smith, John
 
 ### Context — Absent from Start
 ```
+Smith, John — Absent from start
+
 Note (optional): [_________________________________]
+
 [ Submit ]
 ```
 
 ### Context — Left and Didn't Return
 ```
+Smith, John — Left and didn't return
+
 Where/why did they go?
 [ 🚽 Bathroom ]  [ 🏥 Nurse ]  [ 🧑 Counselor ]
 [ 🏢 Office   ]  [ 😤 Upset / stormed out ]  [ ❓ Unknown ]
@@ -111,14 +124,17 @@ How long ago?
 [ Just now ]  [ ~5 min ]  [ ~10 min ]  [ ~15 min+ ]
 
 Note (optional): [_________________________________]
+
 [ Report Missing ]
 ```
 
-### Everyone — Lunch & Community Time (Welfare Concern Form)
-Teachers also see this form during lunch and community time.
+---
+
+## Faculty/Staff View — Lunch & Community Time
 
 ```
 Lunch — 11:08am
+
 ⚠ Report Student Concern
 
 Search student: [________________]
@@ -128,22 +144,13 @@ Context:
 [ 🚶 Left campus ]  [ ❓ General concern ]
 
 Note (optional): [_________________________________]
+
 [ Report Elevated Concern ]
 ```
 
-All lunch/community reports start at Elevated automatically.
-
-### Non-Roster Report (all roles, any time)
-Any user can search for a student and report them missing outside of
-the roster flow — e.g. reporting for a teacher, or reporting based on
-something they heard.
-
-```
-Search student: [________________]
-Report Type: Absent from start / Left and didn't return / Welfare concern
-Context + note
-[ Report Missing ]
-```
+- No roster — student search only
+- All reports start at Elevated
+- Button label reflects elevated status
 
 ---
 
@@ -156,7 +163,7 @@ Context + note
 | Lunch | Elevated |
 | Community Time | Elevated |
 
-### By Context Tag
+### By Context Tag (overrides period default)
 | Tag | Level | Notes |
 |---|---|---|
 | Bathroom | Routine | |
@@ -172,450 +179,290 @@ Context + note
 
 ---
 
-## Active Missing Students List
+## Coordinator View
 
-All roles who can see the list get three quick actions per row:
+### Step 1 — Imperfect Attendance Triage
+Pulled from Veracross/Axiom at 5–10 min mark. Coordinator cleans
+false positives before opening incidents.
 
-```
-🔴 Smith, John   12m   Left Rm 204 upset   [ With Me ]  [ Found ]  [ View → ]
-🟡 Lee, Marcus    4m   Absent — Block 3    [ With Me ]  [ Found ]  [ View → ]
-```
-
-(Teachers and staff see same layout but without 🔴🟡 indicators — just "Missing")
-
-### With Me — Bottom Sheet
-```
-Smith, John is with you?
-
-Status:
-○ Excused (counseling, office, nurse, etc.)
-○ Unexcused
-
-Note (optional): [________________________]
-● Private   ○ Shared
-
-[ Confirm — With Me ]  [ Cancel ]
-```
-
-### Found — Bottom Sheet
-```
-Found: Smith, John
-
-Where?
-[ US ]  [ AC ]  [ Stream ]  [ VB ]  [ MS ]  [ Gym ]
-[ Other: _________________ ]
-
-Status:
-○ Excused
-  · With counselor  · Dean's office  · Nurse
-  · In class — late  · Appointment  · Other: ______
-○ Unexcused
-  · Wandering / hallway  · Skipping  · Other: ______
-
-Note (optional): [_________________________________]
-[ Confirm Found ]  [ Cancel ]
-```
-
-Both With Me and Found:
-- Move incident to Located → Resolved
-- Auto-close all remaining open steps as "N/A — student found before this step"
-- Log step number at which student was found
-- Log location + excused/unexcused status
-
----
-
-## Coordinator / Dean View
-
-### Imperfect Attendance Triage
-Pulled from Veracross/Axiom at 5–10 min mark.
-Coordinator or Dean cleans false positives before opening incidents.
+**Known false positive categories (from coordinator interviews):**
+- Sports / athletics early dismissal not entered in Veracross
+- Off-campus trip not entered (Model UN, Onions overnight, etc.)
+- Accommodations — student in a different room, teacher marked absent
+- Sub didn't send attendance to front desk
+- Parent signed student out but didn't update Veracross
+- Teacher forgot to take or update attendance
+- Veracross system glitch overriding an early dismissal
 
 ```
-Block 3 — Will — 11:47am    IMPERFECT ATTENDANCE
+Block 3 — Will — 11:47am
 
-Active:
-⚠ Smith, John   [ Sports dismissal ] [ Parent update ] [ Other: ___ ] [ Confirm Missing ]
-⚠ Lee, Marcus   [ Sports dismissal ] [ Parent update ] [ Other: ___ ] [ Confirm Missing ]
+IMPERFECT ATTENDANCE
 
-──── Dismissed (tap to restore) ────
-✓ Kim, Alex   Sports dismissal — dismissed by Will 11:43am   [ Restore ]
+⚠ Smith, John   [Sports dismissal] [Off-campus trip] [Accommodations] [Parent update] [Confirm missing]
+⚠ Lee, Marcus   [Sports dismissal] [Off-campus trip] [Accommodations] [Parent update] [Confirm missing]
 
 [ Pull Final Report — 20 min ]
 ```
 
-Dismissed entries are logged (who, why, when) and undoable.
-Confirmed missing entries open an incident and enter the 6-step workflow.
+One tap to dismiss a false positive. One tap to open a real incident.
 
-### Missing Student Detail + 6-Step Workflow
-
+### Step 2 — Incident Feed
 ```
-Smith, John — Block 3
+OPEN INCIDENTS                                    11:52am
+
+🔴 ELEVATED  Smith, John       12 min   Left Rm 204 upset
+🟡 ROUTINE   Lee, Marcus        4 min   Absent from start — Block 3
+🟡 ROUTINE   Doe, Jane          4 min   Left Rm 204 ~5 min → Bathroom
+```
+
+Sorted by: level first, then time (oldest at top within level).
+
+### Step 3 — Incident Detail + 6-Step Workflow
+```
+Smith, John — Block 3 — Absent Unexcused
 🔴 FLAGGED: "Elevated concern — check immediately"
-────────────────────────────────────────────────────
-Opened 11:39am — Ms. Jones — AP Biology — Room 204
-Left class upset
+────────────────────────────────────────────────
+Opened 11:39am — reported by Ms. Jones
+AP Biology — Room 204 — Left upset
 
-⚡ FIND HISTORY: Usually found via physical search — Stream (3 of 5 times)
-
-STEPS
-✓  1  Missing students email         11:40am   [auto-sent]
-✓  2  Text sent to student           11:41am   [auto-sent]
-⏱  3  Waiting for response           6 min remaining     [ Skip ]
+STEPS                                        TIME
+✓  1  Missing students email sent            11:40am  [auto]
+✓  2  Text sent to student                   11:41am  [auto]
+⏱  3  Waiting for response                   6 min remaining
 ○  4  Physical search
-       □ US    □ AC    □ Stream
-       □ VB    □ MS    □ Gym
-       □ Other: [________]
-                                      [ Mark Addressed ▼ ]
-○  5  Intercom page                   [ Log ]  [ Mark Addressed ▼ ]
-○  6  Parent / teacher / dean email   [ Send Email ]  [ Mark Addressed ▼ ]
+○  5  Intercom page
+○  6  Parent / teacher / dean email
 
-Mark Addressed options per step:
-  Step 1: Emailed separately · N/A
-  Step 2: Texted from personal phone · Student already responded · N/A
-  Step 3: Student already located
-  Step 4: (building checkboxes)
-  Step 5: Announced manually · N/A — student found
-  Step 6: Called parent instead · Emailed separately · N/A — student found
+PHYSICAL SEARCH
+□  Upper School (US)
+□  Arts Center (AC)
+□  Stream
+□  Vanderbilt (VB)
+□  Middle School (MS)
+□  Gym
+□  Other: [________]
 
-UPDATES (shared)
+Updates:
   11:44am [Will] — "Checked main hallway, not found"
 
-Add update:
-  [_________________________________]
+Add update: [_________________________________]
   ● Shared   ○ Private
   [ Save ]
 
 ─────────────────────────────────────────
-[ Student Checked In ]   [ Escalate → Elevated / Emergency ]
+[ Student Checked In ]   [ Escalate to Emergency ]
 ```
 
-### Step Found Tracking
-Every incident records:
-- Which step the student was found at
-- How they were found (With Me / Found / self check-in / step workflow)
-- Location
-- Excused or unexcused
+Steps 1, 2, and 6 are auto-executed using pre-built templates.
+Steps 3–5 are logged by coordinator with one tap.
 
-This builds the per-student find history shown as ⚡ tips on future incidents.
-
-### Auto-Close on Found
-When student is marked Found or With Me from anywhere:
-- All remaining open steps instantly close as "N/A — student found before this step"
-- Step found at is recorded
-- No coordinator action required
+### Block 1 Exception
+No auto-email home for Block 1. Coordinator still texts and searches.
+Email home only if student not located by end of block.
 
 ---
 
 ## Communication Templates
 
-All templates managed by Super Admin only.
-Variables available: {student_name} {block} {time} {room} {teacher}
-{coordinator} {date} {grade}
-
 ### Step 1 — Missing Students Email
 ```
 To: missingstudents@seattleacademy.org
-Subject: Missing Student Report — Block {block} — {date}
+Subject: Missing Student Report — Block [X] — [Date]
 
-The following student(s) have imperfect attendance for Block {block}:
-- {student_name}, Grade {grade}, {course}, Room {room}
+The following student(s) have imperfect attendance for Block [X]:
+
+- [Student Name], [Grade], [Course], Room [X]
 
 Please reply if you have seen this student or know their location.
 
-{coordinator}, Block {block} Missing Students
+[Coordinator Name], Block [X] Missing Students
 ```
 
 ### Step 2 — Student Text
 ```
-Hello {student_first_name}, this is {coordinator} from SAAS Missing
-Students. You are reported missing from class. Please check in at a
-Front Office or reply to this message if you are no longer on campus.
-Thank you.
+Hello [First Name], this is [Coordinator] from SAAS Missing Students.
+You are reported missing from class. Please check in at a Front Office
+or reply to this message if you are no longer on campus. Thank you.
 ```
 
 ### Step 6 — Parent / Teacher / Dean Email
 ```
-Subject: Missing Student Report — Block {block} — {date}
+Subject: Missing Student Report — Block [X] — [Date]
 
-Dear {student_first_name},
+Dear [Student First Name],
 
-You were reported absent from Block {block} today at {time}. I have
-paged you on the intercom and sent a text to your phone with no
-response. Per our missing students protocol, I am sending this email
-to you and your parents/guardians.
+You were reported absent from Block [X] today at [time]. I have paged
+you on the intercom and sent a text to your phone with no response.
+Per our missing students protocol, I'm sending this email to you and
+your parents/guardians.
 
 Your safety and well-being are our top concern. If you are unsafe or
 unwell, please let us know immediately.
 
-If this was an oversight and you did not sign out before leaving
-campus, please have your parents/guardians update your attendance
-in Veracross.
+If this was an oversight and you did not sign out before leaving campus,
+please have your parents/guardians update your attendance in Veracross.
 
 If this was an unexcused absence, your grade level dean (cc'd) will
 follow up with you about consequences.
 
-{coordinator}, Block {block} Missing Students
+[Coordinator Name], Block [X] Missing Students
 
-cc: {teacher}, {grade_coordinator}, {grade_dean}, {parent_emails}
+cc: [Teacher], [Grade Level Coordinator], [Grade Level Dean], [Parents]
 ```
-
-Note: Student names never appear in email subject lines.
 
 ---
 
 ## Counselor View
 
-Counselors see ALL students — not just their caseload.
-Caseload is a default filter only, not a permission boundary.
+Counselors can see ALL students — not just their caseload.
+They may be working temporarily with students not on their official caseload
+and need to be able to flag or claim anyone.
 
+### Dashboard
 ```
-MY CASELOAD ▼ / All Students          [ Search all students... ]
+MY CASELOAD — PATTERNS             This Week ▼  [ All Students ▼ ]
 
-Smith, John    6 incidents   🔴 Elevated   [ View ]
-Doe, Jane      4 incidents   🟡 Watch      [ View ]
-Lee, Marcus    3 incidents   ○  None       [ View ]
+Smith, John    6 incidents  🔴 Elevated flag   [ View ]
+Doe, Jane      4 incidents  🟡 Watch flag       [ View ]
+Lee, Marcus    3 incidents  ○  No flag          [ View ]
 
-ACTIVE MISSING STUDENTS (Elevated + Emergency)
-  🔴 Smith, John — Block 3 — open 14 min   [ With Me ]  [ Found ]  [ View → ]
+[ Search all students... ]
+
+ACTIVE INCIDENTS (all)
+  Smith, John — Block 3 — open 14 min           [ View ]
 ```
 
-### Concern Flag (any student)
+Toggle between "My Caseload" (default filter) and "All Students."
+Flag and claim available on any student regardless of caseload.
+
+### Flag Management (any student)
 ```
-Public note (all staff):
+Smith, John — Concern Flag
+
+Public note (visible to all staff):
 "Elevated concern — check immediately, contact counselor"
 
-Private note (author + admin only):
+Private note (counselors + deans + admin only):
 [________________________________________________]
 
 Flag level:
-○ Watch     ● Elevated     ○ Emergency
+○ Watch     — surface in patterns, no urgency change
+● Elevated  — coordinators notified on any absence
+○ Emergency — skip routine, immediate response
 
 [ Save ]   [ Remove Flag ]
 ```
 
----
-
-## Dean View
-
-Pattern dashboard defaults to dean's assigned grade.
-Can switch to any grade or all students.
-
+### Claiming a Student (any student)
 ```
-STUDENT PATTERNS     [ Grade 11 ▼ ]   [ This Week ▼ ]
+[ Student is with me — Counseling ]
 
-⚠ AUTO-SURFACED
-  Smith, John   6 incidents   Same-day multi-block 2× this week
+Add note:
+  ● Private (counselors + deans only)
+  ○ Shared with coordinators
+[________________________________________________]
 
-ALL PATTERNS
-  1. Smith, John    6   🔴 ↑   [ View ]
-  2. Doe, Jane      4   🟡 →   [ View ]
-  3. Lee, Marcus    3   ○  ↓   [ View ]
-
-ACTIVE MISSING STUDENTS (Elevated + Emergency)
-  🔴 Smith, John — Block 3 — 12 min   [ With Me ]  [ Found ]  [ View → ]
+[ Claim ]
 ```
 
-Deans can also run full 6-step workflow and imperfect attendance triage.
-
 ---
 
-## Pattern List
+## Dean / Admin View — Pattern Dashboard
 
-| Setting | Value | Configurable |
-|---|---|---|
-| Minimum incidents to surface | 2 | Admin |
-| Lookback window | 14 days rolling | Admin |
-| Decay / fall-off | Auto when count drops below threshold | — |
-| Reset | Never — safety data is continuous | — |
+```
+STUDENT PATTERNS                        This Week ▼
 
-### Auto-Surface Triggers
-| Trigger | Threshold |
-|---|---|
-| Same block missed repeatedly | 3× same block within 2 weeks |
-| Multi-block same day | 2+ blocks on same day |
-| Weekly threshold | 4+ incidents in rolling 5-day window |
-| No text response | 0 responses in last 4 incidents |
-| Unresolved incident | Any incident open 24h+ |
+Rank  Student          Grade  Incidents  Blocks missed    Trend
+────  ───────────────  ─────  ─────────  ───────────────  ──────
+1     Smith, John      11     6          1, 3, 3, 5, 7    ↑ worse
+2     Doe, Jane        10     4          2, 2, 6, 8       → same
+3     Lee, Marcus      9      3          1, 3, 5          ↓ better
 
----
+[ This Week ]  [ This Month ]  [ This Semester ]
+```
 
-## Student Detail View (Coordinator+)
+Deans see all students, all grades. No grade-level filtering.
 
+### Student Detail
 ```
 Smith, John — Grade 11
 ────────────────────────────────────────────
 🔴 ELEVATED CONCERN
-   Public: "Check immediately — contact counselor"
-   Flagged by: Dean Martinez — Nov 12
+   Public: "Check immediately, contact counselor"
+   Flagged by Dean Martinez — Nov 12
 
 PATTERNS
-  Most missed block:      Block 1 (4×)
-  Avg step found at:      Step 4
-  Usually found:          Stream building (3 of 5 times)
-  Avg resolution time:    18 min
-  Responds to text:       2 of 6 times (33%)
-  Excused / unexcused:    2 excused / 4 unexcused
-  Same-day multi-block:   2 days this week  ⚠
+  Most missed block:     Block 1 (4×)
+  Avg resolution time:   18 min
+  Responds to text:      2 of 6 times (33%)
+  Same-day multi-block:  2 days this week  ⚠
 
-MISSING STUDENT HISTORY
-  Thu Nov 14  Block 3  Left — upset    Found: Stream (unexcused)  Step 4
-  Thu Nov 14  Block 1  Absent start    Found: Via text (excused)   Step 2
-  Wed Nov 13  Block 7  Absent start    Unresolved
-  ...
+CONSEQUENCES
+  Detention assigned:    Nov 12 (Block 1 skip, no reason given)
+  Dean meeting:          Scheduled Nov 18 — student + family
+
+INCIDENT HISTORY
+  Thu Nov 14  Block 3  Left — upset        Resolved 12:08pm
+  Thu Nov 14  Block 1  Absent from start   Resolved 9:52am
+  Wed Nov 13  Block 7  Absent from start   Resolved 2:14pm
+  Tue Nov 12  Block 5  Absent from start   Unresolved
+  Tue Nov 12  Block 3  Absent from start   Resolved 12:22pm
+  Mon Nov 11  Block 1  Absent from start   Resolved 9:41am
 
 [ Flag / Update Concern ]   [ View Full History ]   [ Export ]
 ```
 
----
-
-## Privacy Model
-
-### Active Missing Student Severity
-- Routine level visible to: Coordinator, Admin, Super Admin
-- Elevated/Emergency visible to: Coordinator, Counselor, Dean, Admin, Super Admin
-- Teachers: see own block + own reports — "Missing" label only
-- Staff: see all — "Missing" label only, no severity
-
-### Notes
-- Shared updates: visible to Coordinator, Counselor, Dean, Admin, Super Admin
-- Private notes: visible to author + Admin/Super Admin only
-- Concern flag public note: visible to all staff
-- Concern flag private note: visible to author + Admin/Super Admin only
-
-### Student Detail
-- Teachers/Staff tapping View →: name, block, time, shared updates only
-- No severity level, no escalation status, no private notes for Teacher/Staff
+### Dean Escalation Consequences (from interviews)
+- Unexcused skip with no explanation given → email home + detention assigned
+- Pattern (multiple incidents) → meeting scheduled with student + family
+- Elevated concern → faster response, all hands involved, treat as near-emergency
+- Open campus = students can be off-campus entirely if not where expected
 
 ---
 
-## Permissions
+## Auto-Surface Triggers (Pattern Alerts)
 
-| Capability | Teacher | Staff | Coord. | Counselor | Dean | Admin | Super Admin |
-|---|---|---|---|---|---|---|---|
-| Report missing | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Welfare concern form | ✓* | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| View active missing — own block/reports, no level | ✓ | — | — | — | — | — | — |
-| View active missing — all, no level | — | ✓ | — | — | — | — | — |
-| View active missing — all, with level | — | — | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Claim With Me / Found | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Add shared update | — | — | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Add private update | — | — | ✓ | ✓ | ✓ | ✓ | ✓ |
-| View own private notes | — | — | ✓ | ✓ | ✓ | ✓ | ✓ |
-| View all private notes | — | — | — | — | — | ✓ | ✓ |
-| Run 6-step workflow | — | — | ✓ | — | ✓ | ✓ | ✓ |
-| Escalate | — | — | ✓ | — | ✓ | ✓ | ✓ |
-| Resolve | — | — | ✓ | — | ✓ | ✓ | ✓ |
-| Imperfect attendance triage | — | — | ✓ | — | ✓ | ✓ | ✓ |
-| View/set concern flags | — | — | — | ✓ | ✓ | ✓ | ✓ |
-| Pattern dashboard | — | — | — | ✓ | ✓ | ✓ | ✓ |
-| User/student/schedule mgmt | — | — | — | — | — | ✓ | ✓ |
-| Edit templates | — | — | — | — | — | — | ✓ |
-| System settings + audit log | — | — | — | — | — | — | ✓ |
+| Trigger | Threshold |
+|---|---|
+| Same block missed repeatedly | 3× same block within 2 weeks |
+| Multi-block same day | 2+ blocks missed on same day |
+| Weekly threshold | 4+ incidents in rolling 5-day window |
+| No text response | 0 responses in last 4 incidents |
+| Unresolved incident | Any incident open 24h+ |
 
-*Teachers see Welfare Concern Form during lunch/community time only
+Auto-surfaced students appear at top of pattern dashboard with trigger reason.
 
 ---
 
-## Data Models
+## Privacy Rules (from coordinator + dean interviews)
 
-### Incident
-```
-id, student_id, reported_by, reported_at
-initiated_by:       teacher | coordinator_pull | welfare_concern
-period_type:        block | lunch | community
-report_type:        absent_from_start | left_and_missing | welfare_concern
-level:              routine | elevated | emergency
-block_id, course_id, room
-context_tag:        bathroom | nurse | counselor | office | upset |
-                    unknown | emotional | physical | left_campus | general
-departed_at, stated_destination
-counselor_pinged_at, counselor_confirmed_at
-step_1_sent_at, step_2_sent_at, step_3_expires_at
-step_4_logged_at, step_5_logged_at, step_6_sent_at
-step_1_method, step_2_method, step_6_method   (auto | addressed | skipped)
-status:             open | located | resolved
-located_at, resolved_at
-```
-
-### IncidentResolution
-```
-incident_id
-resolved_via:       with_me | found | self_checkin | step_workflow
-found_at_step:      int 1–6 (null if outside workflow)
-found_by:           uuid → User
-found_location:     string
-found_status:       excused | unexcused
-excused_reason:     counselor | dean | nurse | in_class | appointment | other
-unexcused_reason:   wandering | skipping | other
-notes:              text
-```
-
-### IncidentUpdate
-```
-id, incident_id, author_id
-note: text
-is_private: boolean
-created_at: timestamp
-```
-
-### IncidentSearchLog
-```
-id, incident_id
-location:   string (from SEARCH_LOCATIONS)
-checked_by: uuid → User
-checked_at: timestamp
-found:      boolean
-```
-
-### StudentConcernFlag
-```
-student_id
-is_flagged: boolean
-flag_level: watch | elevated | emergency
-public_note: text
-private_note: text
-flagged_by, flagged_at, updated_by, updated_at
-```
-
-### PatternAlert
-```
-id, student_id
-trigger_type: same_block_repeat | multi_block_day |
-              weekly_threshold | no_text_response | unresolved
-detected_at
-acknowledged_by, acknowledged_at
-```
-
-### ImperfectAttendanceEntry
-```
-id, student_id, block_id, date
-source:     veracross_api | manual_entry | csv_import
-resolved:   boolean
-resolution: false_positive_sports | false_positive_parent |
-            false_positive_error | confirmed_missing
-dismissed_by, dismissed_at
-created_at
-```
+- Coordinators do not ask why a student is in counseling — that information stays private
+- "Student is with counselor" is a valid resolution; counselor confirms or denies (auto-ping)
+- Bathroom visits are handled delicately — coordinators check that the student is okay without being invasive
+- Students sometimes voluntarily overshare; staff do not prompt for more detail than needed
+- Focus is always on safety, not discipline, during the active search
+- Discipline (detention, family meeting) is handled by deans after the incident is resolved
 
 ---
 
-## Campus Search Locations (Priority Order)
-```
-1. Upper School (US)    — primary, most likely
-2. Arts Center (AC)     — primary, most likely
-3. Stream               — primary, most likely
-4. Vanderbilt (VB)      — secondary, out of the way
-5. Middle School (MS)   — unlikely but possible
-6. Gym                  — unlikely but possible
-7. Other (free text)
-```
+## Deduplication Rule
+
+Because multiple coordinators work different blocks, the same student
+could previously receive duplicate texts/emails from different coordinators.
+
+**App rule:** Once a student has an open incident, any subsequent report
+for the same student in the same block is surfaced as a duplicate alert,
+not opened as a new incident. Coordinator sees: "Already open — view existing."
 
 ---
 
 ## Out of Scope — v1
+
 - Veracross real-time API (CSV bridge used instead)
-- Veracross write-back (manual in v1)
+- Veracross write-back (coordinator updates Veracross manually)
 - Parent-facing portal
 - Student-facing portal
 - Historical analytics exports
-- Activity Tracker (separate system)
+- Activity Tracker / Community Time attendance (separate system)
+- Middle School students (Upper School only)
