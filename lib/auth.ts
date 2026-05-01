@@ -12,6 +12,7 @@ const TEST_USERS = [
   { id: "5", username: "counselor",   password: "saas2026", role: "counselor",    displayName: "Dr. Park (Counselor)" },
   { id: "6", username: "teacher",     password: "saas2026", role: "teacher",      displayName: "Ms. Jones (Teacher)" },
   { id: "7", username: "staff",       password: "saas2026", role: "staff",        displayName: "Staff Member" },
+  { id: "8", username: "student",     password: "saas2026", role: "student",      displayName: "Test Student" },
 ]
 
 export const authOptions: NextAuthOptions = {
