@@ -4,13 +4,14 @@ import { useState, FormEvent } from "react"
 import Image from "next/image"
 
 const ACCOUNTS = [
-  { username: "superadmin",  label: "Super Admin"    },
-  { username: "admin",       label: "Admin"          },
-  { username: "dean",        label: "Dean"           },
-  { username: "coordinator", label: "Coordinator"    },
-  { username: "counselor",   label: "Counselor"      },
-  { username: "teacher",     label: "Teacher"        },
-  { username: "staff",       label: "Staff"          },
+  { username: "superadmin",  label: "Super Admin"  },
+  { username: "admin",       label: "Admin"        },
+  { username: "dean",        label: "Dean"         },
+  { username: "coordinator", label: "Coordinator"  },
+  { username: "counselor",   label: "Counselor"    },
+  { username: "teacher",     label: "Teacher"      },
+  { username: "staff",       label: "Staff"        },
+  { username: "student",     label: "Student"      },
 ]
 
 export default function LoginPage() {
@@ -123,12 +124,8 @@ export default function LoginPage() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
-              className="w-full px-4 py-3 rounded-xl text-sm border outline-none transition-all"
-              style={{
-                borderColor: "#EAEAEA",
-                background: "#FAFAFA",
-                color: "#3D3D3D",
-              }}
+              className="w-full px-4 py-3 rounded-xl text-sm border outline-none"
+              style={{ borderColor: "#EAEAEA", background: "#FAFAFA", color: "#3D3D3D" }}
             />
             <input
               type="password"
@@ -137,11 +134,7 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               className="w-full px-4 py-3 rounded-xl text-sm border outline-none"
-              style={{
-                borderColor: "#EAEAEA",
-                background: "#FAFAFA",
-                color: "#3D3D3D",
-              }}
+              style={{ borderColor: "#EAEAEA", background: "#FAFAFA", color: "#3D3D3D" }}
             />
 
             {error && (
