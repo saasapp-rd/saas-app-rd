@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import Link from 'next/link'
 
 export default function Home() {
   return (
@@ -37,10 +38,7 @@ export default function Home() {
         {/* Divider */}
         <div className="flex items-center gap-3 w-full max-w-[280px] mb-8">
           <div className="flex-1 h-px" style={{ backgroundColor: '#EAEAEA' }} />
-          <div
-            className="w-2 h-2 rotate-45 flex-shrink-0"
-            style={{ backgroundColor: '#A6192E' }}
-          />
+          <div className="w-2 h-2 rotate-45 flex-shrink-0" style={{ backgroundColor: '#A6192E' }} />
           <div className="flex-1 h-px" style={{ backgroundColor: '#EAEAEA' }} />
         </div>
 
@@ -62,52 +60,27 @@ export default function Home() {
         </div>
 
         {/* App name */}
-        <h1
-          className="text-2xl font-bold mb-3 leading-snug"
-          style={{ color: '#3D3D3D' }}
-        >
+        <h1 className="text-2xl font-bold mb-3 leading-snug" style={{ color: '#3D3D3D' }}>
           SAAS RD App
         </h1>
 
         {/* Tagline */}
         <p
-          className="text-sm leading-relaxed max-w-[260px] mb-12"
+          className="text-sm leading-relaxed max-w-[260px] mb-10"
           style={{ color: '#3D3D3D', opacity: 0.6 }}
         >
           Helping administrators do their job
           <br />one spreadsheet at a time
         </p>
 
-        {/* Button styles */}
-        <div className="w-full max-w-[280px] space-y-3">
-          <p
-            className="text-[9px] font-bold tracking-[0.3em] uppercase mb-4 text-center"
-            style={{ color: '#3D3D3D', opacity: 0.35 }}
-          >
-            Button Styles
-          </p>
-
-          <button
-            className="w-full py-4 rounded-xl text-white text-sm font-semibold tracking-wide transition-opacity active:opacity-80"
-            style={{ backgroundColor: '#A6192E' }}
-          >
-            Solid — Primary Action
-          </button>
-
-          <button
-            className="w-full py-4 rounded-xl text-sm font-semibold tracking-wide bg-transparent transition-all active:opacity-70"
-            style={{ border: '2px solid #A6192E', color: '#A6192E' }}
-          >
-            Outlined — Secondary
-          </button>
-
-          <button
-            className="w-full py-4 rounded-xl text-sm font-semibold tracking-wide transition-all active:opacity-70"
-            style={{ backgroundColor: '#EAEAEA', color: '#3D3D3D' }}
-          >
-            Ghost — Tertiary
-          </button>
-        </div>
+        {/* Staff login link */}
+        <Link
+          href="/login"
+          className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-white"
+          style={{ backgroundColor: '#A6192E' }}
+        >
+          Staff Sign In &rarr;
+        </Link>
       </main>
 
       {/* Footer */}
@@ -116,7 +89,7 @@ export default function Home() {
           className="text-[9px] tracking-[0.2em] uppercase"
           style={{ color: '#3D3D3D', opacity: 0.3 }}
         >
-          © 2026 Seattle Academy of Arts &amp; Sciences
+          &copy; 2026 Seattle Academy of Arts &amp; Sciences
         </p>
       </footer>
 
