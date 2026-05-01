@@ -1,0 +1,787 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SAAS RD App — Admin View Screens</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: #F2F2F2;
+  color: #3D3D3D;
+  padding: 32px 24px;
+}
+
+h1.role-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: #A6192E;
+  margin-bottom: 4px;
+}
+h2.role-name {
+  font-size: 28px;
+  font-weight: 800;
+  color: #3D3D3D;
+  margin-bottom: 4px;
+}
+p.role-desc {
+  font-size: 12px;
+  color: #3D3D3D;
+  opacity: 0.55;
+  margin-bottom: 32px;
+}
+
+.screens-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 28px;
+  align-items: flex-start;
+}
+
+/* Phone frame */
+.phone {
+  width: 320px;
+  min-height: 570px;
+  background: #fff;
+  border-radius: 36px;
+  border: 6px solid #1A1A1A;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.phone-notch {
+  height: 24px;
+  background: #1A1A1A;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.phone-notch-pill {
+  width: 60px;
+  height: 10px;
+  background: #333;
+  border-radius: 999px;
+}
+.phone-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  overflow: hidden;
+}
+.phone-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #3D3D3D;
+  opacity: 0.4;
+  text-align: center;
+  margin-top: 10px;
+}
+
+/* Screen components */
+.top-bar {
+  background: #A6192E;
+  padding: 10px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.top-bar-title {
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.top-bar-sub {
+  color: rgba(255,255,255,0.65);
+  font-size: 9px;
+  font-weight: 500;
+}
+.top-bar-right {
+  display: flex;
+  gap: 3px;
+}
+.top-bar-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.5);
+}
+.top-bar-dot.active { background: #fff; }
+
+.screen-body {
+  flex: 1;
+  padding: 14px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.screen-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #3D3D3D;
+}
+.screen-subtitle {
+  font-size: 10px;
+  color: #3D3D3D;
+  opacity: 0.5;
+  margin-top: -6px;
+}
+
+/* Roster items */
+.roster-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  background: #F7F7F7;
+  border: 1.5px solid #EAEAEA;
+}
+.roster-item.selected {
+  background: #FFF0F0;
+  border-color: #A6192E;
+}
+.roster-check {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid #CCCCCC;
+  flex-shrink: 0;
+}
+.roster-check.checked {
+  background: #A6192E;
+  border-color: #A6192E;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 10px;
+}
+.roster-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: #3D3D3D;
+}
+.roster-detail {
+  font-size: 10px;
+  color: #3D3D3D;
+  opacity: 0.5;
+}
+
+/* Buttons */
+.btn {
+  padding: 11px 14px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+.btn-primary { background: #A6192E; color: #fff; }
+.btn-outline { border: 2px solid #A6192E; color: #A6192E; background: transparent; }
+.btn-ghost { background: #EAEAEA; color: #3D3D3D; }
+.btn-danger { background: #CE2033; color: #fff; }
+.btn-sm {
+  padding: 7px 11px;
+  font-size: 10px;
+  border-radius: 8px;
+}
+
+/* Context tags */
+.tag-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.tag {
+  padding: 8px 6px;
+  border-radius: 8px;
+  border: 1.5px solid #EAEAEA;
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+  color: #3D3D3D;
+  background: #FAFAFA;
+}
+.tag.selected {
+  border-color: #A6192E;
+  background: #FFF0F0;
+  color: #A6192E;
+}
+
+/* Pills / badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.badge-elevated { background: #FFF0F0; color: #A6192E; }
+.badge-routine { background: #FFF8E0; color: #8B6200; }
+.badge-emergency { background: #A6192E; color: #fff; }
+.badge-found { background: #E8F5E9; color: #1B5E20; }
+.badge-grey { background: #EAEAEA; color: #3D3D3D; }
+
+/* Incident card */
+.incident-card {
+  border-radius: 10px;
+  border: 1.5px solid #EAEAEA;
+  padding: 10px 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: #FAFAFA;
+}
+.incident-card.elevated { border-left: 3px solid #CE2033; background: #FFF8F8; }
+.incident-card.routine { border-left: 3px solid #F0C040; background: #FFFDF0; }
+.incident-card.emergency { border-left: 3px solid #A6192E; background: #FFF0F0; }
+.incident-name { font-size: 12px; font-weight: 700; }
+.incident-meta { font-size: 10px; color: #3D3D3D; opacity: 0.6; }
+
+/* Step workflow */
+.step-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 1px solid #F0F0F0;
+}
+.step-num {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.step-num.done { background: #A6192E; color: #fff; }
+.step-num.active { background: #FFF0F0; color: #A6192E; border: 1.5px solid #A6192E; }
+.step-num.pending { background: #EAEAEA; color: #999; }
+.step-text { font-size: 10px; font-weight: 600; flex: 1; }
+.step-time { font-size: 9px; color: #3D3D3D; opacity: 0.45; }
+
+/* Input field */
+.input-field {
+  border: 1.5px solid #EAEAEA;
+  border-radius: 8px;
+  padding: 9px 10px;
+  font-size: 11px;
+  color: #999;
+  background: #FAFAFA;
+}
+
+/* Section label */
+.section-label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: #3D3D3D;
+  opacity: 0.35;
+}
+
+/* Divider */
+.divider { height: 1px; background: #EAEAEA; flex-shrink: 0; }
+
+/* Nav bar (bottom) */
+.bottom-nav {
+  display: flex;
+  border-top: 1px solid #EAEAEA;
+  background: #fff;
+  flex-shrink: 0;
+}
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 7px 4px;
+  gap: 2px;
+  font-size: 8px;
+  font-weight: 600;
+  color: #AAAAAA;
+  letter-spacing: 0.05em;
+}
+.nav-item.active { color: #A6192E; }
+.nav-icon { font-size: 14px; }
+
+/* Search bar */
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #F4F4F4;
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.search-placeholder { font-size: 11px; color: #AAAAAA; }
+
+/* Student row (pattern/counselor view) */
+.student-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid #F2F2F2;
+}
+.student-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #EAEAEA;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #888;
+  flex-shrink: 0;
+}
+.student-info { flex: 1; min-width: 0; }
+.student-name { font-size: 11px; font-weight: 700; }
+.student-meta { font-size: 9px; color: #3D3D3D; opacity: 0.5; }
+.student-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+
+/* Flag dot */
+.flag-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.flag-elevated { background: #CE2033; }
+.flag-watch { background: #F0C040; }
+.flag-none { background: #CCCCCC; }
+
+/* Stat card */
+.stat-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+.stat-card {
+  background: #F7F7F7;
+  border-radius: 8px;
+  padding: 9px 10px;
+}
+.stat-val { font-size: 18px; font-weight: 800; color: #A6192E; }
+.stat-label { font-size: 9px; color: #3D3D3D; opacity: 0.5; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; }
+
+/* Toggle row */
+.toggle-row {
+  display: flex;
+  gap: 4px;
+  background: #F0F0F0;
+  border-radius: 8px;
+  padding: 3px;
+}
+.toggle-opt {
+  flex: 1;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 5px;
+  border-radius: 6px;
+  color: #999;
+}
+.toggle-opt.active { background: #fff; color: #A6192E; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+
+/* Radio group */
+.radio-group { display: flex; flex-direction: column; gap: 6px; }
+.radio-opt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  border: 1.5px solid #EAEAEA;
+  background: #FAFAFA;
+}
+.radio-opt.selected { border-color: #A6192E; background: #FFF0F0; }
+.radio-circle {
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  border: 2px solid #CCC;
+  flex-shrink: 0;
+}
+.radio-circle.filled {
+  border-color: #A6192E;
+  background: #A6192E;
+  box-shadow: inset 0 0 0 2px #fff;
+}
+.radio-label { font-size: 11px; font-weight: 600; }
+
+/* Time pill */
+.time-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+.time-opt {
+  text-align: center;
+  padding: 7px;
+  border-radius: 7px;
+  border: 1.5px solid #EAEAEA;
+  font-size: 10px;
+  font-weight: 600;
+  color: #3D3D3D;
+  background: #FAFAFA;
+}
+.time-opt.selected { border-color: #A6192E; background: #FFF0F0; color: #A6192E; }
+
+/* Success screen */
+.success-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 20px;
+  text-align: center;
+}
+.success-icon {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: #E8F5E9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+.success-title { font-size: 14px; font-weight: 800; color: #3D3D3D; }
+.success-msg { font-size: 10px; color: #3D3D3D; opacity: 0.55; line-height: 1.5; }
+
+/* Alert banner */
+.alert-banner {
+  background: #FFF0F0;
+  border: 1.5px solid #CE2033;
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+.alert-icon { font-size: 13px; flex-shrink: 0; margin-top: 1px; }
+.alert-text { font-size: 10px; font-weight: 600; color: #A6192E; line-height: 1.4; }
+
+/* Admin table */
+.mini-table { width: 100%; border-collapse: collapse; }
+.mini-table th {
+  font-size: 8px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.15em; color: #999; text-align: left;
+  padding: 4px 6px; border-bottom: 1px solid #EAEAEA;
+}
+.mini-table td {
+  font-size: 10px; padding: 7px 6px;
+  border-bottom: 1px solid #F5F5F5; color: #3D3D3D;
+}
+.mini-table tr:last-child td { border-bottom: none; }
+
+/* Update bubble */
+.update-bubble {
+  background: #F5F5F5;
+  border-radius: 8px;
+  padding: 7px 9px;
+  font-size: 10px;
+  color: #3D3D3D;
+  line-height: 1.4;
+}
+.update-meta { font-size: 9px; color: #999; margin-bottom: 2px; }
+.update-private { background: #FFF8E0; border-left: 2px solid #F0C040; }
+
+/* Checklist */
+.checklist { display: flex; flex-direction: column; gap: 5px; }
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 9px;
+  border-radius: 8px;
+  background: #F7F7F7;
+  border: 1.5px solid #EAEAEA;
+}
+.check-box {
+  width: 16px; height: 16px;
+  border-radius: 4px;
+  border: 2px solid #CCC;
+  flex-shrink: 0;
+}
+.check-box.checked { background: #A6192E; border-color: #A6192E; }
+.check-text { font-size: 10px; font-weight: 600; }
+.check-sub { font-size: 9px; color: #999; }
+
+/* Login screen */
+.login-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px;
+  gap: 16px;
+}
+.login-logo {
+  font-size: 36px;
+  font-weight: 900;
+  color: #A6192E;
+  letter-spacing: -0.04em;
+  line-height: 1;
+}
+.login-sub {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: #3D3D3D;
+  opacity: 0.5;
+}
+.google-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1.5px solid #EAEAEA;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  color: #3D3D3D;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.google-g {
+  width: 16px; height: 16px;
+  font-weight: 900;
+  font-size: 13px;
+  color: #4285F4;
+  font-family: Arial, sans-serif;
+}
+
+@media print {
+  body { background: #fff; padding: 16px; }
+  .phone { box-shadow: 0 0 0 1px #ccc; }
+  .screens-grid { gap: 16px; }
+}
+</style>
+</head>
+<body>
+  <h1 class="role-title">SAAS RD App · User Feedback Mockup</h1>
+  <h2 class="role-name">Admin View</h2>
+  <p class="role-desc">Admins have full system access. They manage users, students, CSV imports, and coordinator assignments — plus all coordinator, counselor, and dean views.</p>
+  <div class="screens-grid">
+    
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+  <div class="phone">
+    <div class="phone-notch"><div class="phone-notch-pill"></div></div>
+    <div class="phone-screen">
+      
+<div class="top-bar">
+  <div><div class="top-bar-title">SAAS RD App</div></div>
+  <div class="top-bar-right">
+    <div class="top-bar-dot"></div><div class="top-bar-dot"></div><div class="top-bar-dot active"></div>
+  </div>
+</div>
+
+<div class="login-screen">
+  <div style="text-align:center;margin-bottom:8px;">
+    <div class="login-logo">SAAS</div>
+    <div class="login-sub">Seattle Academy</div>
+  </div>
+  <div style="width:100%;height:1px;background:#EAEAEA;"></div>
+  <div style="text-align:center;">
+    <div style="font-size:13px;font-weight:700;color:#3D3D3D;margin-bottom:4px;">Welcome back</div>
+    <div style="font-size:10px;color:#999;">Sign in with your SAAS Google account</div>
+  </div>
+  <div class="google-btn" style="width:100%;">
+    <span class="google-g">G</span>
+    Sign in with Google
+  </div>
+  <div style="font-size:9px;color:#CCC;text-align:center;letter-spacing:0.1em;">@seattleacademy.org only</div>
+</div>
+
+    </div>
+  </div>
+  <div class="phone-label">1. Login</div>
+</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+  <div class="phone">
+    <div class="phone-notch"><div class="phone-notch-pill"></div></div>
+    <div class="phone-screen">
+      
+<div class="top-bar">
+  <div><div class="top-bar-title">Admin</div>
+  <div class="top-bar-sub">SAAS RD App</div></div>
+</div>
+<div class="screen-body">
+  <div class="screen-title">System Admin</div>
+  <div style="display:flex;flex-direction:column;gap:7px;margin-top:4px;">
+    <div style="background:#F7F7F7;border:1.5px solid #EAEAEA;border-radius:10px;padding:11px 12px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:18px;">👥</span>
+      <div><div style="font-size:12px;font-weight:700;">User Management</div><div style="font-size:10px;color:#999;">Add, edit, assign roles</div></div>
+    </div>
+    <div style="background:#F7F7F7;border:1.5px solid #EAEAEA;border-radius:10px;padding:11px 12px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:18px;">🎓</span>
+      <div><div style="font-size:12px;font-weight:700;">Student Management</div><div style="font-size:10px;color:#999;">Add, edit, move between classes</div></div>
+    </div>
+    <div style="background:#F7F7F7;border:1.5px solid #EAEAEA;border-radius:10px;padding:11px 12px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:18px;">📋</span>
+      <div><div style="font-size:12px;font-weight:700;">CSV Import</div><div style="font-size:10px;color:#999;">Upload roster, schedule, calendar</div></div>
+    </div>
+    <div style="background:#F7F7F7;border:1.5px solid #EAEAEA;border-radius:10px;padding:11px 12px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:18px;">📅</span>
+      <div><div style="font-size:12px;font-weight:700;">Coordinator Assignments</div><div style="font-size:10px;color:#999;">Set who covers which block</div></div>
+    </div>
+    <div style="background:#F7F7F7;border:1.5px solid #EAEAEA;border-radius:10px;padding:11px 12px;display:flex;align-items:center;gap:10px;">
+      <span style="font-size:18px;">📊</span>
+      <div><div style="font-size:12px;font-weight:700;">Pattern Dashboard</div><div style="font-size:10px;color:#999;">All students, all data</div></div>
+    </div>
+  </div>
+</div>
+
+    </div>
+  </div>
+  <div class="phone-label">2. Admin Home</div>
+</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+  <div class="phone">
+    <div class="phone-notch"><div class="phone-notch-pill"></div></div>
+    <div class="phone-screen">
+      
+<div class="top-bar">
+  <div><div class="top-bar-title">User Management</div></div>
+</div>
+<div class="screen-body">
+  <div style="display:flex;justify-content:space-between;align-items:center;">
+    <div class="section-label">Staff (6)</div>
+    <div class="btn btn-primary btn-sm">+ Add User</div>
+  </div>
+  <table class="mini-table">
+    <tr><th>Name</th><th>Role</th><th>Blocks</th><th></th></tr>
+    <tr>
+      <td><div style="font-weight:600;">Martinez, A.</div><div style="font-size:9px;color:#999;">a.martinez@saas.org</div></td>
+      <td><span class="badge badge-elevated" style="font-size:7px;">Dean</span></td>
+      <td>All</td>
+      <td><span style="color:#A6192E;font-size:10px;font-weight:700;">Edit</span></td>
+    </tr>
+    <tr>
+      <td><div style="font-weight:600;">Will T.</div><div style="font-size:9px;color:#999;">w.thomas@saas.org</div></td>
+      <td><span class="badge badge-grey" style="font-size:7px;">Coord</span></td>
+      <td>3,7</td>
+      <td><span style="color:#A6192E;font-size:10px;font-weight:700;">Edit</span></td>
+    </tr>
+    <tr>
+      <td><div style="font-weight:600;">Park, S.</div><div style="font-size:9px;color:#999;">s.park@saas.org</div></td>
+      <td><span class="badge badge-routine" style="font-size:7px;">Counselor</span></td>
+      <td>All</td>
+      <td><span style="color:#A6192E;font-size:10px;font-weight:700;">Edit</span></td>
+    </tr>
+    <tr>
+      <td><div style="font-weight:600;">Jones, M.</div><div style="font-size:9px;color:#999;">m.jones@saas.org</div></td>
+      <td><span class="badge badge-grey" style="font-size:7px;">Teacher</span></td>
+      <td>3,5</td>
+      <td><span style="color:#A6192E;font-size:10px;font-weight:700;">Edit</span></td>
+    </tr>
+  </table>
+</div>
+
+    </div>
+  </div>
+  <div class="phone-label">3. User Management</div>
+</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+  <div class="phone">
+    <div class="phone-notch"><div class="phone-notch-pill"></div></div>
+    <div class="phone-screen">
+      
+<div class="top-bar">
+  <div><div class="top-bar-title">Edit User</div>
+  <div class="top-bar-sub">Jones, Ms. M.</div></div>
+</div>
+<div class="screen-body">
+  <div class="section-label">Details</div>
+  <div class="input-field">Full name: Jones, Melissa</div>
+  <div class="input-field">Email: m.jones@seattleacademy.org</div>
+  <div class="section-label">Role</div>
+  <div class="radio-group">
+    <div class="radio-opt"><div class="radio-circle"></div><div class="radio-label">Coordinator</div></div>
+    <div class="radio-opt selected"><div class="radio-circle filled"></div><div class="radio-label">Teacher</div></div>
+    <div class="radio-opt"><div class="radio-circle"></div><div class="radio-label">Counselor</div></div>
+    <div class="radio-opt"><div class="radio-circle"></div><div class="radio-label">Dean</div></div>
+    <div class="radio-opt"><div class="radio-circle"></div><div class="radio-label">Admin</div></div>
+  </div>
+  <div style="flex:1;"></div>
+  <div class="btn btn-primary">Save Changes</div>
+  <div class="btn btn-ghost" style="font-size:10px;color:#CE2033;">Remove User</div>
+</div>
+
+    </div>
+  </div>
+  <div class="phone-label">4. Edit User — Role Assignment</div>
+</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+  <div class="phone">
+    <div class="phone-notch"><div class="phone-notch-pill"></div></div>
+    <div class="phone-screen">
+      
+<div class="top-bar">
+  <div><div class="top-bar-title">CSV Import</div></div>
+</div>
+<div class="screen-body">
+  <div class="screen-subtitle" style="font-size:10px;line-height:1.5;margin-top:0;">Upload at semester start. Overwrites existing data for that CSV type.</div>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
+    <div style="border:2px dashed #EAEAEA;border-radius:10px;padding:14px;text-align:center;">
+      <div style="font-size:18px;margin-bottom:4px;">📅</div>
+      <div style="font-size:11px;font-weight:700;margin-bottom:2px;">school_calendar.csv</div>
+      <div style="font-size:9px;color:#999;margin-bottom:8px;">date → day_type (1–4)</div>
+      <div class="btn btn-outline btn-sm" style="display:inline-block;">Choose File</div>
+    </div>
+    <div style="border:2px dashed #EAEAEA;border-radius:10px;padding:14px;text-align:center;">
+      <div style="font-size:18px;margin-bottom:4px;">📚</div>
+      <div style="font-size:11px;font-weight:700;margin-bottom:2px;">course_schedule.csv</div>
+      <div style="font-size:9px;color:#999;margin-bottom:8px;">teacher · block · room · course</div>
+      <div class="btn btn-outline btn-sm" style="display:inline-block;">Choose File</div>
+    </div>
+    <div style="border:2px dashed #EAEAEA;border-radius:10px;padding:14px;text-align:center;background:#F0FFF0;border-color:#A6192E;">
+      <div style="font-size:18px;margin-bottom:4px;">🎓</div>
+      <div style="font-size:11px;font-weight:700;margin-bottom:2px;">student_roster.csv</div>
+      <div style="font-size:9px;color:#999;margin-bottom:8px;">student · grade · block · teacher ✓ loaded</div>
+      <div class="btn btn-ghost btn-sm" style="display:inline-block;">Re-upload</div>
+    </div>
+  </div>
+</div>
+
+    </div>
+  </div>
+  <div class="phone-label">5. CSV Import</div>
+</div>
+  </div>
+  <p style="margin-top:40px;font-size:9px;color:#999;letter-spacing:0.15em;text-transform:uppercase;">
+    SAAS RD App · Wireframe · Admin · For feedback only — not final UI
+  </p>
+</body>
+</html>
