@@ -10,6 +10,7 @@ const ROLE_ROUTES: Record<string, string> = {
   counselor:   "/counselor",
   teacher:     "/teacher",
   staff:       "/staff",
+  student:     "/student",
 }
 
 export default async function DashboardPage() {
