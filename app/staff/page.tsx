@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
+import Link from "next/link"
 
 export default async function StaffPage() {
   const session = await getServerSession(authOptions)
@@ -18,8 +19,12 @@ export default async function StaffPage() {
         </div>
         <SignOutButton />
       </header>
-
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
+      <nav className="px-5 py-2 border-b flex items-center" style={{ borderColor: "#EAEAEA" }}>
+        <Link href="/missing" className="text-xs font-bold" style={{ color: "#A6192E", textDecoration: "none" }}>
+          &larr; All Missing Students
+        </Link>
+      </nav>
 
       <main className="flex-1 flex flex-col px-5 py-5 gap-4 max-w-lg mx-auto w-full">
         <div
@@ -32,21 +37,9 @@ export default async function StaffPage() {
           <p className="text-sm font-semibold" style={{ color: "#3D3D3D" }}>
             See a student who seems unwell, unsafe, or unaccounted for?
           </p>
-          <button
-            className="py-3 rounded-xl text-white text-sm font-bold"
-            style={{ background: "#CE2033" }}
-          >
+          <button className="py-3 rounded-xl text-white text-sm font-bold" style={{ background: "#CE2033" }}>
             Report a Concern
           </button>
-        </div>
-
-        <div className="h-px" style={{ background: "#EAEAEA" }} />
-
-        <div>
-          <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2" style={{ color: "#3D3D3D", opacity: 0.35 }}>Active Incidents</p>
-          <p className="text-xs text-center py-6" style={{ color: "#CCCCCC" }}>
-            No active incidents visible to staff right now
-          </p>
         </div>
 
         <div className="h-px" style={{ background: "#EAEAEA" }} />
