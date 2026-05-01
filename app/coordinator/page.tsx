@@ -3,14 +3,14 @@ import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
+import Link from "next/link"
 
 const INCIDENTS = [
   { name: "Smith, John",  level: "elevated", mins: 12, detail: "Left Rm 204 upset",    step: "Step 3 — waiting" },
   { name: "Lee, Marcus",  level: "routine",  mins: 4,  detail: "Absent from start",     step: "Step 1 — sent"    },
 ]
-
 const TRIAGE = [
-  { name: "Doe, Jane",   grade: 10 },
+  { name: "Doe, Jane",    grade: 10 },
   { name: "Torres, Maya", grade: 10 },
 ]
 
@@ -28,12 +28,14 @@ export default async function CoordinatorPage() {
         </div>
         <SignOutButton />
       </header>
-
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
+      <nav className="px-5 py-2 border-b flex items-center" style={{ borderColor: "#EAEAEA" }}>
+        <Link href="/missing" className="text-xs font-bold" style={{ color: "#A6192E", textDecoration: "none" }}>
+          &larr; All Missing Students
+        </Link>
+      </nav>
 
       <main className="flex-1 flex flex-col px-5 py-5 gap-5 max-w-lg mx-auto w-full">
-
-        {/* Triage */}
         <div>
           <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2" style={{ color: "#3D3D3D", opacity: 0.35 }}>Imperfect Attendance Triage</p>
           <div className="flex flex-col gap-2">
@@ -44,6 +46,8 @@ export default async function CoordinatorPage() {
                 </div>
                 <div className="flex gap-2 flex-wrap">
                   <button className="px-3 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: "#EAEAEA", color: "#3D3D3D" }}>Sports dismissal</button>
+                  <button className="px-3 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: "#EAEAEA", color: "#3D3D3D" }}>Off-campus trip</button>
+                  <button className="px-3 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: "#EAEAEA", color: "#3D3D3D" }}>Accommodations</button>
                   <button className="px-3 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: "#EAEAEA", color: "#3D3D3D" }}>Parent update</button>
                   <button className="px-3 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: "#CE2033", color: "#fff" }}>Confirm missing</button>
                 </div>
@@ -54,19 +58,18 @@ export default async function CoordinatorPage() {
 
         <div className="h-px" style={{ background: "#EAEAEA" }} />
 
-        {/* Incident feed */}
         <div>
           <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2" style={{ color: "#3D3D3D", opacity: 0.35 }}>Open Incidents &mdash; {INCIDENTS.length} active</p>
           <div className="flex flex-col gap-2">
             {INCIDENTS.map((inc) => (
               <div
                 key={inc.name}
-                className="rounded-xl p-3 border-l-4"
+                className="rounded-xl p-3"
                 style={{
-                  background:   inc.level === "elevated" ? "#FFF8F8" : "#FFFDF0",
-                  borderColor:  inc.level === "elevated" ? "#CE2033" : "#F0C040",
-                  border:       `1.5px solid ${inc.level === "elevated" ? "#CE2033" : "#F0C040"}`,
-                  borderLeft:   `4px solid ${inc.level === "elevated" ? "#CE2033" : "#F0C040"}`,
+                  background:  inc.level === "elevated" ? "#FFF8F8" : "#FFFDF0",
+                  borderLeft:  `4px solid ${inc.level === "elevated" ? "#CE2033" : "#F0C040"}`,
+                  border:      `1.5px solid ${inc.level === "elevated" ? "#CE2033" : "#F0C040"}`,
+                  borderLeft:  `4px solid ${inc.level === "elevated" ? "#CE2033" : "#F0C040"}`,
                 }}
               >
                 <div className="flex items-center justify-between mb-1">
@@ -88,7 +91,7 @@ export default async function CoordinatorPage() {
                 </div>
                 <p className="text-[10px] mb-2" style={{ color: "#999" }}>{inc.detail} &mdash; {inc.step}</p>
                 <div className="flex gap-2">
-                  <button className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-white" style={{ background: "#A6192E" }}>Open</button>
+                  <button className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-white" style={{ background: "#A6192E" }}>Open Workflow</button>
                   <button className="px-3 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: "#EAEAEA", color: "#3D3D3D" }}>With Me</button>
                   <button className="px-3 py-1.5 rounded-lg text-[10px] font-bold" style={{ background: "#EAEAEA", color: "#3D3D3D" }}>Found</button>
                 </div>
@@ -96,15 +99,6 @@ export default async function CoordinatorPage() {
             ))}
           </div>
         </div>
-
-        <div className="h-px" style={{ background: "#EAEAEA" }} />
-
-        <button
-          className="w-full py-4 rounded-xl text-sm font-semibold border"
-          style={{ borderColor: "#A6192E", color: "#A6192E", background: "transparent" }}
-        >
-          + Report Welfare Concern
-        </button>
       </main>
     </div>
   )
