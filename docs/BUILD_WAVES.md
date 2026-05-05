@@ -26,7 +26,8 @@
 
 ---
 
-## Wave 1 — Database + Period Logic
+## Wave 1 — Database + Period Logic 🔄 IN PROGRESS
+
 **Size: M (1–2 days)**
 **Depends on: Wave 0**
 
@@ -34,37 +35,22 @@
 All subsequent waves read/write from a real database.
 
 ### Tasks
-- [ ] Create Supabase project (US region, free tier to start)
-- [ ] Add env vars to Vercel: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
-- [ ] Add env vars locally: `.env.local` for dev
-- [ ] Write and run schema migration SQL:
-  - `users` (id, email, name, role, display_name, created_at)
-  - `students` (id, first_name, last_name, grade, veracross_id, created_at)
-  - `courses` (id, name, teacher_id, block_number, room, academic_year)
-  - `student_enrollments` (student_id, course_id, block_number)
-  - `school_calendar` (date, day_type 1–4, is_school_day)
-  - `coordinator_assignments` (block_number, coordinator_id, academic_year)
-  - `incidents` (full model per ARCHITECTURE.md)
-  - `incident_updates` (id, incident_id, author_id, note, is_private, created_at)
-  - `incident_search_logs` (id, incident_id, location, checked_by, found, checked_at)
-  - `student_concern_flags` (student_id, flag_level, public_note, private_note, flagged_by, updated_at)
-  - `pattern_alerts` (id, student_id, trigger_type, detected_at, acknowledged_by)
-  - `imperfect_attendance` (id, student_id, block_id, date, source, resolved, resolution)
-- [ ] Enable Row Level Security on all tables (open policies for now — locked in Wave 6)
-- [ ] Create `lib/supabase.ts` — server client + browser client
-- [ ] Create `lib/schedule.ts`:
-  - `getCurrentDayType(date)` → looks up school_calendar table
-  - `getCurrentBlocks(dayType)` → returns block numbers for that day
-  - `getCurrentPeriod(time)` → returns `{type: 'block'|'lunch'|'community', blockPosition: 1–4|null}`
-  - `getBlockNumber(dayType, position)` → maps day+position → actual block number
-- [ ] Wire login: on session create, look up user by email in `users` table → attach role
-- [ ] Seed 5 test users in DB (admin, dean, coordinator, counselor, teacher) matching test accounts
-- [ ] Smoke test: API route that returns current period + block number
+- [x] Create Supabase project (US region)
+- [x] Add env vars to Vercel: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+- [x] `lib/supabase.ts` — server client (service role) + browser client (anon)
+- [x] `lib/schedule.ts` — `getCurrentPeriod()`, `getBlockNumber()`, `isFirstBlockOfDay()`
+- [x] `lib/auth.ts` — on login, upsert user into `users` table, attach DB role to session
+- [x] `supabase/schema.sql` — all 12 tables, enums, indexes, RLS enabled
+- [x] `supabase/seed.sql` — 8 test users, sample calendar, sample course + 6 students
+- [x] `/api/debug/period` — smoke-test route (DB connection + period detection)
+- [ ] **Run `schema.sql` in Supabase SQL Editor** ← user action required
+- [ ] **Run `seed.sql` in Supabase SQL Editor** ← user action required
+- [ ] Verify `/api/debug/period` returns correct data after deploy
 
 ### Wave 1 Check ✓
-- App connects to Supabase without error
-- `/api/debug/period` returns correct period and block number for current time
-- Seeded users appear in Supabase dashboard
+- `/api/debug/period` returns `{ connected: true, user_count: 8 }` from Supabase
+- `period` field shows correct type and block number for current time
+- `today_calendar` shows today's day_type from seed data
 - Vercel production build passes
 
 ---
@@ -122,16 +108,13 @@ After this wave, the app has real students, schedules, and users.
 Coordinators can see it immediately.
 
 ### Tasks
-- [ ] `/teacher` — replace hardcoded roster with Supabase query:
-  - Detect current period using `lib/schedule.ts`
-  - Query student enrollments for teacher's courses in current block
-  - Show "No class right now" if between blocks or lunch/community
+- [ ] `/teacher` — replace hardcoded roster with Supabase query (period-aware)
+- [ ] Show "No class right now" outside block hours
 - [ ] Report Missing form → `POST /api/incidents` → creates `incident` row
-  - Auto-assigns: period_type, block_id, level (based on escalation logic)
-  - Auto-escalation: context tag + period → routine/elevated/emergency
-  - Deduplication: if student already has open incident this block → surface existing
+- [ ] Auto-escalation: context tag + period → routine/elevated/emergency
+- [ ] Deduplication: if student already has open incident this block → surface existing
 - [ ] Confirmation screen pulls real incident data from DB
-- [ ] Welfare Concern form (lunch/community time) → creates elevated incident
+- [ ] Welfare Concern form (lunch/community) → creates elevated incident
 - [ ] `/missing` page — replace hardcoded incidents with live Supabase query
 
 ### Wave 3 Check ✓
@@ -139,7 +122,7 @@ Coordinators can see it immediately.
 - Selects a student, picks context tag → incident created in Supabase
 - Coordinator logs in → sees the new incident in `/missing` and `/coordinator`
 - Duplicate report for same student → shown "already open" message
-- Block 1 absence: incident created, email-home flag = false
+- Block 1 absence: incident created, suppress_email_home = true
 
 ---
 
@@ -147,41 +130,25 @@ Coordinators can see it immediately.
 **Size: L (3–5 days)**
 **Depends on: Wave 3**
 
-**Delivers:** The full 6-step coordinator workflow runs with real data. Coordinators can triage,
-work incidents, log search steps, add updates, and resolve. All actions persist to the database.
+**Delivers:** The full 6-step coordinator workflow runs with real data. All actions persist.
 
 ### Tasks
-
-**Imperfect Attendance Triage**
-- [ ] Manual triage entry: coordinator selects block + inputs student names (Axiom auto-pull in Wave 10)
-- [ ] Triage actions: dismiss (sports / off-campus trip / accommodations / parent update / sub glitch) or confirm missing
-- [ ] Dismissed records saved with reason (audit trail)
-- [ ] "Pull Final Report" button (20-min mark) pulls all unresolved for the block
-
-**Incident Feed**
-- [ ] Live incident list from Supabase — sorted elevated-first, then by age
-- [ ] Incident card: level badge, name, grade, time open, detail, step status
-- [ ] Filter: all / elevated only / my block
-
-**Incident Detail + 6-Step Workflow**
-- [ ] Steps 1, 2, 6 recorded as auto (timestamp set when triggered — comms in Wave 5)
-- [ ] Step 3: countdown timer UI — reads `step_3_expires_at` from DB, counts down live
-- [ ] Step 4: physical search log — tap location to check off, saved to `incident_search_logs`
-- [ ] Step 5: intercom page — one-tap log with timestamp
-- [ ] Add shared update → saved to `incident_updates` (is_private: false)
-- [ ] Add private update → saved to `incident_updates` (is_private: true, coordinator/admin only)
-
-**Resolution**
-- [ ] "Student With Me" → incident status = located, who/where logged
-- [ ] "Found" → prompts for location + excused/unexcused → status = resolved
-- [ ] On found: auto-set all open steps to N/A, log step_found_at
-- [ ] Escalate to Emergency → level updated, notification sent (Wave 5/7)
+- [ ] Imperfect attendance manual entry
+- [ ] Triage actions (dismiss with reason / confirm → incident)
+- [ ] Live incident feed from Supabase (elevated-first, oldest-first)
+- [ ] Incident detail: 6 steps tracked with timestamps in DB
+- [ ] Step 3: countdown timer (reads `step_3_expires_at`)
+- [ ] Step 4: physical search log → `incident_search_logs`
+- [ ] Step 5: intercom page — one-tap log
+- [ ] Shared + private updates → `incident_updates`
+- [ ] With Me / Found → resolves incident, logs location + excused/unexcused
+- [ ] Auto-set open steps to N/A on found, log `step_found_at`
+- [ ] Escalate to Emergency → level updated in DB
 
 ### Wave 4 Check ✓
-- Coordinator triages 2 students (1 dismissed, 1 confirmed) — both save to DB
-- Opens incident → runs all 6 steps → resolves as Found at Step 4
-- Step 3 countdown timer shows live and expires correctly
-- Physical search log shows checked locations with timestamps
+- Coordinator triages students, confirms one missing → incident in DB
+- Runs all 6 steps → resolves at Step 4 with location
+- Step 3 countdown live and correct
 - Private update invisible to teacher/staff role
 
 ---
@@ -190,37 +157,23 @@ work incidents, log search steps, add updates, and resolve. All actions persist 
 **Size: M (2–3 days)**
 **Depends on: Wave 4**
 
-**Delivers:** The app sends real emails and texts. Steps 1, 2, and 6 fire automatically.
-The 10-minute counselor verification timer escalates if no response.
+**Delivers:** Real emails and texts fire at Steps 1, 2, and 6.
 
 ### Tasks
-
-**Email (via Resend or SendGrid)**
-- [ ] Add email provider env vars to Vercel
-- [ ] Step 1: auto-send to `missingstudents@seattleacademy.org` when incident confirmed
-- [ ] Step 6: auto-send to parent + teacher + dean when step 6 triggered
-- [ ] Block 1 suppression: skip Step 6 email if block_number == first block of day
-- [ ] Email templates match spec (no student name in subject line)
-- [ ] Sent emails logged in DB with timestamp
-
-**Text (via Twilio)**
-- [ ] Add Twilio env vars to Vercel
-- [ ] Step 2: auto-text student when step 2 triggered
-- [ ] Text template matches spec
-- [ ] Sent texts logged in DB
-
-**Counselor Auto-Ping**
-- [ ] On incident with context_tag = counselor: ping counseling office (email/text)
-- [ ] Set `counselor_pinged_at` timestamp
-- [ ] Background job: if no `counselor_confirmed_at` within 10 min → escalate to elevated
-- [ ] Counselor "confirm" button in their view → sets `counselor_confirmed_at`
+- [ ] Choose + configure email provider (Resend recommended)
+- [ ] Choose + configure SMS provider (Twilio)
+- [ ] Step 1: auto-email to missingstudents@seattleacademy.org
+- [ ] Step 2: auto-text to student phone
+- [ ] Step 6: auto-email to parent + teacher + dean
+- [ ] Block 1 email suppression (check `suppress_email_home` flag)
+- [ ] Counselor auto-ping + 10-min escalation timer
+- [ ] All comms logged in DB with timestamp
 
 ### Wave 5 Check ✓
-- Submit report → missingstudents@ receives Step 1 email within 30 seconds
-- Step 2 fires → student phone receives text
+- Submit report → missingstudents@ receives email within 30 seconds
+- Student phone receives text
 - Step 6 fires → parent/teacher/dean receive email
-- Block 1 incident → Step 6 suppressed (no email home)
-- Counselor destination incident → counseling pinged → if no confirm in 10 min → level escalates
+- Block 1: Step 6 email suppressed
 
 ---
 
@@ -228,50 +181,21 @@ The 10-minute counselor verification timer escalates if no response.
 **Size: L (3–5 days)**
 **Depends on: Wave 4**
 
-**Delivers:** Counselor and dean views show real data. Concern flags are saved to the database.
-Pattern auto-surface triggers fire. Row Level Security locks down who can see what.
+**Delivers:** Counselor and dean views show real data. RLS locks data access by role.
 
 ### Tasks
-
-**Concern Flags**
-- [ ] Flag CRUD: create, update, remove flag (counselor/dean/admin only)
-- [ ] Public note: visible to all staff in student detail
-- [ ] Private note: visible to counselor/dean/admin only — enforced at DB level (RLS)
-- [ ] Flag level changes incident escalation (elevated flag → elevated default)
-
-**Counselor View (real data)**
-- [ ] Caseload dashboard: query `student_concern_flags` + incident history for counselor's students
-- [ ] Toggle: My Caseload vs. All Students
-- [ ] Active incidents for caseload students surfaced at top
-- [ ] Claim student: "With Me" with private/shared note option
-- [ ] Student detail: full incident history + flag management
-
-**Dean / Admin Pattern Dashboard (real data)**
-- [ ] Query incident history, aggregate by student
-- [ ] Rank students by incident count (week / month / semester filter)
-- [ ] Auto-surface triggers (cron or on-query):
-  - Same block 3× in 2 weeks → PatternAlert
-  - 2+ blocks same day → PatternAlert
-  - 4+ incidents in 5 days → PatternAlert
-  - 0 text responses in last 4 incidents → PatternAlert
-  - Any incident open 24h+ → PatternAlert
-- [ ] Pattern alerts surfaced at top of dashboard
-- [ ] Student detail: history, pattern stats, consequences log (dean can add notes)
-
-**Row Level Security**
-- [ ] `incidents`: teacher sees only incidents where they are `reported_by` OR student is in their block
-- [ ] `incidents`: staff sees all open, no level field
-- [ ] `incidents`: coordinator/dean/counselor/admin sees all + level
-- [ ] `incident_updates`: is_private=true → only author + admin/dean/counselor
-- [ ] `student_concern_flags`: private_note → only counselor/dean/admin
-- [ ] All tables: unauthenticated = no access
+- [ ] Concern flag CRUD (DB-backed, public + private notes)
+- [ ] Counselor caseload dashboard (real incident history)
+- [ ] Dean pattern dashboard (real data, ranked)
+- [ ] Student detail: full history + pattern stats
+- [ ] Auto-surface pattern alert triggers (5 rules)
+- [ ] Row Level Security policies on all tables
 
 ### Wave 6 Check ✓
-- Counselor flags student → public note visible to teacher, private note invisible
+- Counselor flags real student → public note visible, private note invisible to others
 - Dean sees ranked student list with real incident counts
-- Pattern alert fires for student with 4+ incidents this week
-- RLS: teacher cannot query incidents they have no access to
-- Private update: staff role cannot read it via direct Supabase query
+- Pattern alert fires correctly
+- RLS: teacher cannot read other teachers' incidents
 
 ---
 
@@ -279,120 +203,77 @@ Pattern auto-surface triggers fire. Row Level Security locks down who can see wh
 **Size: S–M (1–2 days)**
 **Depends on: Wave 4**
 
-**Delivers:** The missing students list updates live for everyone — no refresh needed.
-Elevated and emergency incidents push browser notifications. Welfare concern form works end-to-end.
+**Delivers:** Live updates push to all connected clients. Welfare concern form works end-to-end.
 
 ### Tasks
-- [ ] Supabase Realtime subscription on `incidents` table in `/missing` page
-- [ ] New incident created → all connected clients see it appear instantly
-- [ ] Incident resolved → disappears from list for everyone
-- [ ] Browser notifications: permission prompt on first login (coordinator/dean)
-- [ ] Push notification on elevated incident: coordinator + dean
-- [ ] Push notification on emergency: coordinator + dean + counselor
-- [ ] Welfare concern form (staff / lunch / community time):
-  - Student search by name
-  - Context tag selection
-  - Submits → elevated incident created
-  - Coordinator sees it immediately via Realtime
+- [ ] Supabase Realtime on `incidents` table in `/missing`
+- [ ] Browser notifications for elevated/emergency incidents
+- [ ] Welfare concern form submits → elevated incident → Realtime push
 
 ### Wave 7 Check ✓
-- Open `/missing` in two browsers → submit incident in one → other updates in <2 seconds
-- Elevated incident → browser notification fires on coordinator's device
-- Staff submits welfare concern during lunch → coordinator sees it without refreshing
+- Two browsers open → incident submitted in one → other updates in <2 seconds
 
 ---
 
-## Wave 8 — Google SSO (Replace Test Auth)
-**Size: S (half day — once tech team provides credentials)**
-**Depends on: Wave 1 (users table must exist)**
+## Wave 8 — Google SSO
+**Size: S (half day once credentials arrive)**
+**Depends on: Wave 1**
 **Blocked on: Tech team providing GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET**
 
-**Delivers:** Real @seattleacademy.org Google accounts sign in. Test auth removed.
-First login auto-assigns role from the users table.
-
 ### Tasks
-- [ ] Tech team: create Google Cloud Console OAuth app, add redirect URI, provide credentials
-- [ ] Add `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET` to Vercel env vars
-- [ ] Add Google provider to `lib/auth.ts`
-- [ ] Remove CredentialsProvider
-- [ ] Domain check in `signIn` callback: reject non-@seattleacademy.org emails
-- [ ] First-login: look up email in `users` table → assign role; if not found → deny access
-- [ ] Pre-seed admin/dean/coordinator/counselor users in DB before go-live
-- [ ] Remove yellow test mode banner from all pages
-- [ ] Update Coming Soon page: remove "Staff Sign In" button (or keep, now goes to Google)
-- [ ] Test: real SAAS Google account logs in, gets correct role
+- [ ] Add Google provider to next-auth, remove CredentialsProvider
+- [ ] Domain restriction to @seattleacademy.org
+- [ ] First-login role assignment from `users` table
+- [ ] Remove test mode banner
+- [ ] Pre-seed real admin/dean/coordinator emails in `users` table
 
 ### Wave 8 Check ✓
-- Real @seattleacademy.org account signs in → lands on /missing with correct role
-- Non-SAAS Google account → rejected at login
-- Pre-seeded admin account → gets admin role on first login
-- Test credentials no longer work
+- Real @seattleacademy.org account signs in → correct role → no test banner
 
 ---
 
 ## Wave 9 — Activity Tracker
 **Size: L (3–5 days)**
-**Depends on: Wave 2 (students + users in DB)**
-**Blocked on: Activity Tracker spec (not yet designed)**
+**Depends on: Wave 2**
+**Blocked on: Activity Tracker spec (not yet written)**
 
-**Delivers:** After-school and Community Time activity attendance tracking.
-Teachers create activities, manage rosters, take attendance.
-
-### Tasks (to be detailed after spec is written)
-- [ ] Write Activity Tracker product spec (`docs/ACTIVITY_TRACKER_SPEC.md`)
+### Tasks
+- [ ] Write Activity Tracker spec (`docs/ACTIVITY_TRACKER_SPEC.md`)
 - [ ] DB schema: activities, activity_rosters, activity_attendance
-- [ ] Activity creation (teacher: name, type, schedule — community/after-school)
-- [ ] Roster management (add/remove students)
-- [ ] Attendance taking UI (mark present/absent per session)
-- [ ] Admin overview: all activities, attendance summary
-- [ ] Absence notifications (email to parent if student no-show)
-
-### Wave 9 Check ✓
-- Teacher creates "Chess Club" activity
-- Adds 5 students to roster
-- Takes attendance for today → 1 absent → parent email fires
+- [ ] Activity creation + roster management
+- [ ] Attendance taking
+- [ ] Admin overview + absence notifications
 
 ---
 
-## Wave 10 — Axiom / Veracross Integration
+## Wave 10 — Axiom / Veracross API
 **Size: M–L (2–4 days)**
 **Depends on: Wave 4**
-**Blocked on: Veracross API access being granted**
-
-**Delivers:** Imperfect attendance pulls automatically from Axiom/Veracross at the start
-of each block. No manual coordinator entry needed. CSV bridge replaced by live sync.
+**Blocked on: Veracross API access**
 
 ### Tasks
 - [ ] Veracross OAuth connector
-- [ ] Scheduled job: query Axiom imperfect attendance at block start + 5 min mark
-- [ ] Auto-populate triage queue with real Axiom data
-- [ ] Replace `school_calendar.csv` import with API calendar endpoint
-- [ ] Replace `student_roster.csv` import with API roster endpoint
-- [ ] Replace `course_schedule.csv` import with API schedule endpoint
-- [ ] Veracross write-back (mark resolved / attendance updated) — decision pending
-
-### Wave 10 Check ✓
-- At start of Block 3, imperfect attendance queue auto-populates from Axiom (no manual entry)
-- Calendar is pulled from Veracross — no CSV needed
-- Resolved incident status reflects back in Veracross (if write-back enabled)
+- [ ] Auto-pull imperfect attendance at block start
+- [ ] Replace CSV imports with live API sync
+- [ ] Veracross write-back (decision pending)
 
 ---
 
 ## Summary Table
 
-| Wave | Name | Size | Depends On | Status |
-|---|---|---|---|---|
-| 0 | Foundation | — | — | ✅ Complete |
-| 1 | Database + Period Logic | M | 0 | 🔴 Not started |
-| 2 | Admin Data Layer | L | 1 | 🔴 Not started |
-| 3 | Teacher Report Flow | M | 2 | 🔴 Not started |
-| 4 | Coordinator Core Workflow | L | 3 | 🔴 Not started |
-| 5 | Communications | M | 4 | 🔴 Not started |
-| 6 | Patterns + Counselor/Dean + RLS | L | 4 | 🔴 Not started |
-| 7 | Realtime + Welfare Concern | S–M | 4 | 🔴 Not started |
-| 8 | Google SSO | S | 1 | 🔴 Blocked (need credentials) |
-| 9 | Activity Tracker | L | 2 | 🔴 Blocked (need spec) |
-| 10 | Axiom/Veracross API | M–L | 4 | 🔴 Blocked (need API access) |
+| Wave | Name | Size | Status |
+|---|---|---|---|
+| 0 | Foundation | — | ✅ Complete |
+| 1 | Database + Period Logic | M | 🔄 In Progress — needs SQL run in Supabase |
+| 2 | Admin Data Layer | L | 🔴 Not started |
+| 3 | Teacher Report Flow | M | 🔴 Not started |
+| 4 | Coordinator Core Workflow | L | 🔴 Not started |
+| 5 | Communications | M | 🔴 Not started |
+| 6 | Patterns + Counselor/Dean + RLS | L | 🔴 Not started |
+| 7 | Realtime + Welfare Concern | S–M | 🔴 Not started |
+| 8 | Google SSO | S | 🟡 Blocked — need credentials |
+| 9 | Activity Tracker | L | 🟡 Blocked — need spec |
+| 10 | Axiom/Veracross API | M–L | 🟡 Blocked — need API access |
 
 ---
 
@@ -407,7 +288,3 @@ Wave 1 → Wave 8 (parallel, blocked on credentials)
 Wave 2 → Wave 9 (parallel, blocked on spec)
 Wave 4 → Wave 10 (parallel, blocked on API access)
 ```
-
-**Fastest path to a usable app for coordinators:**
-Wave 1 → 2 → 3 → 4. That's the Missing Students core loop working end-to-end.
-Add Wave 5 for real communications. Add Wave 8 to go live with real Google logins.
