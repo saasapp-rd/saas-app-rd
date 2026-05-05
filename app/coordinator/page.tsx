@@ -6,8 +6,8 @@ import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 
 const INCIDENTS = [
-  { name: "Smith, John",  level: "elevated", mins: 12, detail: "Left Rm 204 upset",    step: "Step 3 — waiting" },
-  { name: "Lee, Marcus",  level: "routine",  mins: 4,  detail: "Absent from start",     step: "Step 1 — sent"    },
+  { name: "Smith, John",  level: "elevated", mins: 12, detail: "Left Rm 204 upset",    step: "Step 3 - waiting" },
+  { name: "Lee, Marcus",  level: "routine",  mins: 4,  detail: "Absent from start",     step: "Step 1 - sent"    },
 ]
 const TRIAGE = [
   { name: "Doe, Jane",    grade: 10 },
@@ -67,7 +67,6 @@ export default async function CoordinatorPage() {
                 className="rounded-xl p-3"
                 style={{
                   background:  inc.level === "elevated" ? "#FFF8F8" : "#FFFDF0",
-                  borderLeft:  `4px solid ${inc.level === "elevated" ? "#CE2033" : "#F0C040"}`,
                   border:      `1.5px solid ${inc.level === "elevated" ? "#CE2033" : "#F0C040"}`,
                   borderLeft:  `4px solid ${inc.level === "elevated" ? "#CE2033" : "#F0C040"}`,
                 }}
