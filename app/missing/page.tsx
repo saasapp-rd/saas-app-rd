@@ -5,9 +5,11 @@ import { db } from "@/lib/supabase"
 import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
+import WithMeButton from "@/components/WithMeButton"
 
-const CAN_SEE_LEVEL    = ["coordinator", "counselor", "dean", "admin", "super_admin"]
+const CAN_SEE_LEVEL     = ["coordinator", "counselor", "dean", "admin", "super_admin"]
 const CAN_OPEN_WORKFLOW = ["coordinator", "dean", "admin", "super_admin"]
+const CAN_WITH_ME       = ["teacher", "staff", "coordinator", "counselor", "dean", "admin", "super_admin"]
 
 const MY_VIEW: Record<string, { label: string; href: string }> = {
   teacher:     { label: "My Roster",   href: "/teacher"     },
@@ -52,6 +54,7 @@ export default async function MissingPage() {
   const myView    = MY_VIEW[role]
   const canLevel  = CAN_SEE_LEVEL.includes(role)
   const canWork   = CAN_OPEN_WORKFLOW.includes(role)
+  const canWithMe = CAN_WITH_ME.includes(role)
   const elevated  = incidents.filter(i => i.level === "elevated")
   const routine   = incidents.filter(i => i.level === "routine")
 
@@ -73,7 +76,7 @@ export default async function MissingPage() {
         <div className="flex items-center gap-3">
           {myView && (
             <Link href={myView.href}
-              className="text-white text-[10px] font-bold opacity-80 hover:opacity-100"
+              className="text-white text-[10px] font-bold opacity-80"
               style={{ textDecoration: "none" }}>
               {myView.label} &rarr;
             </Link>
@@ -100,7 +103,8 @@ export default async function MissingPage() {
             </p>
             <div className="flex flex-col gap-2">
               {elevated.map(inc => (
-                <IncidentCard key={inc.id} inc={inc} canLevel={canLevel} canWork={canWork} />
+                <IncidentCard key={inc.id} inc={inc}
+                  canLevel={canLevel} canWork={canWork} canWithMe={canWithMe} />
               ))}
             </div>
           </div>
@@ -114,7 +118,8 @@ export default async function MissingPage() {
             </p>
             <div className="flex flex-col gap-2">
               {routine.map(inc => (
-                <IncidentCard key={inc.id} inc={inc} canLevel={canLevel} canWork={canWork} />
+                <IncidentCard key={inc.id} inc={inc}
+                  canLevel={canLevel} canWork={canWork} canWithMe={canWithMe} />
               ))}
             </div>
           </div>
@@ -133,16 +138,17 @@ export default async function MissingPage() {
 }
 
 function IncidentCard({
-  inc, canLevel, canWork,
+  inc, canLevel, canWork, canWithMe,
 }: {
-  inc:      Incident
-  canLevel: boolean
-  canWork:  boolean
+  inc:        Incident
+  canLevel:   boolean
+  canWork:    boolean
+  canWithMe:  boolean
 }) {
-  const student  = inc.students
-  const reporter = inc.reporter
-  const mins     = minsAgo(inc.reported_at)
-  const isElev   = inc.level === "elevated"
+  const student     = inc.students
+  const reporter    = inc.reporter
+  const mins        = minsAgo(inc.reported_at)
+  const isElev      = inc.level === "elevated"
   const accentColor = isElev ? "#CE2033" : "#F0C040"
 
   return (
@@ -181,21 +187,24 @@ function IncidentCard({
 
       <p className="text-[10px] mb-2" style={{ color: "#999" }}>
         {inc.block_id ? "Block " + inc.block_id : ""}
-        {inc.room ? " · " + inc.room : ""}
-        {reporter ? " · reported by " + reporter.display_name : ""}
+        {inc.room    ? " · " + inc.room         : ""}
+        {reporter    ? " · " + reporter.display_name : ""}
         {inc.suppress_email_home ? " · No email (Block 1)" : ""}
       </p>
 
-      {canWork && (
-        <div className="flex gap-2">
+      <div className="flex gap-2">
+        {canWork && (
           <Link
-            href="/coordinator"
+            href={"/coordinator/" + inc.id}
             className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-white"
             style={{ background: "#A6192E", textDecoration: "none" }}>
             Open Workflow
           </Link>
-        </div>
-      )}
+        )}
+        {canWithMe && (
+          <WithMeButton incidentId={inc.id} />
+        )}
+      </div>
     </div>
   )
 }
