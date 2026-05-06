@@ -12,12 +12,12 @@ export async function POST(req: NextRequest) {
   if (!student_id || !block_number)
     return NextResponse.json({ error: "student_id and block_number required" }, { status: 400 })
 
-  const today     = new Date().toISOString().split("T")[0]
-  const now       = new Date().toISOString()
-  const todayStart = `${today}T00:00:00+00:00`
-  const todayEnd   = `${today}T23:59:59+00:00`
+  const today      = new Date().toISOString().split("T")[0]
+  const now        = new Date().toISOString()
+  const todayStart = today + "T00:00:00+00:00"
+  const todayEnd   = today + "T23:59:59+00:00"
 
-  // Check for open incident to resolve
+  // Resolve any open incident for this student+block today
   const { data: existing } = await db
     .from("incidents")
     .select("id")
@@ -29,7 +29,6 @@ export async function POST(req: NextRequest) {
     .limit(1)
 
   if (existing && existing.length > 0) {
-    // Resolve the existing incident
     await db.from("incidents").update({
       status:           "resolved",
       located_by:       session.user.userId,
@@ -42,24 +41,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ resolved: true, incident_id: existing[0].id })
   }
 
-  // No open incident — log as immediately-resolved "with me" report
+  // No open incident — log as resolved "with teacher" report
   const { data, error } = await db.from("incidents").insert({
     student_id,
-    reported_by:        session.user.userId,
-    period_type:        "block",
-    report_type:        "student_with_me",
-    level:              "routine",
-    block_id:           Number(block_number),
-    course_id:          course_id || null,
+    reported_by:         session.user.userId,
+    period_type:         "block",
+    report_type:         "absent_from_start", // valid enum value
+    level:               "routine",
+    block_id:            Number(block_number),
+    course_id:           course_id || null,
     suppress_email_home: true,
-    initiated_by:       "teacher",
-    status:             "resolved",
-    located_by:         session.user.userId,
-    located_location:   "With teacher",
-    located_excused:    true,
-    located_at:         now,
-    resolved_at:        now,
-    resolved_by:        session.user.userId,
+    initiated_by:        "teacher",
+    status:              "resolved",
+    located_by:          session.user.userId,
+    located_location:    "With teacher",
+    located_excused:     true,
+    located_at:          now,
+    resolved_at:         now,
+    resolved_by:         session.user.userId,
   }).select().single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
