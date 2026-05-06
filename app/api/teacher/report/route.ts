@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import { db } from "@/lib/supabase"
+import { NextRequest, NextResponse }           from "next/server"
+import { getServerSession }                    from "next-auth"
+import { authOptions }                         from "@/lib/auth"
+import { db }                                  from "@/lib/supabase"
 import { getCurrentPeriod, isFirstBlockOfDay } from "@/lib/schedule"
+import { sendPushToRole }                      from "@/lib/push"
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -38,28 +39,40 @@ export async function POST(req: NextRequest) {
       ? isFirstBlockOfDay(period.dayType, Number(block_number))
       : false
 
-  // Get room from course
+  // Room from course
   let room: string | null = null
   if (course_id) {
     const { data: c } = await db.from("courses").select("room").eq("id", course_id).single()
     room = c?.room ?? null
   }
 
-  // Create incident — use enum values that exist in schema
+  // Create incident
   const { data: incident, error } = await db.from("incidents").insert({
     student_id,
     reported_by:         session.user.userId,
-    period_type:         "block",           // valid: block | lunch | community
-    report_type:         "absent_from_start", // valid enum value
+    period_type:         "block",
+    report_type:         "absent_from_start",
     level:               "routine",
     block_id:            Number(block_number),
     course_id:           course_id || null,
     room,
     suppress_email_home: suppressEmail,
-    initiated_by:        "teacher",         // valid enum value
+    initiated_by:        "teacher",
     status:              "open",
-  }).select().single()
+  }).select("id, block_id, students(first_name, last_name)").single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Fire-and-forget: push notification to coordinators
+  if (incident) {
+    const student  = incident.students as { first_name: string; last_name: string } | null
+    const fullName = student ? student.last_name + ", " + student.first_name : "Student"
+    sendPushToRole("coordinator", {
+      title: "Missing Student Reported",
+      body:  fullName + " — Block " + incident.block_id,
+      url:   "/coordinator",
+    }).catch(() => {})
+  }
+
   return NextResponse.json(incident, { status: 201 })
 }
