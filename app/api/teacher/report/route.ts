@@ -13,11 +13,11 @@ export async function POST(req: NextRequest) {
   if (!student_id || !block_number)
     return NextResponse.json({ error: "student_id and block_number required" }, { status: 400 })
 
-  const today   = new Date().toISOString().split("T")[0]
-  const todayStart = `${today}T00:00:00+00:00`
-  const todayEnd   = `${today}T23:59:59+00:00`
+  const today      = new Date().toISOString().split("T")[0]
+  const todayStart = today + "T00:00:00+00:00"
+  const todayEnd   = today + "T23:59:59+00:00"
 
-  // ── Deduplication: same student + same block + open today ──────────────────
+  // Deduplication: same student + same block + open today
   const { data: existing } = await db
     .from("incidents")
     .select("id, level, status")
@@ -28,37 +28,36 @@ export async function POST(req: NextRequest) {
     .lte("reported_at", todayEnd)
     .limit(1)
 
-  if (existing && existing.length > 0) {
+  if (existing && existing.length > 0)
     return NextResponse.json({ duplicate: true, incident: existing[0] }, { status: 200 })
-  }
 
-  // ── Block 1 suppression check ──────────────────────────────────────────────
+  // Block 1 suppression
   const period = await getCurrentPeriod()
   const suppressEmail =
     period.isSchoolDay && period.dayType !== null
       ? isFirstBlockOfDay(period.dayType, Number(block_number))
       : false
 
-  // ── Get room from course ───────────────────────────────────────────────────
+  // Get room from course
   let room: string | null = null
   if (course_id) {
     const { data: c } = await db.from("courses").select("room").eq("id", course_id).single()
     room = c?.room ?? null
   }
 
-  // ── Create incident ────────────────────────────────────────────────────────
+  // Create incident — use enum values that exist in schema
   const { data: incident, error } = await db.from("incidents").insert({
     student_id,
-    reported_by:        session.user.userId,
-    period_type:        "block",
-    report_type:        "missing_from_class",
-    level:              "routine",
-    block_id:           Number(block_number),
-    course_id:          course_id || null,
+    reported_by:         session.user.userId,
+    period_type:         "block",           // valid: block | lunch | community
+    report_type:         "absent_from_start", // valid enum value
+    level:               "routine",
+    block_id:            Number(block_number),
+    course_id:           course_id || null,
     room,
     suppress_email_home: suppressEmail,
-    initiated_by:       "teacher",
-    status:             "open",
+    initiated_by:        "teacher",         // valid enum value
+    status:              "open",
   }).select().single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
