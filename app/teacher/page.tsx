@@ -1,30 +1,75 @@
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
+import { db } from "@/lib/supabase"
+import { getCurrentPeriod } from "@/lib/schedule"
 import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
+import StudentRoster from "@/components/teacher/StudentRoster"
 
-const ROSTER = [
-  { id: 1, name: "Doe, Jane",    grade: 10 },
-  { id: 2, name: "Kim, Alex",    grade: 10 },
-  { id: 3, name: "Lee, Marcus",  grade: 10 },
-  { id: 4, name: "Smith, John",  grade: 11 },
-  { id: 5, name: "Torres, Maya", grade: 10 },
-  { id: 6, name: "Walsh, Chris", grade: 11 },
-]
+interface Student { id: string; first_name: string; last_name: string; grade: number }
+
+interface Course {
+  id: string
+  name: string
+  block_number: number
+  room: string | null
+}
 
 export default async function TeacherPage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect("/login")
   if (!["teacher", "admin", "super_admin"].includes(session.user.role)) redirect("/dashboard")
 
+  const [period, { data: courses }] = await Promise.all([
+    getCurrentPeriod(),
+    db.from("courses")
+      .select("id, name, block_number, room")
+      .eq("teacher_id", session.user.userId)
+      .eq("is_active", true)
+      .order("block_number"),
+  ])
+
+  // Active block right now
+  const activeBlockNum = period.type === "block" ? period.blockNumber : null
+
+  // Fetch enrolled students for all this teacher's courses in one query
+  const courseIds = (courses ?? []).map(c => c.id)
+  let studentsByCourse: Record<string, Student[]> = {}
+
+  if (courseIds.length > 0) {
+    const { data: enr } = await db
+      .from("student_enrollments")
+      .select("course_id, students(id, first_name, last_name, grade)")
+      .in("course_id", courseIds)
+
+    for (const row of enr ?? []) {
+      const s = row.students as unknown as Student | null
+      if (!s) continue
+      if (!studentsByCourse[row.course_id]) studentsByCourse[row.course_id] = []
+      studentsByCourse[row.course_id].push(s)
+    }
+    // Sort each roster by last name
+    for (const cid of Object.keys(studentsByCourse)) {
+      studentsByCourse[cid].sort((a, b) => a.last_name.localeCompare(b.last_name))
+    }
+  }
+
+  const periodLabel =
+    period.type === "block"       ? `Block ${period.blockNumber} · ${period.periodStart}–${period.periodEnd}` :
+    period.type === "lunch"       ? "Lunch" :
+    period.type === "community"   ? "Community" :
+                                    "Outside school hours"
+
+  const isSchoolHours = period.type !== "outside_school"
+
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#fff" }}>
       <header className="px-5 py-3.5 flex items-center justify-between" style={{ background: "#A6192E" }}>
         <div>
-          <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">Block 3 &mdash; 11:42am</div>
-          <div className="text-white text-[10px] opacity-70">AP Biology &mdash; Room 204</div>
+          <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">{periodLabel}</div>
+          <div className="text-white text-[10px] opacity-70">{session.user.displayName}</div>
         </div>
         <SignOutButton />
       </header>
@@ -35,44 +80,67 @@ export default async function TeacherPage() {
         </Link>
       </nav>
 
-      <main className="flex-1 flex flex-col px-5 py-5 gap-4 max-w-lg mx-auto w-full">
-        <div>
-          <h1 className="text-base font-bold" style={{ color: "#3D3D3D" }}>Who is missing?</h1>
-          <p className="text-xs mt-0.5" style={{ color: "#3D3D3D", opacity: 0.5 }}>
-            Tap a student to mark them missing from your class
-          </p>
-        </div>
+      <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
 
-        <div className="flex flex-col gap-2">
-          {ROSTER.map((s) => (
-            <div
-              key={s.id}
-              className="flex items-center gap-3 px-4 py-3 rounded-xl border"
-              style={{ background: "#F7F7F7", borderColor: "#EAEAEA" }}
-            >
-              <div className="w-5 h-5 rounded-full border-2 flex-shrink-0" style={{ borderColor: "#CCCCCC" }} />
-              <div>
-                <div className="text-sm font-semibold" style={{ color: "#3D3D3D" }}>{s.name}</div>
-                <div className="text-[10px]" style={{ color: "#999" }}>Grade {s.grade}</div>
+        {/* Between-period notice */}
+        {isSchoolHours && period.type !== "block" && (
+          <div className="rounded-xl px-4 py-3 text-center"
+               style={{ background: "#FFF8E0", border: "1px solid #F0C040" }}>
+            <p className="text-xs font-bold" style={{ color: "#8B6200" }}>{periodLabel}</p>
+            <p className="text-[10px] mt-0.5" style={{ color: "#8B6200", opacity: 0.7 }}>
+              No class active — roster shown below for reference
+            </p>
+          </div>
+        )}
+
+        {/* No courses assigned */}
+        {(courses ?? []).length === 0 && (
+          <div className="rounded-xl px-4 py-6 text-center border" style={{ borderColor: "#EAEAEA" }}>
+            <p className="text-sm font-bold mb-1" style={{ color: "#3D3D3D" }}>No courses assigned</p>
+            <p className="text-xs" style={{ color: "#999" }}>
+              Ask your admin to assign you as the teacher on your courses.
+            </p>
+          </div>
+        )}
+
+        {/* Course rosters */}
+        {(courses ?? []).map((course: Course) => {
+          const students = studentsByCourse[course.id] ?? []
+          const isActive = course.block_number === activeBlockNum
+
+          return (
+            <div key={course.id}>
+              {/* Course header */}
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <p className="text-[9px] font-bold tracking-[0.25em] uppercase"
+                     style={{ color: "#3D3D3D", opacity: 0.35 }}>
+                    Block {course.block_number}{course.room ? ` · ${course.room}` : ""}
+                  </p>
+                  <p className="text-sm font-bold" style={{ color: "#3D3D3D" }}>{course.name}</p>
+                </div>
+                {isActive && (
+                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+                        style={{ background: "#A6192E", color: "#fff" }}>
+                    NOW
+                  </span>
+                )}
               </div>
+
+              {students.length === 0 ? (
+                <p className="text-xs py-3 text-center" style={{ color: "#999" }}>
+                  No students enrolled — add enrollments in Admin.
+                </p>
+              ) : (
+                <StudentRoster
+                  students={students}
+                  blockNumber={course.block_number}
+                  courseId={course.id}
+                />
+              )}
             </div>
-          ))}
-        </div>
-
-        <div className="h-px" style={{ background: "#EAEAEA" }} />
-
-        <button
-          className="w-full py-4 rounded-xl text-white text-sm font-semibold tracking-wide"
-          style={{ background: "#A6192E" }}
-        >
-          Report Missing (0)
-        </button>
-        <button
-          className="w-full py-4 rounded-xl text-sm font-semibold"
-          style={{ background: "#EAEAEA", color: "#3D3D3D" }}
-        >
-          Report Welfare Concern
-        </button>
+          )
+        })}
       </main>
     </div>
   )
