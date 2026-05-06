@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import { db } from "@/lib/supabase"
+import { getServerSession }            from "next-auth"
+import { authOptions }                 from "@/lib/auth"
+import { db }                          from "@/lib/supabase"
+import { sendEmailHome }               from "@/lib/email"
+import { sendPushToRole }              from "@/lib/push"
 
-// Teachers can use with_me; coordinators/above can use all actions
-const ALLOWED = ["teacher", "staff", "coordinator", "counselor", "dean", "admin", "super_admin"]
+// Teachers/staff can use with_me; coordinators+ can use all protocol steps
+const ALLOWED    = ["teacher", "staff", "coordinator", "counselor", "dean", "admin", "super_admin"]
 const COORD_ONLY = ["step_1","step_2","step_3","step_4","step_5","step_6","escalate"]
 
 export async function POST(req: NextRequest) {
@@ -16,7 +18,6 @@ export async function POST(req: NextRequest) {
   if (!incident_id || !action)
     return NextResponse.json({ error: "incident_id and action required" }, { status: 400 })
 
-  // Coord-only actions
   if (COORD_ONLY.includes(action) &&
       !["coordinator","dean","admin","super_admin"].includes(session.user.role))
     return NextResponse.json({ error: "Coordinator role required" }, { status: 403 })
@@ -27,16 +28,48 @@ export async function POST(req: NextRequest) {
   const updates: Record<string, any> = {}
 
   switch (action) {
-    case "step_1":   updates.step_1_sent_at    = now; break
-    case "step_2":   updates.step_2_sent_at    = now; break
-    case "step_3":   updates.step_3_expires_at = now; break
-    case "step_4":   updates.step_4_logged_at  = now; break
+    case "step_1":
+      updates.step_1_sent_at = now
+      break
+
+    case "step_2":
+      updates.step_2_sent_at = now
+      break
+
+    case "step_3":
+      updates.step_3_expires_at = now
+      // Email home to parent (fire-and-forget — suppress_email_home checked inside helper)
+      sendEmailHome(incident_id).catch(() => {})
+      break
+
+    case "step_4":
+      updates.step_4_logged_at = now
+      break
+
     case "step_5":
       updates.step_5_logged_at = now
       updates.level            = "elevated"
+      // Push to deans on escalation
+      sendPushToRole("dean", {
+        title: "Incident Escalated",
+        body:  "A student incident has been elevated to dean review.",
+        url:   "/dean",
+      }).catch(() => {})
       break
-    case "step_6":   updates.step_6_sent_at = now; break
-    case "escalate": updates.level          = "elevated"; break
+
+    case "step_6":
+      updates.step_6_sent_at = now
+      break
+
+    case "escalate":
+      updates.level = "elevated"
+      sendPushToRole("dean", {
+        title: "Incident Escalated",
+        body:  "A student has been escalated to elevated status.",
+        url:   "/dean",
+      }).catch(() => {})
+      break
+
     case "found":
       updates.status           = "resolved"
       updates.located_at       = now
@@ -45,6 +78,7 @@ export async function POST(req: NextRequest) {
       updates.resolved_at      = now
       updates.resolved_by      = userId
       break
+
     case "with_me":
       updates.status           = "resolved"
       updates.located_at       = now
@@ -54,6 +88,7 @@ export async function POST(req: NextRequest) {
       updates.resolved_at      = now
       updates.resolved_by      = userId
       break
+
     default:
       return NextResponse.json({ error: "Unknown action: " + action }, { status: 400 })
   }
