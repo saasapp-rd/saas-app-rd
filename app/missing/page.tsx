@@ -1,285 +1,214 @@
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
+import { db } from "@/lib/supabase"
 import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 
-// Roles that can see incident level (elevated / routine)
-const CAN_SEE_LEVEL = ["coordinator", "counselor", "dean", "admin", "super_admin"]
+// Role visibility rules
+const CAN_SEE_LEVEL    = ["coordinator", "counselor", "dean", "admin", "super_admin"]
+const CAN_OPEN_WORKFLOW = ["coordinator", "dean", "admin", "super_admin"]
 
-// Roles that can open the full coordinator workflow
-const CAN_OPEN_WORKFLOW = ["coordinator", "admin", "super_admin"]
-
-// Roles that can run imperfect attendance triage
-const CAN_TRIAGE = ["coordinator", "dean", "admin", "super_admin"]
-
-// Role → their specific view label and link
 const MY_VIEW: Record<string, { label: string; href: string }> = {
-  teacher:     { label: "My Roster",          href: "/teacher"     },
-  staff:       { label: "Welfare Concern",    href: "/staff"       },
-  coordinator: { label: "Triage & Workflow",  href: "/coordinator" },
-  counselor:   { label: "Counselor View",     href: "/counselor"   },
-  dean:        { label: "Pattern Dashboard",  href: "/dean"        },
-  admin:       { label: "Admin",              href: "/admin"       },
-  super_admin: { label: "Admin",              href: "/admin"       },
+  teacher:     { label: "My Roster",    href: "/teacher"     },
+  coordinator: { label: "My Workflow",  href: "/coordinator" },
+  counselor:   { label: "My View",      href: "/counselor"   },
+  dean:        { label: "Dean View",    href: "/dean"        },
+  admin:       { label: "Admin",        href: "/admin"       },
+  super_admin: { label: "Admin",        href: "/admin"       },
+  staff:       { label: "Staff View",   href: "/staff"       },
 }
 
-// ── Placeholder data (replace with Supabase query in Phase 1) ─────────────────
-const ACTIVE_INCIDENTS = [
-  {
-    id: "1",
-    name: "Smith, John",
-    grade: 11,
-    level: "elevated",
-    mins: 12,
-    detail: "Left Rm 204 upset",
-    block: "Block 3",
-    room: "Rm 204",
-    step: "Step 3 — waiting for response",
-    flag: "elevated",
-    flagNote: "Elevated concern — contact counselor",
-    reportedBy: "Ms. Jones",
-  },
-  {
-    id: "2",
-    name: "Lee, Marcus",
-    grade: 10,
-    level: "routine",
-    mins: 4,
-    detail: "Absent from start",
-    block: "Block 3",
-    room: "Rm 112",
-    step: "Step 1 — email sent",
-    flag: "none",
-    flagNote: "",
-    reportedBy: "Mr. Davis",
-  },
-  {
-    id: "3",
-    name: "Torres, Maya",
-    grade: 10,
-    level: "routine",
-    mins: 2,
-    detail: "Left ~5 min ago → Bathroom",
-    block: "Block 3",
-    room: "Rm 201",
-    step: "Triage pending",
-    flag: "watch",
-    flagNote: "Monitor — frequent absences Block 3",
-    reportedBy: "Dr. Kim",
-  },
-]
-
-const LEVEL_STYLE = {
-  elevated: { dot: "#CE2033", bg: "#FFF8F8", border: "#CE2033", pill: "#FFF0F0", pillText: "#A6192E", label: "ELEVATED" },
-  routine:  { dot: "#F0C040", bg: "#FFFDF5", border: "#F0C040", pill: "#FFF8E0", pillText: "#8B6200", label: "ROUTINE"  },
+interface Incident {
+  id:          string
+  level:       "routine" | "elevated"
+  status:      string
+  reported_at: string
+  block_id:    number | null
+  room:        string | null
+  suppress_email_home: boolean
+  students:    { first_name: string; last_name: string; grade: number } | null
+  reporter:    { display_name: string } | null
 }
 
-const FLAG_DOT: Record<string, string> = { elevated: "#CE2033", watch: "#F0C040", none: "transparent" }
+function minsAgo(dateStr: string): number {
+  return Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000)
+}
 
 export default async function MissingPage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect("/login")
-  // Students never see this page
-  if (session.user.role === "student") redirect("/student")
+  if (["student"].includes(session.user.role)) redirect("/student")
 
-  const role        = session.user.role
-  const seeLevel    = CAN_SEE_LEVEL.includes(role)
-  const canWorkflow = CAN_OPEN_WORKFLOW.includes(role)
-  const canTriage   = CAN_TRIAGE.includes(role)
-  const myView      = MY_VIEW[role]
+  const { data: raw } = await db
+    .from("incidents")
+    .select(\`
+      id, level, status, reported_at, block_id, room, suppress_email_home,
+      students ( first_name, last_name, grade ),
+      reporter:reported_by ( display_name )
+    \`)
+    .eq("status", "open")
+    .order("level",       { ascending: false })
+    .order("reported_at", { ascending: true  })
 
-  const now = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+  const incidents = (raw ?? []) as unknown as Incident[]
+
+  const role     = session.user.role
+  const myView   = MY_VIEW[role]
+  const canLevel = CAN_SEE_LEVEL.includes(role)
+  const canWork  = CAN_OPEN_WORKFLOW.includes(role)
+
+  const elevated = incidents.filter(i => i.level === "elevated")
+  const routine  = incidents.filter(i => i.level === "routine")
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#fff" }}>
-
-      {/* Top bar */}
       <header className="px-5 py-3.5 flex items-center justify-between" style={{ background: "#A6192E" }}>
         <div>
           <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">
             Missing Students
+            {incidents.length > 0 && (
+              <span className="ml-2 px-1.5 py-0.5 rounded-full text-[10px]"
+                    style={{ background: "rgba(255,255,255,0.25)" }}>
+                {incidents.length}
+              </span>
+            )}
           </div>
-          <div className="text-white text-[10px] opacity-70">Block 3 &mdash; 11:52am</div>
+          <div className="text-white text-[10px] opacity-70">{session.user.displayName}</div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {myView && (
-            <Link
-              href={myView.href}
-              className="text-[10px] font-bold tracking-[0.1em] uppercase px-3 py-1.5 rounded-lg"
-              style={{ background: "rgba(255,255,255,0.15)", color: "#fff", textDecoration: "none" }}
-            >
+            <Link href={myView.href}
+              className="text-white text-[10px] font-bold opacity-80 hover:opacity-100"
+              style={{ textDecoration: "none" }}>
               {myView.label} &rarr;
             </Link>
           )}
           <SignOutButton />
         </div>
       </header>
+      <TestModeBanner name={session.user.displayName} role={session.user.role} />
 
-      <TestModeBanner name={session.user.displayName} role={role} />
+      <main className="flex-1 flex flex-col px-5 py-5 gap-4 max-w-lg mx-auto w-full">
 
-      {/* Triage notice for coordinators / deans */}
-      {canTriage && (
-        <div
-          className="mx-5 mt-4 px-4 py-3 rounded-xl border"
-          style={{ background: "#FFF8E0", borderColor: "#F0C040" }}
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-bold tracking-[0.15em] uppercase" style={{ color: "#8B6200" }}>
-                ⏱ Imperfect Attendance
-              </p>
-              <p className="text-xs mt-0.5" style={{ color: "#6B4C00" }}>
-                2 students flagged from Veracross — triage before opening
-              </p>
+        {/* Empty state */}
+        {incidents.length === 0 && (
+          <div className="flex-1 flex flex-col items-center justify-center text-center py-16 gap-3">
+            <div className="text-4xl">✅</div>
+            <p className="text-sm font-bold" style={{ color: "#3D3D3D" }}>All students accounted for</p>
+            <p className="text-xs" style={{ color: "#999" }}>No open incidents right now.</p>
+          </div>
+        )}
+
+        {/* Elevated incidents */}
+        {elevated.length > 0 && (
+          <div>
+            <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
+               style={{ color: "#CE2033", opacity: 0.8 }}>
+              Elevated &mdash; {elevated.length}
+            </p>
+            <div className="flex flex-col gap-2">
+              {elevated.map(inc => (
+                <IncidentCard key={inc.id} inc={inc} canLevel={canLevel} canWork={canWork} />
+              ))}
             </div>
-            <Link
-              href="/coordinator"
-              className="text-[10px] font-bold px-3 py-1.5 rounded-lg text-white"
-              style={{ background: "#8B6200", textDecoration: "none" }}
-            >
-              Triage
-            </Link>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Incident count header */}
-      <div className="px-5 pt-5 pb-2 flex items-center justify-between">
-        <div>
-          <span className="text-[9px] font-bold tracking-[0.25em] uppercase" style={{ color: "#3D3D3D", opacity: 0.4 }}>
-            Active &mdash;
-          </span>
-          <span className="text-[9px] font-bold tracking-[0.25em] uppercase ml-1" style={{ color: "#CE2033" }}>
-            {ACTIVE_INCIDENTS.length} missing
-          </span>
-        </div>
-        <span className="text-[9px]" style={{ color: "#CCCCCC" }}>
-          Updated {now}
-        </span>
-      </div>
-
-      {/* Incident list */}
-      <main className="flex-1 flex flex-col px-5 gap-3 pb-24 max-w-lg mx-auto w-full">
-        {ACTIVE_INCIDENTS.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center gap-3 py-16">
-            <div className="text-3xl">✅</div>
-            <p className="text-base font-bold" style={{ color: "#3D3D3D" }}>All students accounted for</p>
-            <p className="text-xs" style={{ color: "#CCCCCC" }}>No active incidents this block</p>
+        {/* Routine incidents */}
+        {routine.length > 0 && (
+          <div>
+            <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
+               style={{ color: "#3D3D3D", opacity: 0.35 }}>
+              Routine &mdash; {routine.length}
+            </p>
+            <div className="flex flex-col gap-2">
+              {routine.map(inc => (
+                <IncidentCard key={inc.id} inc={inc} canLevel={canLevel} canWork={canWork} />
+              ))}
+            </div>
           </div>
-        ) : (
-          ACTIVE_INCIDENTS.map((inc) => {
-            const ls = LEVEL_STYLE[inc.level as keyof typeof LEVEL_STYLE]
-            return (
-              <div
-                key={inc.id}
-                className="rounded-xl border-l-4 overflow-hidden"
-                style={{
-                  background: ls.bg,
-                  borderTop: `1px solid ${ls.border}`,
-                  borderRight: `1px solid ${ls.border}`,
-                  borderBottom: `1px solid ${ls.border}`,
-                  borderLeft: `4px solid ${ls.dot}`,
-                }}
-              >
-                <div className="px-4 pt-3 pb-2">
-                  {/* Name row */}
-                  <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-2">
-                      {/* Flag dot — visible to all */}
-                      {inc.flag !== "none" && (
-                        <div
-                          className="w-2 h-2 rounded-full flex-shrink-0"
-                          style={{ background: FLAG_DOT[inc.flag] }}
-                          title={inc.flagNote}
-                        />
-                      )}
-                      <span className="text-sm font-bold" style={{ color: "#3D3D3D" }}>{inc.name}</span>
-                      <span className="text-[10px]" style={{ color: "#AAAAAA" }}>Gr {inc.grade}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {/* Level — coordinator / counselor / dean / admin only */}
-                      {seeLevel && (
-                        <span
-                          className="text-[8px] font-bold tracking-[0.1em] uppercase px-2 py-0.5 rounded-full"
-                          style={{ background: ls.pill, color: ls.pillText }}
-                        >
-                          {ls.label}
-                        </span>
-                      )}
-                      <span
-                        className="text-xs font-bold"
-                        style={{ color: inc.level === "elevated" ? "#CE2033" : "#CCCCCC" }}
-                      >
-                        {inc.mins} min
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Detail */}
-                  <p className="text-[10px] mb-1" style={{ color: "#888" }}>
-                    {inc.block} &middot; {inc.detail}
-                  </p>
-                  {seeLevel && (
-                    <p className="text-[10px]" style={{ color: "#BBBBBB" }}>
-                      {inc.step}
-                    </p>
-                  )}
-                </div>
-
-                {/* Action row */}
-                <div
-                  className="flex gap-2 px-4 py-2 border-t"
-                  style={{ borderColor: ls.border, background: "rgba(255,255,255,0.6)" }}
-                >
-                  <button
-                    className="flex-1 py-2 rounded-lg text-[10px] font-bold"
-                    style={{ background: "#A6192E", color: "#fff" }}
-                  >
-                    ✓ With Me
-                  </button>
-                  <button
-                    className="flex-1 py-2 rounded-lg text-[10px] font-bold"
-                    style={{ background: "#EAEAEA", color: "#3D3D3D" }}
-                  >
-                    Found
-                  </button>
-                  {canWorkflow && (
-                    <Link
-                      href="/coordinator"
-                      className="flex-1 py-2 rounded-lg text-[10px] font-bold text-center"
-                      style={{ background: "#3D3D3D", color: "#fff", textDecoration: "none" }}
-                    >
-                      Workflow →
-                    </Link>
-                  )}
-                </div>
-              </div>
-            )
-          })
         )}
       </main>
 
       {/* Bottom action bar */}
-      <div
-        className="fixed bottom-0 left-0 right-0 flex gap-3 px-5 py-4 border-t"
-        style={{ background: "#fff", borderColor: "#EAEAEA" }}
-      >
-        <button
-          className="flex-1 py-3.5 rounded-xl text-sm font-semibold border"
-          style={{ borderColor: "#A6192E", color: "#A6192E", background: "transparent" }}
-        >
-          + Report Concern
-        </button>
-        <button
-          className="flex-1 py-3.5 rounded-xl text-sm font-semibold"
-          style={{ background: "#EAEAEA", color: "#3D3D3D" }}
-        >
-          Student With Me
-        </button>
+      <div className="px-5 py-4 border-t flex gap-3" style={{ borderColor: "#EAEAEA" }}>
+        <Link href="/teacher"
+          className="flex-1 py-3 rounded-xl text-xs font-bold text-center"
+          style={{ background: "#EAEAEA", color: "#3D3D3D", textDecoration: "none" }}>
+          + Report from Roster
+        </Link>
+      </div>
+    </div>
+  )
+}
+
+function IncidentCard({
+  inc,
+  canLevel,
+  canWork,
+}: {
+  inc:      Incident
+  canLevel: boolean
+  canWork:  boolean
+}) {
+  const student  = inc.students
+  const reporter = inc.reporter
+  const mins     = minsAgo(inc.reported_at)
+  const isElev   = inc.level === "elevated"
+
+  return (
+    <div
+      className="rounded-xl p-3"
+      style={{
+        background:  isElev ? "#FFF8F8" : "#FFFDF0",
+        border:      \`1.5px solid \${isElev ? "#CE2033" : "#F0C040"}\`,
+        borderLeft:  \`4px solid \${isElev ? "#CE2033" : "#F0C040"}\`,
+      }}
+    >
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2">
+          {canLevel && (
+            <span
+              className="text-[9px] font-bold tracking-[0.1em] uppercase px-2 py-0.5 rounded-full"
+              style={{
+                background: isElev ? "#FFF0F0" : "#FFF8E0",
+                color:      isElev ? "#A6192E" : "#8B6200",
+              }}
+            >
+              {inc.level}
+            </span>
+          )}
+          <span className="text-sm font-bold" style={{ color: "#3D3D3D" }}>
+            {student ? `${student.last_name}, ${student.first_name}` : "Unknown student"}
+          </span>
+          {student && (
+            <span className="text-[10px]" style={{ color: "#999" }}>Gr {student.grade}</span>
+          )}
+        </div>
+        <span className="text-xs font-bold" style={{ color: isElev ? "#CE2033" : "#999" }}>
+          {mins < 1 ? "just now" : \`\${mins}m\`}
+        </span>
       </div>
 
+      <p className="text-[10px] mb-2" style={{ color: "#999" }}>
+        {inc.block_id ? \`Block \${inc.block_id}\` : ""}
+        {inc.room ? \` · \${inc.room}\` : ""}
+        {reporter ? \` · reported by \${reporter.display_name}\` : ""}
+        {inc.suppress_email_home ? " · No email (Block 1)" : ""}
+      </p>
+
+      {canWork && (
+        <div className="flex gap-2">
+          <Link
+            href="/coordinator"
+            className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-white"
+            style={{ background: "#A6192E", textDecoration: "none" }}>
+            Open Workflow
+          </Link>
+        </div>
+      )}
     </div>
   )
 }
