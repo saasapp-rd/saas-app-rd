@@ -4,19 +4,20 @@ import { redirect } from "next/navigation"
 import { db } from "@/lib/supabase"
 import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
+import LiveFeed from "@/components/LiveFeed"
 import Link from "next/link"
 
 interface Incident {
-  id:          string
-  level:       string
-  status:      string
-  reported_at: string
-  block_id:    number | null
+  id:               string
+  level:            string
+  status:           string
+  reported_at:      string
+  block_id:         number | null
   step_5_logged_at: string | null
   step_6_sent_at:   string | null
-  students:  { first_name: string; last_name: string; grade: number } | null
-  reporter:  { display_name: string } | null
-  resolver:  { display_name: string } | null
+  students: { first_name: string; last_name: string; grade: number } | null
+  reporter: { display_name: string } | null
+  resolver: { display_name: string } | null
 }
 
 function minsAgo(d: string) {
@@ -43,14 +44,15 @@ export default async function DeanPage() {
     <div className="min-h-screen flex flex-col" style={{ background: "#fff" }}>
       <header className="px-5 py-3.5 flex items-center justify-between" style={{ background: "#8B1020" }}>
         <div>
-          <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">
+          <div className="text-white text-xs font-bold tracking-[0.2em] uppercase flex items-center gap-2">
             Dean View &mdash; Elevated
             {openElev.length > 0 && (
-              <span className="ml-2 px-1.5 py-0.5 rounded-full text-[10px]"
+              <span className="px-1.5 py-0.5 rounded-full text-[10px]"
                     style={{ background: "rgba(255,255,255,0.25)" }}>
                 {openElev.length}
               </span>
             )}
+            <LiveFeed />
           </div>
           <div className="text-white text-[10px] opacity-70">{session.user.displayName}</div>
         </div>
