@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import { db } from "@/lib/supabase"
 import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
+import LiveFeed from "@/components/LiveFeed"
 import Link from "next/link"
 import WithMeButton from "@/components/WithMeButton"
 
@@ -62,14 +63,15 @@ export default async function MissingPage() {
     <div className="min-h-screen flex flex-col" style={{ background: "#fff" }}>
       <header className="px-5 py-3.5 flex items-center justify-between" style={{ background: "#A6192E" }}>
         <div>
-          <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">
+          <div className="text-white text-xs font-bold tracking-[0.2em] uppercase flex items-center gap-2">
             Missing Students
             {incidents.length > 0 && (
-              <span className="ml-2 px-1.5 py-0.5 rounded-full text-[10px]"
+              <span className="px-1.5 py-0.5 rounded-full text-[10px]"
                     style={{ background: "rgba(255,255,255,0.25)" }}>
                 {incidents.length}
               </span>
             )}
+            <LiveFeed />
           </div>
           <div className="text-white text-[10px] opacity-70">{session.user.displayName}</div>
         </div>
@@ -140,10 +142,10 @@ export default async function MissingPage() {
 function IncidentCard({
   inc, canLevel, canWork, canWithMe,
 }: {
-  inc:        Incident
-  canLevel:   boolean
-  canWork:    boolean
-  canWithMe:  boolean
+  inc:       Incident
+  canLevel:  boolean
+  canWork:   boolean
+  canWithMe: boolean
 }) {
   const student     = inc.students
   const reporter    = inc.reporter
@@ -155,9 +157,9 @@ function IncidentCard({
     <div
       className="rounded-xl p-3"
       style={{
-        background:  isElev ? "#FFF8F8" : "#FFFDF0",
-        border:      "1.5px solid " + accentColor,
-        borderLeft:  "4px solid "   + accentColor,
+        background: isElev ? "#FFF8F8" : "#FFFDF0",
+        border:     "1.5px solid " + accentColor,
+        borderLeft: "4px solid "   + accentColor,
       }}
     >
       <div className="flex items-center justify-between mb-1">
@@ -187,8 +189,8 @@ function IncidentCard({
 
       <p className="text-[10px] mb-2" style={{ color: "#999" }}>
         {inc.block_id ? "Block " + inc.block_id : ""}
-        {inc.room    ? " · " + inc.room         : ""}
-        {reporter    ? " · " + reporter.display_name : ""}
+        {inc.room     ? " · " + inc.room        : ""}
+        {reporter     ? " · " + reporter.display_name : ""}
         {inc.suppress_email_home ? " · No email (Block 1)" : ""}
       </p>
 
