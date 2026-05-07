@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import { db } from "@/lib/supabase"
 import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
+import LiveFeed from "@/components/LiveFeed"
 import Link from "next/link"
 import TriageCard from "@/components/coordinator/TriageCard"
 
@@ -30,12 +31,12 @@ function minsAgo(dateStr: string) {
 }
 
 function currentStep(inc: Incident): number {
-  if (inc.step_6_sent_at)      return 6
-  if (inc.step_5_logged_at)    return 5
-  if (inc.step_4_logged_at)    return 4
-  if (inc.step_3_expires_at)   return 3
-  if (inc.step_2_sent_at)      return 2
-  if (inc.step_1_sent_at)      return 1
+  if (inc.step_6_sent_at)    return 6
+  if (inc.step_5_logged_at)  return 5
+  if (inc.step_4_logged_at)  return 4
+  if (inc.step_3_expires_at) return 3
+  if (inc.step_2_sent_at)    return 2
+  if (inc.step_1_sent_at)    return 1
   return 0
 }
 
@@ -60,8 +61,15 @@ export default async function CoordinatorPage() {
     <div className="min-h-screen flex flex-col" style={{ background: "#fff" }}>
       <header className="px-5 py-3.5 flex items-center justify-between" style={{ background: "#A6192E" }}>
         <div>
-          <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">
+          <div className="text-white text-xs font-bold tracking-[0.2em] uppercase flex items-center gap-2">
             Coordinator
+            {incidents.length > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px]"
+                    style={{ background: "rgba(255,255,255,0.25)" }}>
+                {incidents.length}
+              </span>
+            )}
+            <LiveFeed />
           </div>
           <div className="text-white text-[10px] opacity-70">{session.user.displayName}</div>
         </div>
@@ -76,7 +84,6 @@ export default async function CoordinatorPage() {
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-6">
 
-        {/* Empty state */}
         {incidents.length === 0 && (
           <div className="flex-1 flex flex-col items-center justify-center text-center py-16 gap-3">
             <div className="text-4xl">&#x2705;</div>
@@ -85,7 +92,6 @@ export default async function CoordinatorPage() {
           </div>
         )}
 
-        {/* Triage queue */}
         {triage.length > 0 && (
           <div>
             <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
@@ -113,7 +119,6 @@ export default async function CoordinatorPage() {
           </div>
         )}
 
-        {/* Active workflow */}
         {workflow.length > 0 && (
           <div>
             <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
@@ -122,22 +127,18 @@ export default async function CoordinatorPage() {
             </p>
             <div className="flex flex-col gap-2">
               {workflow.map(inc => {
-                const s    = inc.students
-                const step = currentStep(inc)
+                const s      = inc.students
+                const step   = currentStep(inc)
                 const isElev = inc.level === "elevated"
 
                 return (
-                  <Link
-                    key={inc.id}
-                    href={"/coordinator/" + inc.id}
-                    style={{ textDecoration: "none" }}
-                  >
+                  <Link key={inc.id} href={"/coordinator/" + inc.id} style={{ textDecoration: "none" }}>
                     <div
                       className="rounded-xl p-3"
                       style={{
-                        background:  isElev ? "#FFF8F8" : "#FAFAFA",
-                        border:      "1.5px solid " + (isElev ? "#CE2033" : "#EAEAEA"),
-                        borderLeft:  "4px solid "   + (isElev ? "#CE2033" : "#F0C040"),
+                        background: isElev ? "#FFF8F8" : "#FAFAFA",
+                        border:     "1.5px solid " + (isElev ? "#CE2033" : "#EAEAEA"),
+                        borderLeft: "4px solid "   + (isElev ? "#CE2033" : "#F0C040"),
                       }}
                     >
                       <div className="flex items-center justify-between">
