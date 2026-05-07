@@ -11,17 +11,19 @@ export default async function AdminPage() {
   if (!session) redirect("/login")
   if (!["admin", "super_admin"].includes(session.user.role)) redirect("/dashboard")
 
-  const [s, c, ca] = await Promise.all([
+  const [s, c, ca, u] = await Promise.all([
     db.from("students").select("*", { count: "exact", head: true }).eq("is_active", true),
-    db.from("courses").select("*", { count: "exact", head: true }).eq("is_active", true),
+    db.from("courses").select("*",  { count: "exact", head: true }).eq("is_active", true),
     db.from("coordinator_assignments").select("*", { count: "exact", head: true }),
+    db.from("users").select("*",    { count: "exact", head: true }).eq("is_active", true),
   ])
 
   const sections = [
-    { label: "Students",     href: "/admin/students",     count: s.count,  desc: "Manage student roster"            },
-    { label: "Courses",      href: "/admin/courses",      count: c.count,  desc: "Courses, teachers, blocks, rooms" },
-    { label: "Coordinators", href: "/admin/coordinators", count: ca.count, desc: "Assign coordinators to blocks"    },
-    { label: "Calendar",     href: "/admin/calendar",     count: null,     desc: "School calendar and day types"    },
+    { label: "Users",        href: "/admin/users",        count: u.count,  desc: "Staff members and role assignments" },
+    { label: "Students",     href: "/admin/students",     count: s.count,  desc: "Manage student roster"              },
+    { label: "Courses",      href: "/admin/courses",      count: c.count,  desc: "Courses, teachers, blocks, rooms"   },
+    { label: "Coordinators", href: "/admin/coordinators", count: ca.count, desc: "Assign coordinators to blocks"      },
+    { label: "Calendar",     href: "/admin/calendar",     count: null,     desc: "School calendar and day types"      },
   ]
 
   return (
@@ -41,22 +43,22 @@ export default async function AdminPage() {
       </nav>
 
       <main className="flex-1 px-5 py-6 max-w-lg mx-auto w-full">
-        <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-4" style={{ color: "#3D3D3D", opacity: 0.35 }}>
+        <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-4"
+           style={{ color: "#3D3D3D", opacity: 0.35 }}>
           Admin Dashboard
         </p>
         <div className="flex flex-col gap-3">
-          {sections.map((sec) => (
+          {sections.map(sec => (
             <Link key={sec.href} href={sec.href} style={{ textDecoration: "none" }}>
-              <div
-                className="rounded-xl p-4 border flex items-center justify-between"
-                style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}
-              >
+              <div className="rounded-xl p-4 border flex items-center justify-between"
+                   style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
                 <div>
                   <div className="text-sm font-bold mb-0.5" style={{ color: "#3D3D3D" }}>{sec.label}</div>
                   <div className="text-[10px]" style={{ color: "#3D3D3D", opacity: 0.5 }}>{sec.desc}</div>
                 </div>
                 {sec.count !== null && (
-                  <span className="text-xs font-bold px-2.5 py-1 rounded-full" style={{ background: "#EAEAEA", color: "#3D3D3D" }}>
+                  <span className="text-xs font-bold px-2.5 py-1 rounded-full"
+                        style={{ background: "#EAEAEA", color: "#3D3D3D" }}>
                     {sec.count}
                   </span>
                 )}
