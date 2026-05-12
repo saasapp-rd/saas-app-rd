@@ -5,9 +5,11 @@ import { db }                          from "@/lib/supabase"
 import { sendEmailHome }               from "@/lib/email"
 import { sendPushToRole }              from "@/lib/push"
 
-// Teachers/staff can use with_me; coordinators+ can use all protocol steps
-const ALLOWED    = ["teacher", "staff", "coordinator", "counselor", "dean", "admin", "super_admin"]
-const COORD_ONLY = ["step_1","step_2","step_3","step_4","step_5","step_6","escalate"]
+// Any logged-in role can mark "with_me" or "found"
+const ALLOWED = ["teacher","staff","coordinator","counselor","dean","admin","super_admin"]
+// Deans and counselors now have full step access (Gail feedback)
+const STEP_ROLES = ["coordinator","counselor","dean","admin","super_admin"]
+const STEP_ACTIONS = ["step_1","step_2","step_3","step_4","step_5","step_6","escalate"]
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -18,9 +20,8 @@ export async function POST(req: NextRequest) {
   if (!incident_id || !action)
     return NextResponse.json({ error: "incident_id and action required" }, { status: 400 })
 
-  if (COORD_ONLY.includes(action) &&
-      !["coordinator","dean","admin","super_admin"].includes(session.user.role))
-    return NextResponse.json({ error: "Coordinator role required" }, { status: 403 })
+  if (STEP_ACTIONS.includes(action) && !STEP_ROLES.includes(session.user.role))
+    return NextResponse.json({ error: "Insufficient role for protocol steps" }, { status: 403 })
 
   const now    = new Date().toISOString()
   const userId = session.user.userId
@@ -38,7 +39,6 @@ export async function POST(req: NextRequest) {
 
     case "step_3":
       updates.step_3_expires_at = now
-      // Email home to parent (fire-and-forget — suppress_email_home checked inside helper)
       sendEmailHome(incident_id).catch(() => {})
       break
 
@@ -49,7 +49,6 @@ export async function POST(req: NextRequest) {
     case "step_5":
       updates.step_5_logged_at = now
       updates.level            = "elevated"
-      // Push to deans on escalation
       sendPushToRole("dean", {
         title: "Incident Escalated",
         body:  "A student incident has been elevated to dean review.",
