@@ -8,6 +8,7 @@ import Link from "next/link"
 import StepActions from "@/components/coordinator/StepActions"
 import NoteThread from "@/components/coordinator/NoteThread"
 import LocateForm from "@/components/coordinator/LocateForm"
+import ResolveButton from "@/components/coordinator/ResolveButton"
 
 const ALLOWED = ["coordinator", "counselor", "dean", "admin", "super_admin"]
 
@@ -47,8 +48,10 @@ export default async function IncidentPage({
   const isLocated  = inc.status  === "located"
   const minsOpen   = Math.floor((Date.now() - new Date(inc.reported_at).getTime()) / 60000)
 
-  // Show LocateForm when step 4 is done but student not yet located/resolved
-  const showLocateForm = !!inc.step_4_logged_at && !isLocated && !isResolved && !inc.located_location
+  // LocateForm: after step 4, while still open (not located/resolved yet)
+  const showLocateForm   = !!inc.step_4_logged_at && inc.status === "open" && !inc.located_location
+  // ResolveButton: student found (located) but incident not yet fully closed
+  const showResolveBtn   = isLocated && !isResolved
 
   const role      = session.user.role
   const backHref  = role === "counselor" ? "/counselor"
@@ -144,13 +147,11 @@ export default async function IncidentPage({
           </div>
         </div>
 
-        {/* Resolved or Located banner */}
-        {(isResolved || isLocated) && (
+        {/* Resolved banner */}
+        {isResolved && (
           <div className="rounded-xl px-4 py-3 text-center"
                style={{ background: "#F0FDF4", border: "1px solid #22C55E" }}>
-            <p className="text-sm font-bold mb-0.5" style={{ color: "#166534" }}>
-              {isResolved ? "Incident Resolved" : "Student Located"}
-            </p>
+            <p className="text-sm font-bold mb-0.5" style={{ color: "#166534" }}>Incident Resolved</p>
             {inc.located_location && (
               <p className="text-xs" style={{ color: "#16A34A" }}>
                 {inc.located_location}
@@ -160,10 +161,24 @@ export default async function IncidentPage({
           </div>
         )}
 
-        {/* Locate form — appears after step 4, before student is found */}
-        {showLocateForm && (
-          <LocateForm incidentId={inc.id} />
+        {/* Located banner — student found, waiting to close */}
+        {isLocated && (
+          <div className="rounded-xl px-4 py-3"
+               style={{ background: "#EEF6FF", border: "1px solid #93C5FD" }}>
+            <p className="text-sm font-bold mb-0.5" style={{ color: "#1E5FA6" }}>Student Located</p>
+            {inc.located_location && (
+              <p className="text-xs" style={{ color: "#1D4ED8" }}>
+                {inc.located_location}{inc.located_excused ? " · Excused" : ""}
+              </p>
+            )}
+          </div>
         )}
+
+        {/* Locate form — after step 4, still open */}
+        {showLocateForm && <LocateForm incidentId={inc.id} />}
+
+        {/* Resolve button — student found, close the incident */}
+        {showResolveBtn && <ResolveButton incidentId={inc.id} />}
 
         {/* 6-step workflow */}
         <div>
