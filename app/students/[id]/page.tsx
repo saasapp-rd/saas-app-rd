@@ -4,8 +4,10 @@ import { redirect, notFound } from "next/navigation"
 import { db } from "@/lib/supabase"
 import SignOutButton from "@/components/SignOutButton"
 import Link from "next/link"
+import FlagManager from "@/components/counselor/FlagManager"
 
-const ALLOWED = ["coordinator","counselor","dean","admin","super_admin","teacher","staff"]
+const ALLOWED      = ["coordinator","counselor","dean","admin","super_admin","teacher","staff"]
+const FLAG_ALLOWED = ["counselor","dean","admin","super_admin"]
 
 const FLAG_STYLE: Record<string, { bg: string; color: string }> = {
   elevated:  { bg: "#FFF0F0", color: "#A6192E" },
@@ -37,6 +39,13 @@ interface IncidentRow {
   reporter:     { display_name: string } | null
 }
 
+interface FlagRow {
+  id:          string
+  flag_level:  string
+  public_note: string | null
+  flagged_at:  string
+}
+
 export default async function StudentProfilePage({
   params,
 }: {
@@ -64,15 +73,14 @@ export default async function StudentProfilePage({
   ])
 
   if (stuResult.error || !stuResult.data) notFound()
-  const stu      = stuResult.data
-  const flags    = stuResult ? (flagResult.data ?? []) : []
+  const stu       = stuResult.data
+  const flags     = (flagResult.data ?? []) as FlagRow[]
   const incidents = (incResult.data ?? []) as unknown as IncidentRow[]
 
-  // Stats
-  const now          = Date.now()
-  const thirtyDays   = incidents.filter(i => (now - new Date(i.reported_at).getTime()) < 30 * 86400000)
-  const openCount    = incidents.filter(i => i.status === "open").length
-  const elevCount    = incidents.filter(i => i.level  === "elevated").length
+  const canManageFlags = FLAG_ALLOWED.includes(session.user.role)
+  const now            = Date.now()
+  const thirtyDays     = incidents.filter(i => (now - new Date(i.reported_at).getTime()) < 30 * 86400000)
+  const elevCount      = incidents.filter(i => i.level === "elevated").length
 
   function duration(inc: IncidentRow): string {
     if (!inc.resolved_at) return "—"
@@ -82,9 +90,7 @@ export default async function StudentProfilePage({
   }
 
   function fmtDate(iso: string): string {
-    return new Date(iso).toLocaleDateString("en-US", {
-      month: "short", day: "numeric",
-    })
+    return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" })
   }
 
   return (
@@ -92,15 +98,14 @@ export default async function StudentProfilePage({
       <header className="px-5 py-3.5 flex items-center justify-between"
               style={{ background: "#A6192E" }}>
         <div>
-          <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">
-            Student Profile
-          </div>
+          <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">Student Profile</div>
           <div className="text-white text-[10px] opacity-70">
             {stu.last_name}, {stu.first_name} &middot; Grade {stu.grade}
           </div>
         </div>
         <SignOutButton />
       </header>
+
       <nav className="px-5 py-2 border-b flex items-center gap-4" style={{ borderColor: "#EAEAEA" }}>
         <button onClick={() => history.back()}
                 className="text-xs font-bold"
@@ -134,7 +139,7 @@ export default async function StudentProfilePage({
           <h1 className="text-lg font-black mb-0.5" style={{ color: "#3D3D3D" }}>
             {stu.last_name}, {stu.first_name}
           </h1>
-          <div className="flex gap-3 text-[10px]" style={{ color: "#999" }}>
+          <div className="flex flex-wrap gap-3 text-[10px]" style={{ color: "#999" }}>
             <span>Grade {stu.grade}</span>
             {stu.student_id && <span>ID: {stu.student_id}</span>}
             {stu.parent_email && <span>{stu.parent_email}</span>}
@@ -144,15 +149,11 @@ export default async function StudentProfilePage({
         {/* Stats */}
         <div className="grid grid-cols-3 gap-2">
           <div className="rounded-xl p-3 text-center" style={{ background: "#F7F7F7" }}>
-            <div className="text-2xl font-black" style={{ color: "#A6192E" }}>
-              {incidents.length}
-            </div>
+            <div className="text-2xl font-black" style={{ color: "#A6192E" }}>{incidents.length}</div>
             <div className="text-[9px] font-bold uppercase tracking-wide opacity-50">Total</div>
           </div>
           <div className="rounded-xl p-3 text-center" style={{ background: "#F7F7F7" }}>
-            <div className="text-2xl font-black" style={{ color: "#A6192E" }}>
-              {thirtyDays.length}
-            </div>
+            <div className="text-2xl font-black" style={{ color: "#A6192E" }}>{thirtyDays.length}</div>
             <div className="text-[9px] font-bold uppercase tracking-wide opacity-50">Last 30d</div>
           </div>
           <div className="rounded-xl p-3 text-center" style={{ background: "#F7F7F7" }}>
@@ -164,37 +165,42 @@ export default async function StudentProfilePage({
           </div>
         </div>
 
-        {/* Concern flags */}
-        {flags.length > 0 && (
-          <div>
-            <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
-               style={{ color: "#3D3D3D", opacity: 0.35 }}>
-              Concern Flags
-            </p>
-            <div className="flex flex-col gap-2">
-              {flags.map((f: any) => (
-                <div key={f.id} className="rounded-xl px-4 py-2.5 border flex items-start justify-between"
-                     style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
-                  <div>
-                    {f.public_note && (
-                      <p className="text-xs" style={{ color: "#3D3D3D" }}>{f.public_note}</p>
-                    )}
-                    <p className="text-[10px]" style={{ color: "#999" }}>
-                      {fmtDate(f.flagged_at)}
-                    </p>
+        {/* Concern flags — view + manage */}
+        <div>
+          <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
+             style={{ color: "#3D3D3D", opacity: 0.35 }}>
+            Concern Flags {flags.length > 0 ? "— " + flags.length : ""}
+          </p>
+
+          {canManageFlags ? (
+            <FlagManager studentId={stu.id} initialFlags={flags} />
+          ) : (
+            flags.length === 0 ? (
+              <p className="text-xs py-3 text-center" style={{ color: "#999" }}>No flags on record.</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {flags.map(f => (
+                  <div key={f.id} className="rounded-xl px-4 py-2.5 border flex items-start justify-between"
+                       style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
+                    <div>
+                      {f.public_note && (
+                        <p className="text-xs" style={{ color: "#3D3D3D" }}>{f.public_note}</p>
+                      )}
+                      <p className="text-[10px]" style={{ color: "#999" }}>{fmtDate(f.flagged_at)}</p>
+                    </div>
+                    <span className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase"
+                          style={{
+                            background: FLAG_STYLE[f.flag_level]?.bg ?? "#EAEAEA",
+                            color:      FLAG_STYLE[f.flag_level]?.color ?? "#666",
+                          }}>
+                      {f.flag_level}
+                    </span>
                   </div>
-                  <span className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase flex-shrink-0 ml-3"
-                        style={{
-                          background: FLAG_STYLE[f.flag_level]?.bg ?? "#EAEAEA",
-                          color:      FLAG_STYLE[f.flag_level]?.color ?? "#666",
-                        }}>
-                    {f.flag_level}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+                ))}
+              </div>
+            )
+          )}
+        </div>
 
         {/* Incident history */}
         <div>
@@ -204,16 +210,13 @@ export default async function StudentProfilePage({
           </p>
 
           {incidents.length === 0 && (
-            <p className="text-xs text-center py-6" style={{ color: "#999" }}>
-              No incidents on record.
-            </p>
+            <p className="text-xs text-center py-6" style={{ color: "#999" }}>No incidents on record.</p>
           )}
 
           <div className="flex flex-col gap-1.5">
             {incidents.map(inc => {
-              const lvl  = LEVEL_STYLE[inc.level]  ?? LEVEL_STYLE["routine"]
-              const sta  = STATUS_STYLE[inc.status] ?? STATUS_STYLE["open"]
-              const dur  = duration(inc)
+              const lvl = LEVEL_STYLE[inc.level]  ?? LEVEL_STYLE["routine"]
+              const sta = STATUS_STYLE[inc.status] ?? STATUS_STYLE["open"]
               return (
                 <Link key={inc.id} href={"/coordinator/" + inc.id}
                       style={{ textDecoration: "none" }}>
@@ -226,13 +229,9 @@ export default async function StudentProfilePage({
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 mb-0.5">
                         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase"
-                              style={{ background: lvl.bg, color: lvl.color }}>
-                          {inc.level}
-                        </span>
+                              style={{ background: lvl.bg, color: lvl.color }}>{inc.level}</span>
                         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase"
-                              style={{ background: sta.bg, color: sta.color }}>
-                          {sta.label}
-                        </span>
+                              style={{ background: sta.bg, color: sta.color }}>{sta.label}</span>
                       </div>
                       <p className="text-[10px]" style={{ color: "#999" }}>
                         {fmtDate(inc.reported_at)}
@@ -242,7 +241,7 @@ export default async function StudentProfilePage({
                       </p>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <p className="text-[10px] font-bold" style={{ color: "#999" }}>{dur}</p>
+                      <p className="text-[10px] font-bold" style={{ color: "#999" }}>{duration(inc)}</p>
                       <p className="text-[9px]" style={{ color: "#BABABA" }}>&rarr;</p>
                     </div>
                   </div>
