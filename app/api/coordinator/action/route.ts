@@ -28,8 +28,12 @@ export async function POST(req: NextRequest) {
   if (fetchErr || !inc)
     return NextResponse.json({ error: "Incident not found" }, { status: 404 })
 
-  const student = inc.students as { first_name: string; last_name: string } | null
-  const name    = student ? student.last_name + ", " + student.first_name : "Unknown"
+  // Supabase returns joins as arrays — normalise to single object
+  const rawStudent = (inc as any).students
+  const student = Array.isArray(rawStudent)
+    ? (rawStudent[0] as { first_name: string; last_name: string } | undefined) ?? null
+    : (rawStudent as { first_name: string; last_name: string } | null)
+  const name = student ? student.last_name + ", " + student.first_name : "Unknown"
 
   let update: Record<string, unknown> = {}
 
