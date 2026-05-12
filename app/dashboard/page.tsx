@@ -2,21 +2,21 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 
-// After login, everyone goes to /missing EXCEPT students (future: parents too)
-const ROLE_ROUTES: Record<string, string> = {
-  super_admin: "/missing",
-  admin:       "/missing",
-  dean:        "/missing",
-  coordinator: "/missing",
-  counselor:   "/missing",
-  teacher:     "/missing",
-  staff:       "/missing",
-  student:     "/student",
+const ROLE_DEST: Record<string, string> = {
+  teacher:      "/teacher",
+  staff:        "/staff",
+  counselor:    "/counselor",
+  coordinator:  "/coordinator",
+  dean:         "/dean",
+  admin:        "/admin",
+  super_admin:  "/admin",
+  student:      "/missing",
 }
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect("/login")
-  const route = ROLE_ROUTES[session.user.role] ?? "/login"
-  redirect(route)
+
+  const dest = ROLE_DEST[session.user.role] ?? "/missing"
+  redirect(dest)
 }
