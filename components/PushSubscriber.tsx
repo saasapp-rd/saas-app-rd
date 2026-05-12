@@ -3,14 +3,15 @@ import { useEffect } from "react"
 
 const VAPID_PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? ""
 
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
+// Explicit new ArrayBuffer() gives Uint8Array<ArrayBuffer>, satisfying BufferSource (TS 5.x)
+function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4)
   const base64  = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/")
   const rawData = window.atob(base64)
-  const output  = new Uint8Array(rawData.length)
+  const buffer  = new ArrayBuffer(rawData.length)
+  const output  = new Uint8Array(buffer)
   for (let i = 0; i < rawData.length; i++) output[i] = rawData.charCodeAt(i)
-  // Copy into a plain ArrayBuffer so the type satisfies BufferSource (TS 5.x)
-  return new Uint8Array(output.buffer.slice(0))
+  return output
 }
 
 export default function PushSubscriber() {
