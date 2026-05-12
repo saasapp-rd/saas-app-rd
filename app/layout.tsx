@@ -17,9 +17,25 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className={inter.className}>
         <Providers>
-          <PushSubscriber />
-          {children}
-          <BottomNav />
+          {/*
+            App-shell layout:
+            - Outer div is exactly viewport height, no overflow
+            - Inner scroll div holds all page content and scrolls
+            - BottomNav sits BELOW the scroll div — never inside it
+            This is far more reliable than position:fixed across iOS/Android.
+          */}
+          <div style={{
+            display:       "flex",
+            flexDirection: "column",
+            height:        "100dvh",
+            overflow:      "hidden",
+          }}>
+            <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
+              <PushSubscriber />
+              {children}
+            </div>
+            <BottomNav />
+          </div>
         </Providers>
       </body>
     </html>

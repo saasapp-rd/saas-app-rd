@@ -52,13 +52,26 @@ export async function PATCH(req: NextRequest) {
   if (!session || !["admin","super_admin"].includes(session.user.role))
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { id, is_active, role } = await req.json()
+  const { id, is_active, role, display_name, email } = await req.json()
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 })
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const updates: Record<string, any> = {}
-  if (typeof is_active === "boolean") updates.is_active = is_active
-  if (role && ALLOWED_ROLES.includes(role))  updates.role      = role
+  // Prevent self-deactivation
+  if (typeof is_active === "boolean" && !is_active && id === session.user.userId)
+    return NextResponse.json({ error: "You cannot deactivate your own account." }, { status: 400 })
+
+  const updates: Record<string, unknown> = {}
+  if (typeof is_active === "boolean")          updates.is_active    = is_active
+  if (role && ALLOWED_ROLES.includes(role))    updates.role         = role
+  if (display_name?.trim()) {
+    updates.display_name = display_name.trim()
+    updates.name         = display_name.trim()
+  }
+  if (email?.trim()) {
+    updates.email = email.trim().toLowerCase()
+  }
+
+  if (Object.keys(updates).length === 0)
+    return NextResponse.json({ error: "No valid fields to update" }, { status: 400 })
 
   const { error } = await db.from("users").update(updates).eq("id", id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

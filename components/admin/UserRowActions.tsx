@@ -29,21 +29,45 @@ interface Props {
   displayName: string
   email:       string
   role:        string
-  isSelf:      boolean   // prevent self-deactivation
+  isSelf:      boolean
 }
 
 export default function UserRowActions({ id, displayName, email, role, isSelf }: Props) {
-  const router          = useRouter()
-  const [open,          setOpen]          = useState(false)
-  const [selectedRole,  setSelectedRole]  = useState(role)
-  const [confirmDelete, setConfirmDelete] = useState(false)
-  const [saving,        setSaving]        = useState(false)
-  const [error,         setError]         = useState("")
+  const router = useRouter()
+  const [open,           setOpen]           = useState(false)
+  const [selectedRole,   setSelectedRole]   = useState(role)
+  const [nameVal,        setNameVal]        = useState(displayName)
+  const [emailVal,       setEmailVal]       = useState(email)
+  const [confirmDelete,  setConfirmDelete]  = useState(false)
+  const [saving,         setSaving]         = useState(false)
+  const [savingDetails,  setSavingDetails]  = useState(false)
+  const [error,          setError]          = useState("")
 
   const style = ROLE_STYLE[role] ?? ROLE_STYLE["staff"]
 
+  async function saveDetails() {
+    const trimName  = nameVal.trim()
+    const trimEmail = emailVal.trim().toLowerCase()
+    if (!trimName || !trimEmail) return
+    setSavingDetails(true)
+    setError("")
+    const res = await fetch("/api/admin/users", {
+      method:  "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ id, display_name: trimName, email: trimEmail }),
+    })
+    if (res.ok) {
+      router.refresh()
+      setOpen(false)
+    } else {
+      const d = await res.json()
+      setError(d.error ?? "Failed to update details.")
+    }
+    setSavingDetails(false)
+  }
+
   async function changeRole() {
-    if (selectedRole === role) { setOpen(false); return }
+    if (selectedRole === role) return
     setSaving(true)
     setError("")
     const res = await fetch("/api/admin/users", {
@@ -73,7 +97,7 @@ export default function UserRowActions({ id, displayName, email, role, isSelf }:
       router.refresh()
     } else {
       const d = await res.json()
-      setError(d.error ?? "Failed to deactivate user.")
+      setError(d.error ?? "Failed to deactivate.")
       setSaving(false)
     }
   }
@@ -109,14 +133,52 @@ export default function UserRowActions({ id, displayName, email, role, isSelf }:
         </div>
       </div>
 
-      {/* Inline actions — revealed on Edit */}
+      {/* Expanded edit panel */}
       {open && (
-        <div className="px-4 py-3 border-t flex flex-col gap-3"
+        <div className="px-4 py-3 border-t flex flex-col gap-4"
              style={{ background: "#fff", borderColor: "#EAEAEA" }}>
 
-          {/* Role change */}
+          {/* ── Name + email ── */}
           <div>
-            <label className="text-[9px] font-bold uppercase tracking-wide block mb-1.5"
+            <label className="text-[9px] font-bold uppercase tracking-wide block mb-2"
+                   style={{ color: "#3D3D3D", opacity: 0.5 }}>
+              Name &amp; Email
+            </label>
+            <div className="flex flex-col gap-2">
+              <input
+                value={nameVal}
+                onChange={e => setNameVal(e.target.value)}
+                placeholder="Display name"
+                className="w-full px-3 py-2 rounded-xl text-sm border outline-none"
+                style={{ borderColor: "#EAEAEA", color: "#3D3D3D", background: "#FAFAFA" }}
+              />
+              <input
+                value={emailVal}
+                onChange={e => setEmailVal(e.target.value)}
+                placeholder="Email address"
+                type="email"
+                className="w-full px-3 py-2 rounded-xl text-sm border outline-none"
+                style={{ borderColor: "#EAEAEA", color: "#3D3D3D", background: "#FAFAFA" }}
+              />
+              <button
+                onClick={saveDetails}
+                disabled={savingDetails || (!nameVal.trim() || !emailVal.trim())}
+                className="w-full py-2 rounded-xl text-xs font-bold text-white"
+                style={{
+                  background: "#3D3D3D",
+                  opacity: savingDetails || !nameVal.trim() || !emailVal.trim() ? 0.4 : 1,
+                  border: "none", cursor: "pointer",
+                }}>
+                {savingDetails ? "Saving…" : "Save Name & Email"}
+              </button>
+            </div>
+          </div>
+
+          <div style={{ borderTop: "1px solid #F0F0F0" }} />
+
+          {/* ── Role ── */}
+          <div>
+            <label className="text-[9px] font-bold uppercase tracking-wide block mb-2"
                    style={{ color: "#3D3D3D", opacity: 0.5 }}>
               Change Role
             </label>
@@ -137,23 +199,22 @@ export default function UserRowActions({ id, displayName, email, role, isSelf }:
                 style={{
                   background: "#3D3D3D",
                   opacity: saving || selectedRole === role ? 0.4 : 1,
-                  border: "none", cursor: selectedRole === role ? "default" : "pointer",
+                  border: "none",
+                  cursor: selectedRole === role ? "default" : "pointer",
                 }}>
                 {saving ? "…" : "Save"}
               </button>
             </div>
           </div>
 
-          {/* Divider */}
           <div style={{ borderTop: "1px solid #F0F0F0" }} />
 
-          {/* Deactivate */}
+          {/* ── Deactivate ── */}
           <div>
-            <label className="text-[9px] font-bold uppercase tracking-wide block mb-1.5"
+            <label className="text-[9px] font-bold uppercase tracking-wide block mb-2"
                    style={{ color: "#CE2033", opacity: 0.7 }}>
               Remove Access
             </label>
-
             {isSelf ? (
               <p className="text-[10px]" style={{ color: "#999" }}>
                 You cannot deactivate your own account.
@@ -168,7 +229,7 @@ export default function UserRowActions({ id, displayName, email, role, isSelf }:
             ) : (
               <div className="flex flex-col gap-2">
                 <p className="text-xs font-bold text-center" style={{ color: "#CE2033" }}>
-                  Remove {displayName}&apos;s access? This cannot be undone easily.
+                  Remove {displayName}&apos;s access? This cannot be easily undone.
                 </p>
                 <div className="flex gap-2">
                   <button
