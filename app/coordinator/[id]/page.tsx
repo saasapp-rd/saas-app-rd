@@ -7,6 +7,7 @@ import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 import StepActions from "@/components/coordinator/StepActions"
 import NoteThread from "@/components/coordinator/NoteThread"
+import LocateForm from "@/components/coordinator/LocateForm"
 
 const ALLOWED = ["coordinator", "counselor", "dean", "admin", "super_admin"]
 
@@ -32,18 +33,22 @@ export default async function IncidentPage({
   ])
 
   if (incResult.error || !incResult.data) notFound()
-  const inc  = incResult.data
+  const inc   = incResult.data
   const notes = (notesResult.data ?? []) as {
     id: string; body: string; created_at: string;
     author: { display_name: string } | null
   }[]
 
-  const student    = inc.students  as { id: string; first_name: string; last_name: string; grade: number } | null
-  const reporter   = inc.reporter  as { display_name: string } | null
-  const course     = inc.course    as { name: string; room: string | null } | null
-  const isElev     = inc.level    === "elevated"
-  const isResolved = inc.status   === "resolved"
+  const student    = inc.students as { id: string; first_name: string; last_name: string; grade: number } | null
+  const reporter   = inc.reporter as { display_name: string } | null
+  const course     = inc.course   as { name: string; room: string | null } | null
+  const isElev     = inc.level   === "elevated"
+  const isResolved = inc.status  === "resolved"
+  const isLocated  = inc.status  === "located"
   const minsOpen   = Math.floor((Date.now() - new Date(inc.reported_at).getTime()) / 60000)
+
+  // Show LocateForm when step 4 is done but student not yet located/resolved
+  const showLocateForm = !!inc.step_4_logged_at && !isLocated && !isResolved && !inc.located_location
 
   const role      = session.user.role
   const backHref  = role === "counselor" ? "/counselor"
@@ -139,11 +144,13 @@ export default async function IncidentPage({
           </div>
         </div>
 
-        {/* Resolved banner */}
-        {isResolved && (
+        {/* Resolved or Located banner */}
+        {(isResolved || isLocated) && (
           <div className="rounded-xl px-4 py-3 text-center"
                style={{ background: "#F0FDF4", border: "1px solid #22C55E" }}>
-            <p className="text-sm font-bold mb-0.5" style={{ color: "#166534" }}>Incident Resolved</p>
+            <p className="text-sm font-bold mb-0.5" style={{ color: "#166534" }}>
+              {isResolved ? "Incident Resolved" : "Student Located"}
+            </p>
             {inc.located_location && (
               <p className="text-xs" style={{ color: "#16A34A" }}>
                 {inc.located_location}
@@ -151,6 +158,11 @@ export default async function IncidentPage({
               </p>
             )}
           </div>
+        )}
+
+        {/* Locate form — appears after step 4, before student is found */}
+        {showLocateForm && (
+          <LocateForm incidentId={inc.id} />
         )}
 
         {/* 6-step workflow */}
