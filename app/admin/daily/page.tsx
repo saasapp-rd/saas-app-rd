@@ -50,9 +50,9 @@ export default async function AdminDailyPage() {
     .lte("reported_at", today + "T23:59:59+00:00")
     .order("reported_at", { ascending: false })
 
-  const rows       = (incidents ?? []) as unknown as IncidentRow[]
-  const openCount  = rows.filter(r => r.status === "open").length
-  const elevCount  = rows.filter(r => r.level  === "elevated").length
+  const rows          = (incidents ?? []) as unknown as IncidentRow[]
+  const openCount     = rows.filter(r => r.status === "open").length
+  const elevCount     = rows.filter(r => r.level  === "elevated").length
   const resolvedCount = rows.filter(r => r.status === "resolved").length
 
   function fmtTime(iso: string) {
@@ -88,6 +88,11 @@ export default async function AdminDailyPage() {
               style={{ color: "#999", textDecoration: "none" }}>
           Live Feed
         </Link>
+        <Link href="/admin/daily/print" target="_blank"
+              className="ml-auto text-xs font-bold"
+              style={{ color: "#1E5FA6", textDecoration: "none" }}>
+          Print / Export &#x2197;
+        </Link>
       </nav>
 
       <main className="flex-1 px-5 py-5 max-w-2xl mx-auto w-full flex flex-col gap-5">
@@ -107,7 +112,7 @@ export default async function AdminDailyPage() {
           ))}
         </div>
 
-        {/* Incident table */}
+        {/* Incident list */}
         <div>
           <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
              style={{ color: "#3D3D3D", opacity: 0.35 }}>
@@ -142,7 +147,7 @@ export default async function AdminDailyPage() {
                           Gr {r.student?.grade ?? "?"}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase"
                               style={{ background: lvl.bg, color: lvl.color }}>{r.level}</span>
                         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase"
