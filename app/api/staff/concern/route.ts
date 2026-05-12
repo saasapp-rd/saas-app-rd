@@ -5,6 +5,7 @@ import { db }                                  from "@/lib/supabase"
 import { getCurrentPeriod }                    from "@/lib/schedule"
 import { sendPushToRole }                      from "@/lib/push"
 
+// Any logged-in staff can report a welfare concern (Tadhg feedback)
 const ALLOWED = ["staff", "teacher", "coordinator", "counselor", "dean", "admin", "super_admin"]
 
 export async function POST(req: NextRequest) {
@@ -16,7 +17,6 @@ export async function POST(req: NextRequest) {
   if (!student_id)
     return NextResponse.json({ error: "student_id required" }, { status: 400 })
 
-  // Get current block (if in a block period)
   const period   = await getCurrentPeriod()
   const block_id = (period as any).currentBlock ?? null
 
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     period_type:         block_id ? "block" : "community",
     report_type:         "welfare_concern",
     initiated_by:        "welfare_concern",
-    level:               "elevated",           // welfare concerns go straight to elevated
+    level:               "elevated",    // welfare concerns are always elevated
     block_id,
     suppress_email_home: false,
     status:              "open",
@@ -34,14 +34,20 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Push to coordinators immediately (fire-and-forget)
+  // Broadcast to ALL response roles — no single person owns lunch/community
+  // concerns, so everyone who could respond gets the push (Tadhg feedback)
   const student  = incident?.students as { first_name: string; last_name: string } | null
   const fullName = student ? student.last_name + ", " + student.first_name : "Student"
-  sendPushToRole("coordinator", {
-    title: "Welfare Concern Reported",
+  const payload  = {
+    title: "Welfare Concern — " + (block_id ? "Block " + block_id : "Community"),
     body:  fullName + " — reported by " + session.user.displayName,
     url:   "/coordinator",
-  }).catch(() => {})
+  }
+  await Promise.allSettled([
+    sendPushToRole("coordinator", payload),
+    sendPushToRole("dean",        payload),
+    sendPushToRole("counselor",   payload),
+  ])
 
   return NextResponse.json(incident, { status: 201 })
 }
