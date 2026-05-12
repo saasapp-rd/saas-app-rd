@@ -12,6 +12,12 @@ import ResolveButton from "@/components/coordinator/ResolveButton"
 
 const ALLOWED = ["coordinator", "counselor", "dean", "admin", "super_admin"]
 
+// Normalise a Supabase join that may come back as array or single object
+function norm<T>(val: unknown): T | null {
+  if (!val) return null
+  return (Array.isArray(val) ? val[0] ?? null : val) as T | null
+}
+
 export default async function IncidentPage({
   params,
 }: {
@@ -34,24 +40,27 @@ export default async function IncidentPage({
   ])
 
   if (incResult.error || !incResult.data) notFound()
-  const inc   = incResult.data
-  const notes = (notesResult.data ?? []) as {
-    id: string; body: string; created_at: string;
-    author: { display_name: string } | null
-  }[]
+  const inc = incResult.data as any
 
-  const student    = inc.students as { id: string; first_name: string; last_name: string; grade: number } | null
-  const reporter   = inc.reporter as { display_name: string } | null
-  const course     = inc.course   as { name: string; room: string | null } | null
-  const isElev     = inc.level   === "elevated"
-  const isResolved = inc.status  === "resolved"
-  const isLocated  = inc.status  === "located"
+  // Normalise all joined fields (Supabase returns joins as arrays)
+  const student  = norm<{ id: string; first_name: string; last_name: string; grade: number }>(inc.students)
+  const reporter = norm<{ display_name: string }>(inc.reporter)
+  const course   = norm<{ name: string; room: string | null }>(inc.course)
+
+  const notes = (notesResult.data ?? []).map((n: any) => ({
+    id:         n.id         as string,
+    body:       n.body       as string,
+    created_at: n.created_at as string,
+    author:     norm<{ display_name: string }>(n.author),
+  }))
+
+  const isElev     = inc.level  === "elevated"
+  const isResolved = inc.status === "resolved"
+  const isLocated  = inc.status === "located"
   const minsOpen   = Math.floor((Date.now() - new Date(inc.reported_at).getTime()) / 60000)
 
-  // LocateForm: after step 4, while still open (not located/resolved yet)
-  const showLocateForm   = !!inc.step_4_logged_at && inc.status === "open" && !inc.located_location
-  // ResolveButton: student found (located) but incident not yet fully closed
-  const showResolveBtn   = isLocated && !isResolved
+  const showLocateForm = !!inc.step_4_logged_at && inc.status === "open" && !inc.located_location
+  const showResolveBtn = isLocated && !isResolved
 
   const role      = session.user.role
   const backHref  = role === "counselor" ? "/counselor"
@@ -140,7 +149,7 @@ export default async function IncidentPage({
               <div className="col-span-2">
                 <span className="text-[9px] font-bold px-2 py-0.5 rounded"
                       style={{ background: "#FFF8E0", color: "#8B6200" }}>
-                  Block 1 — email home suppressed
+                  Block 1 &mdash; email home suppressed
                 </span>
               </div>
             )}
@@ -161,7 +170,7 @@ export default async function IncidentPage({
           </div>
         )}
 
-        {/* Located banner — student found, waiting to close */}
+        {/* Located banner */}
         {isLocated && (
           <div className="rounded-xl px-4 py-3"
                style={{ background: "#EEF6FF", border: "1px solid #93C5FD" }}>
@@ -174,10 +183,7 @@ export default async function IncidentPage({
           </div>
         )}
 
-        {/* Locate form — after step 4, still open */}
         {showLocateForm && <LocateForm incidentId={inc.id} />}
-
-        {/* Resolve button — student found, close the incident */}
         {showResolveBtn && <ResolveButton incidentId={inc.id} />}
 
         {/* 6-step workflow */}
