@@ -3,6 +3,19 @@ import { db } from "./supabase"
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
+type StudentJoin = {
+  first_name:   string
+  last_name:    string
+  grade:        number
+  parent_email: string | null
+  parent_name:  string | null
+}
+
+function normJoin<T>(val: unknown): T | null {
+  if (!val) return null
+  return (Array.isArray(val) ? val[0] ?? null : val) as T | null
+}
+
 export async function sendEmailHome(incidentId: string): Promise<void> {
   const { data: inc } = await db
     .from("incidents")
@@ -17,14 +30,11 @@ export async function sendEmailHome(incidentId: string): Promise<void> {
   if (!inc) return
   if (inc.suppress_email_home) return
 
-  const student = inc.students as {
-    first_name: string; last_name: string; grade: number
-    parent_email: string | null; parent_name: string | null
-  } | null
+  const student  = normJoin<StudentJoin>((inc as any).students)
+  const reporter = normJoin<{ display_name: string }>((inc as any).reporter)
 
   if (!student?.parent_email) return
 
-  const reporter = inc.reporter as { display_name: string } | null
   const name     = student.first_name + " " + student.last_name
   const greeting = student.parent_name ? "Dear " + student.parent_name + "," : "Dear Parent/Guardian,"
   const time     = new Date(inc.reported_at).toLocaleTimeString("en-US", {
@@ -34,12 +44,12 @@ export async function sendEmailHome(incidentId: string): Promise<void> {
   const { error } = await resend.emails.send({
     from:    process.env.RESEND_FROM ?? "onboarding@resend.dev",
     to:      [student.parent_email],
-    subject: "Attendance Notice — " + name,
+    subject: "Attendance Notice - " + name,
     html: `
       <div style="font-family:sans-serif;max-width:500px;margin:0 auto;padding:24px">
         <div style="background:#A6192E;padding:16px 20px;border-radius:8px 8px 0 0">
           <h2 style="color:#fff;margin:0;font-size:16px;font-weight:700;letter-spacing:0.05em">
-            SEATTLE ACADEMY — ATTENDANCE NOTICE
+            SEATTLE ACADEMY - ATTENDANCE NOTICE
           </h2>
         </div>
         <div style="border:1px solid #EAEAEA;border-top:none;padding:20px;border-radius:0 0 8px 8px">
