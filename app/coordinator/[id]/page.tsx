@@ -7,6 +7,9 @@ import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 import StepActions from "@/components/coordinator/StepActions"
 
+// Deans and counselors now have full workflow access (Gail feedback)
+const ALLOWED = ["coordinator", "counselor", "dean", "admin", "super_admin"]
+
 export default async function IncidentPage({
   params,
 }: {
@@ -15,8 +18,7 @@ export default async function IncidentPage({
   const { id } = await params
   const session = await getServerSession(authOptions)
   if (!session) redirect("/login")
-  if (!["coordinator", "dean", "admin", "super_admin"].includes(session.user.role))
-    redirect("/dashboard")
+  if (!ALLOWED.includes(session.user.role)) redirect("/dashboard")
 
   const { data: inc, error } = await db
     .from("incidents")
@@ -26,13 +28,21 @@ export default async function IncidentPage({
 
   if (error || !inc) notFound()
 
-  const student  = inc.students  as { first_name: string; last_name: string; grade: number }  | null
-  const reporter = inc.reporter  as { display_name: string } | null
-  const course   = inc.course    as { name: string; room: string | null } | null
-  const isElev   = inc.level === "elevated"
-  const isResolved = inc.status === "resolved"
+  const student    = inc.students as { first_name: string; last_name: string; grade: number } | null
+  const reporter   = inc.reporter as { display_name: string } | null
+  const course     = inc.course   as { name: string; room: string | null } | null
+  const isElev     = inc.level    === "elevated"
+  const isResolved = inc.status   === "resolved"
+  const minsOpen   = Math.floor((Date.now() - new Date(inc.reported_at).getTime()) / 60000)
 
-  const minsOpen = Math.floor((Date.now() - new Date(inc.reported_at).getTime()) / 60000)
+  // Role-aware back navigation
+  const role      = session.user.role
+  const backHref  = role === "counselor" ? "/counselor"
+                  : role === "dean"      ? "/dean"
+                  : "/coordinator"
+  const backLabel = role === "counselor" ? "Counselor"
+                  : role === "dean"      ? "Dean View"
+                  : "Coordinator"
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#fff" }}>
@@ -40,7 +50,7 @@ export default async function IncidentPage({
               style={{ background: isElev ? "#8B1020" : "#A6192E" }}>
         <div>
           <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">
-            {isElev ? "ELEVATED" : "Routine"} Incident
+            {isElev ? "Elevated" : "Routine"} Incident
           </div>
           <div className="text-white text-[10px] opacity-70">
             {student ? student.last_name + ", " + student.first_name : "Unknown student"}
@@ -50,9 +60,9 @@ export default async function IncidentPage({
       </header>
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
       <nav className="px-5 py-2 border-b flex items-center gap-4" style={{ borderColor: "#EAEAEA" }}>
-        <Link href="/coordinator" className="text-xs font-bold"
+        <Link href={backHref} className="text-xs font-bold"
               style={{ color: "#A6192E", textDecoration: "none" }}>
-          &larr; Coordinator
+          &larr; {backLabel}
         </Link>
         <Link href="/missing" className="text-xs"
               style={{ color: "#999", textDecoration: "none" }}>
@@ -62,7 +72,7 @@ export default async function IncidentPage({
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
 
-        {/* Incident summary card */}
+        {/* Incident summary */}
         <div className="rounded-xl p-4 border" style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div>
@@ -113,13 +123,11 @@ export default async function IncidentPage({
           </div>
         </div>
 
-        {/* Resolution info if resolved */}
+        {/* Resolved banner */}
         {isResolved && (
           <div className="rounded-xl px-4 py-3 text-center"
                style={{ background: "#F0FDF4", border: "1px solid #22C55E" }}>
-            <p className="text-sm font-bold mb-0.5" style={{ color: "#166534" }}>
-              Incident Resolved
-            </p>
+            <p className="text-sm font-bold mb-0.5" style={{ color: "#166534" }}>Incident Resolved</p>
             {inc.located_location && (
               <p className="text-xs" style={{ color: "#16A34A" }}>
                 {inc.located_location}
@@ -129,7 +137,7 @@ export default async function IncidentPage({
           </div>
         )}
 
-        {/* Step workflow */}
+        {/* 6-step workflow */}
         <div>
           <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
              style={{ color: "#3D3D3D", opacity: 0.35 }}>
