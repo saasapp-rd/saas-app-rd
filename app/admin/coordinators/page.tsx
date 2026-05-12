@@ -7,12 +7,18 @@ import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 import CoordinatorForm from "@/components/admin/CoordinatorForm"
 
+interface Assignment {
+  block_number:   number
+  coordinator_id: string
+  users:          { display_name: string } | null
+}
+
 export default async function CoordinatorsPage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect("/login")
   if (!["admin", "super_admin"].includes(session.user.role)) redirect("/dashboard")
 
-  const [{ data: assignments }, { data: coordinators }] = await Promise.all([
+  const [{ data: rawAssignments }, { data: coordinators }] = await Promise.all([
     db.from("coordinator_assignments")
       .select("block_number, coordinator_id, users(display_name)")
       .order("block_number"),
@@ -23,12 +29,16 @@ export default async function CoordinatorsPage() {
       .order("display_name"),
   ])
 
-  const allBlocks = [1,2,3,4,5,6,7,8]
+  // Supabase returns the joined row as an array; normalise to single object | null
+  const assignments: Assignment[] = (rawAssignments ?? []).map((a: any) => ({
+    block_number:   a.block_number,
+    coordinator_id: a.coordinator_id,
+    users: Array.isArray(a.users) ? (a.users[0] ?? null) : (a.users ?? null),
+  }))
+
+  const allBlocks  = [1,2,3,4,5,6,7,8]
   const assignedMap = Object.fromEntries(
-    (assignments ?? []).map(a => [
-      a.block_number,
-      (a.users as unknown as { display_name: string } | null)?.display_name ?? "Unknown",
-    ])
+    assignments.map(a => [a.block_number, a.users?.display_name ?? "Unknown"])
   )
 
   return (
@@ -36,7 +46,7 @@ export default async function CoordinatorsPage() {
       <header className="px-5 py-3.5 flex items-center justify-between" style={{ background: "#A6192E" }}>
         <div>
           <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">Admin &mdash; Coordinators</div>
-          <div className="text-white text-[10px] opacity-70">{assignments?.length ?? 0} of 8 blocks assigned</div>
+          <div className="text-white text-[10px] opacity-70">{assignments.length} of 8 blocks assigned</div>
         </div>
         <SignOutButton />
       </header>
@@ -50,7 +60,7 @@ export default async function CoordinatorsPage() {
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
         <CoordinatorForm
           coordinators={coordinators ?? []}
-          assignments={(assignments ?? []) as { block_number: number; coordinator_id: string; users: { display_name: string } | null }[]}
+          assignments={assignments}
         />
 
         <div>
