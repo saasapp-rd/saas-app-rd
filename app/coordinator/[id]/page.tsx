@@ -6,8 +6,8 @@ import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 import StepActions from "@/components/coordinator/StepActions"
+import NoteThread from "@/components/coordinator/NoteThread"
 
-// Deans and counselors now have full workflow access (Gail feedback)
 const ALLOWED = ["coordinator", "counselor", "dean", "admin", "super_admin"]
 
 export default async function IncidentPage({
@@ -20,22 +20,31 @@ export default async function IncidentPage({
   if (!session) redirect("/login")
   if (!ALLOWED.includes(session.user.role)) redirect("/dashboard")
 
-  const { data: inc, error } = await db
-    .from("incidents")
-    .select("id, level, status, reported_at, block_id, room, suppress_email_home, step_1_sent_at, step_2_sent_at, step_3_expires_at, step_4_logged_at, step_5_logged_at, step_6_sent_at, located_location, located_excused, resolved_at, students(first_name, last_name, grade), reporter:reported_by(display_name), course:course_id(name, room)")
-    .eq("id", id)
-    .single()
+  const [incResult, notesResult] = await Promise.all([
+    db.from("incidents")
+      .select("id, level, status, reported_at, block_id, room, suppress_email_home, step_1_sent_at, step_2_sent_at, step_3_expires_at, step_4_logged_at, step_5_logged_at, step_6_sent_at, located_location, located_excused, resolved_at, student_id, students(id, first_name, last_name, grade), reporter:reported_by(display_name), course:course_id(name, room)")
+      .eq("id", id)
+      .single(),
+    db.from("incident_notes")
+      .select("id, body, created_at, author:user_id(display_name)")
+      .eq("incident_id", id)
+      .order("created_at", { ascending: true }),
+  ])
 
-  if (error || !inc) notFound()
+  if (incResult.error || !incResult.data) notFound()
+  const inc  = incResult.data
+  const notes = (notesResult.data ?? []) as {
+    id: string; body: string; created_at: string;
+    author: { display_name: string } | null
+  }[]
 
-  const student    = inc.students as { first_name: string; last_name: string; grade: number } | null
-  const reporter   = inc.reporter as { display_name: string } | null
-  const course     = inc.course   as { name: string; room: string | null } | null
+  const student    = inc.students  as { id: string; first_name: string; last_name: string; grade: number } | null
+  const reporter   = inc.reporter  as { display_name: string } | null
+  const course     = inc.course    as { name: string; room: string | null } | null
   const isElev     = inc.level    === "elevated"
   const isResolved = inc.status   === "resolved"
   const minsOpen   = Math.floor((Date.now() - new Date(inc.reported_at).getTime()) / 60000)
 
-  // Role-aware back navigation
   const role      = session.user.role
   const backHref  = role === "counselor" ? "/counselor"
                   : role === "dean"      ? "/dean"
@@ -78,10 +87,17 @@ export default async function IncidentPage({
             <div>
               <p className="text-[9px] uppercase tracking-[0.15em] font-bold mb-0.5"
                  style={{ color: "#3D3D3D", opacity: 0.4 }}>Student</p>
-              <p className="font-bold" style={{ color: "#3D3D3D" }}>
-                {student ? student.last_name + ", " + student.first_name : "—"}
-                {student ? " (Gr " + student.grade + ")" : ""}
-              </p>
+              {student ? (
+                <Link href={"/students/" + student.id} style={{ textDecoration: "none" }}>
+                  <p className="font-bold" style={{ color: "#A6192E" }}>
+                    {student.last_name + ", " + student.first_name}
+                    <span style={{ color: "#3D3D3D", fontWeight: "normal" }}> (Gr {student.grade})</span>
+                    <span className="ml-1 text-[9px]">&#x2197;</span>
+                  </p>
+                </Link>
+              ) : (
+                <p className="font-bold" style={{ color: "#3D3D3D" }}>Unknown</p>
+              )}
             </div>
             <div>
               <p className="text-[9px] uppercase tracking-[0.15em] font-bold mb-0.5"
@@ -155,6 +171,15 @@ export default async function IncidentPage({
             step_5_logged_at:    inc.step_5_logged_at  ?? null,
             step_6_sent_at:      inc.step_6_sent_at    ?? null,
           }} />
+        </div>
+
+        {/* Notes */}
+        <div>
+          <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
+             style={{ color: "#3D3D3D", opacity: 0.35 }}>
+            Notes {notes.length > 0 ? "— " + notes.length : ""}
+          </p>
+          <NoteThread incidentId={inc.id} initialNotes={notes} />
         </div>
       </main>
     </div>
