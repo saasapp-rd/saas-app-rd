@@ -46,7 +46,6 @@ export async function POST(req: NextRequest) {
     room = c?.room ?? null
   }
 
-  // Create incident
   const { data: incident, error } = await db.from("incidents").insert({
     student_id,
     reported_by:         session.user.userId,
@@ -63,16 +62,18 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Fire-and-forget: push notification to coordinators
-  if (incident) {
-    const student  = incident.students as { first_name: string; last_name: string } | null
-    const fullName = student ? student.last_name + ", " + student.first_name : "Student"
-    sendPushToRole("coordinator", {
-      title: "Missing Student Reported",
-      body:  fullName + " — Block " + incident.block_id,
-      url:   "/coordinator",
-    }).catch(() => {})
-  }
+  // Supabase returns joins as arrays — normalise to single object | null
+  const rawStudent = (incident as any).students
+  const student = Array.isArray(rawStudent)
+    ? (rawStudent[0] as { first_name: string; last_name: string } | undefined) ?? null
+    : (rawStudent as { first_name: string; last_name: string } | null)
+  const fullName = student ? student.last_name + ", " + student.first_name : "Student"
+
+  sendPushToRole("coordinator", {
+    title: "Missing Student Reported",
+    body:  fullName + " — Block " + incident.block_id,
+    url:   "/coordinator",
+  }).catch(() => {})
 
   return NextResponse.json(incident, { status: 201 })
 }

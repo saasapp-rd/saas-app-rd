@@ -5,7 +5,6 @@ import { db }                                  from "@/lib/supabase"
 import { getCurrentPeriod }                    from "@/lib/schedule"
 import { sendPushToRole }                      from "@/lib/push"
 
-// Any logged-in staff can report a welfare concern (Tadhg feedback)
 const ALLOWED = ["staff", "teacher", "coordinator", "counselor", "dean", "admin", "super_admin"]
 
 export async function POST(req: NextRequest) {
@@ -26,7 +25,7 @@ export async function POST(req: NextRequest) {
     period_type:         block_id ? "block" : "community",
     report_type:         "welfare_concern",
     initiated_by:        "welfare_concern",
-    level:               "elevated",    // welfare concerns are always elevated
+    level:               "elevated",
     block_id,
     suppress_email_home: false,
     status:              "open",
@@ -34,11 +33,14 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  // Broadcast to ALL response roles — no single person owns lunch/community
-  // concerns, so everyone who could respond gets the push (Tadhg feedback)
-  const student  = incident?.students as { first_name: string; last_name: string } | null
+  // Supabase returns joins as arrays — normalise to single object | null
+  const rawStudent = (incident as any).students
+  const student = Array.isArray(rawStudent)
+    ? (rawStudent[0] as { first_name: string; last_name: string } | undefined) ?? null
+    : (rawStudent as { first_name: string; last_name: string } | null)
   const fullName = student ? student.last_name + ", " + student.first_name : "Student"
-  const payload  = {
+
+  const payload = {
     title: "Welfare Concern — " + (block_id ? "Block " + block_id : "Community"),
     body:  fullName + " — reported by " + session.user.displayName,
     url:   "/coordinator",
