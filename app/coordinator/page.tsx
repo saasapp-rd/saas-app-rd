@@ -22,8 +22,8 @@ interface Incident {
   step_5_logged_at:    string | null
   step_6_sent_at:      string | null
   suppress_email_home: boolean
-  students:  { first_name: string; last_name: string; grade: number } | null
-  reporter:  { display_name: string } | null
+  students: { first_name: string; last_name: string; grade: number } | null
+  reporter: { display_name: string } | null
 }
 
 function minsAgo(dateStr: string) {
@@ -59,7 +59,8 @@ export default async function CoordinatorPage() {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#fff" }}>
-      <header className="px-5 py-3.5 flex items-center justify-between" style={{ background: "#A6192E" }}>
+      <header className="px-5 py-3.5 flex items-center justify-between"
+              style={{ background: "#A6192E" }}>
         <div>
           <div className="text-white text-xs font-bold tracking-[0.2em] uppercase flex items-center gap-2">
             Coordinator
@@ -76,9 +77,14 @@ export default async function CoordinatorPage() {
         <SignOutButton />
       </header>
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
-      <nav className="px-5 py-2 border-b flex items-center" style={{ borderColor: "#EAEAEA" }}>
-        <Link href="/missing" className="text-xs font-bold" style={{ color: "#A6192E", textDecoration: "none" }}>
+      <nav className="px-5 py-2 border-b flex items-center gap-4" style={{ borderColor: "#EAEAEA" }}>
+        <Link href="/missing" className="text-xs font-bold"
+              style={{ color: "#A6192E", textDecoration: "none" }}>
           &larr; All Missing Students
+        </Link>
+        <Link href="/dean" className="text-xs font-bold"
+              style={{ color: "#8B1020", textDecoration: "none" }}>
+          Patterns &#x2197;
         </Link>
       </nav>
 
@@ -130,17 +136,14 @@ export default async function CoordinatorPage() {
                 const s      = inc.students
                 const step   = currentStep(inc)
                 const isElev = inc.level === "elevated"
-
                 return (
-                  <Link key={inc.id} href={"/coordinator/" + inc.id} style={{ textDecoration: "none" }}>
-                    <div
-                      className="rounded-xl p-3"
-                      style={{
-                        background: isElev ? "#FFF8F8" : "#FAFAFA",
-                        border:     "1.5px solid " + (isElev ? "#CE2033" : "#EAEAEA"),
-                        borderLeft: "4px solid "   + (isElev ? "#CE2033" : "#F0C040"),
-                      }}
-                    >
+                  <Link key={inc.id} href={"/coordinator/" + inc.id}
+                        style={{ textDecoration: "none" }}>
+                    <div className="rounded-xl p-3" style={{
+                      background: isElev ? "#FFF8F8" : "#FAFAFA",
+                      border:     "1.5px solid " + (isElev ? "#CE2033" : "#EAEAEA"),
+                      borderLeft: "4px solid "   + (isElev ? "#CE2033" : "#F0C040"),
+                    }}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           {isElev && (
