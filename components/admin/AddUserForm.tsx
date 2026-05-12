@@ -11,14 +11,14 @@ const ROLES = [
   { value: "admin",       label: "Admin"       },
 ]
 
-export default function AddUserForm() {
+export default function AddUserForm({ defaultRole = "teacher" }: { defaultRole?: string }) {
   const router = useRouter()
-  const [email,        setEmail]        = useState("")
-  const [displayName,  setDisplayName]  = useState("")
-  const [role,         setRole]         = useState("teacher")
-  const [loading,      setLoading]      = useState(false)
-  const [error,        setError]        = useState("")
-  const [success,      setSuccess]      = useState("")
+  const [email,       setEmail]       = useState("")
+  const [displayName, setDisplayName] = useState("")
+  const [role,        setRole]        = useState(defaultRole)
+  const [loading,     setLoading]     = useState(false)
+  const [error,       setError]       = useState("")
+  const [success,     setSuccess]     = useState("")
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -39,7 +39,7 @@ export default function AddUserForm() {
       setSuccess(displayName + " added as " + role + ".")
       setEmail("")
       setDisplayName("")
-      setRole("teacher")
+      setRole(defaultRole)
       router.refresh()
     }
     setLoading(false)
@@ -50,7 +50,7 @@ export default function AddUserForm() {
           style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
       <p className="text-[9px] font-bold tracking-[0.25em] uppercase"
          style={{ color: "#3D3D3D", opacity: 0.4 }}>
-        Add Staff Member
+        Add Member
       </p>
 
       <input
@@ -93,7 +93,7 @@ export default function AddUserForm() {
         className="w-full py-3 rounded-xl text-white text-sm font-bold"
         style={{ background: "#A6192E", opacity: loading ? 0.6 : 1 }}
       >
-        {loading ? "Adding…" : "Add Staff Member"}
+        {loading ? "Adding..." : "Add Member"}
       </button>
     </form>
   )
