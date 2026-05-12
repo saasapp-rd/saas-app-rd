@@ -17,23 +17,23 @@ interface IncidentSteps {
 
 function fmtTime(iso: string | null): string {
   if (!iso) return ""
-  const d = new Date(iso)
-  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+  return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
 }
 
 export default function StepActions({ incident }: { incident: IncidentSteps }) {
   const router  = useRouter()
-  const [loading, setLoading] = useState<string | null>(null)
+  const [loading,   setLoading]   = useState<string | null>(null)
   const [foundNote, setFoundNote] = useState("")
 
-  const isResolved = incident.status === "resolved" || incident.status === "false_positive"
+  const isResolved = incident.status === "resolved"
+  const isElevated = incident.level  === "elevated"
 
   async function doAction(action: string, note?: string) {
     setLoading(action)
     await fetch("/api/coordinator/action", {
-      method: "POST",
+      method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ incident_id: incident.id, action, note }),
+      body:    JSON.stringify({ incident_id: incident.id, action, note }),
     })
     router.refresh()
     setLoading(null)
@@ -57,13 +57,16 @@ export default function StepActions({ incident }: { incident: IncidentSteps }) {
       label:  incident.suppress_email_home
                 ? "Email home — suppressed (Block 1 absence)"
                 : "Send email home to family",
-      done:   incident.step_3_expires_at,
-      action: "step_3",
+      done:       incident.step_3_expires_at,
+      action:     "step_3",
       suppressed: incident.suppress_email_home && !incident.step_3_expires_at,
     },
     {
       num:    4,
-      label:  "Physical search — walk building",
+      // Routine = targeted classroom search; Elevated = full building sweep
+      label:  isElevated
+                ? "Full building search — check all areas"
+                : "Classroom search — check nearby rooms",
       done:   incident.step_4_logged_at,
       action: "step_4",
     },
@@ -83,12 +86,13 @@ export default function StepActions({ incident }: { incident: IncidentSteps }) {
 
   return (
     <div className="flex flex-col gap-3">
+
       {/* Step list */}
       <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#EAEAEA" }}>
         {steps.map((step, i) => {
-          const isDone      = !!step.done
+          const isDone       = !!step.done
           const isSuppressed = !!(step as { suppressed?: boolean }).suppressed
-          const isLoading   = loading === step.action
+          const isLoading    = loading === step.action
 
           return (
             <div
@@ -175,7 +179,7 @@ export default function StepActions({ incident }: { incident: IncidentSteps }) {
             </button>
           </div>
 
-          {incident.level !== "elevated" && (
+          {!isElevated && (
             <button
               onClick={() => doAction("escalate")}
               disabled={!!loading}
