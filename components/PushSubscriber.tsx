@@ -9,7 +9,8 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const rawData = window.atob(base64)
   const output  = new Uint8Array(rawData.length)
   for (let i = 0; i < rawData.length; i++) output[i] = rawData.charCodeAt(i)
-  return output
+  // Copy into a plain ArrayBuffer so the type satisfies BufferSource (TS 5.x)
+  return new Uint8Array(output.buffer.slice(0))
 }
 
 export default function PushSubscriber() {
