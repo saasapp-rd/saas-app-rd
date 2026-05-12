@@ -30,10 +30,11 @@ interface Props {
   email:       string
   phone:       string | null
   role:        string
+  isActive:    boolean
   isSelf:      boolean
 }
 
-export default function UserRowActions({ id, displayName, email, phone, role, isSelf }: Props) {
+export default function UserRowActions({ id, displayName, email, phone, role, isActive, isSelf }: Props) {
   const router = useRouter()
   const [open,           setOpen]           = useState(false)
   const [selectedRole,   setSelectedRole]   = useState(role)
@@ -51,74 +52,59 @@ export default function UserRowActions({ id, displayName, email, phone, role, is
     const trimName  = nameVal.trim()
     const trimEmail = emailVal.trim().toLowerCase()
     if (!trimName || !trimEmail) return
-    setSavingDetails(true)
-    setError("")
+    setSavingDetails(true); setError("")
     const res = await fetch("/api/admin/users", {
       method:  "PATCH",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({
-        id,
-        display_name: trimName,
-        email:        trimEmail,
-        phone:        phoneVal.trim() || null,
-      }),
+      body:    JSON.stringify({ id, display_name: trimName, email: trimEmail, phone: phoneVal.trim() || null }),
     })
-    if (res.ok) {
-      router.refresh()
-      setOpen(false)
-    } else {
-      const d = await res.json()
-      setError(d.error ?? "Failed to update details.")
-    }
+    if (res.ok) { router.refresh(); setOpen(false) }
+    else { const d = await res.json(); setError(d.error ?? "Failed to update.") }
     setSavingDetails(false)
   }
 
   async function changeRole() {
     if (selectedRole === role) return
-    setSaving(true)
-    setError("")
+    setSaving(true); setError("")
     const res = await fetch("/api/admin/users", {
       method:  "PATCH",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({ id, role: selectedRole }),
     })
-    if (res.ok) {
-      router.refresh()
-      setOpen(false)
-    } else {
-      const d = await res.json()
-      setError(d.error ?? "Failed to update role.")
-    }
+    if (res.ok) { router.refresh(); setOpen(false) }
+    else { const d = await res.json(); setError(d.error ?? "Failed to update role.") }
     setSaving(false)
   }
 
-  async function deactivate() {
-    setSaving(true)
-    setError("")
+  async function setActiveState(active: boolean) {
+    setSaving(true); setError("")
     const res = await fetch("/api/admin/users", {
       method:  "PATCH",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ id, is_active: false }),
+      body:    JSON.stringify({ id, is_active: active }),
     })
-    if (res.ok) {
-      router.refresh()
-    } else {
-      const d = await res.json()
-      setError(d.error ?? "Failed to deactivate.")
-      setSaving(false)
-    }
+    if (res.ok) { router.refresh() }
+    else { const d = await res.json(); setError(d.error ?? "Failed."); setSaving(false) }
   }
 
   return (
     <div className="rounded-xl border overflow-hidden"
-         style={{ borderColor: open ? "#A6192E" : "#EAEAEA" }}>
+         style={{ borderColor: open ? "#A6192E" : isActive ? "#EAEAEA" : "#FECACA" }}>
 
       {/* Main row */}
       <div className="px-4 py-2.5 flex items-center justify-between"
-           style={{ background: open ? "#FFF8F8" : "#FAFAFA" }}>
+           style={{ background: open ? "#FFF8F8" : isActive ? "#FAFAFA" : "#FFF5F5" }}>
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold truncate" style={{ color: "#3D3D3D" }}>
-            {displayName}
+          <div className="flex items-center gap-1.5">
+            <div className="text-sm font-semibold truncate" style={{ color: isActive ? "#3D3D3D" : "#999" }}>
+              {displayName}
+            </div>
+            {!isActive && (
+              <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase flex-shrink-0"
+                    style={{ background: "#FEE2E2", color: "#CE2033" }}>
+                Inactive
+              </span>
+            )}
           </div>
           <div className="text-[10px] truncate" style={{ color: "#999" }}>{email}</div>
           {phone && (
@@ -148,38 +134,43 @@ export default function UserRowActions({ id, displayName, email, phone, role, is
         <div className="px-4 py-3 border-t flex flex-col gap-4"
              style={{ background: "#fff", borderColor: "#EAEAEA" }}>
 
-          {/* ── Name, email, phone ── */}
+          {/* ── Reactivate banner (shown when inactive) ── */}
+          {!isActive && (
+            <div className="rounded-xl px-4 py-3 flex items-center justify-between gap-3"
+                 style={{ background: "#FFF0F0", border: "1px solid #FECACA" }}>
+              <p className="text-xs font-semibold" style={{ color: "#CE2033" }}>
+                This account is deactivated.
+              </p>
+              <button
+                onClick={() => setActiveState(true)}
+                disabled={saving}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold text-white flex-shrink-0"
+                style={{ background: "#166534", opacity: saving ? 0.5 : 1, border: "none", cursor: "pointer" }}>
+                {saving ? "…" : "Reactivate"}
+              </button>
+            </div>
+          )}
+
+          {/* ── Contact Details ── */}
           <div>
             <label className="text-[9px] font-bold uppercase tracking-wide block mb-2"
                    style={{ color: "#3D3D3D", opacity: 0.5 }}>
               Contact Details
             </label>
             <div className="flex flex-col gap-2">
-              <input
-                value={nameVal}
-                onChange={e => setNameVal(e.target.value)}
+              <input value={nameVal} onChange={e => setNameVal(e.target.value)}
                 placeholder="Display name"
                 className="w-full px-3 py-2 rounded-xl text-sm border outline-none"
-                style={{ borderColor: "#EAEAEA", color: "#3D3D3D", background: "#FAFAFA" }}
-              />
-              <input
-                value={emailVal}
-                onChange={e => setEmailVal(e.target.value)}
-                placeholder="Email address"
-                type="email"
+                style={{ borderColor: "#EAEAEA", color: "#3D3D3D", background: "#FAFAFA" }} />
+              <input value={emailVal} onChange={e => setEmailVal(e.target.value)}
+                placeholder="Email address" type="email"
                 className="w-full px-3 py-2 rounded-xl text-sm border outline-none"
-                style={{ borderColor: "#EAEAEA", color: "#3D3D3D", background: "#FAFAFA" }}
-              />
-              <input
-                value={phoneVal}
-                onChange={e => setPhoneVal(e.target.value)}
-                placeholder="Phone number (optional)"
-                type="tel"
+                style={{ borderColor: "#EAEAEA", color: "#3D3D3D", background: "#FAFAFA" }} />
+              <input value={phoneVal} onChange={e => setPhoneVal(e.target.value)}
+                placeholder="Phone number (optional)" type="tel"
                 className="w-full px-3 py-2 rounded-xl text-sm border outline-none"
-                style={{ borderColor: "#EAEAEA", color: "#3D3D3D", background: "#FAFAFA" }}
-              />
-              <button
-                onClick={saveDetails}
+                style={{ borderColor: "#EAEAEA", color: "#3D3D3D", background: "#FAFAFA" }} />
+              <button onClick={saveDetails}
                 disabled={savingDetails || !nameVal.trim() || !emailVal.trim()}
                 className="w-full py-2 rounded-xl text-xs font-bold text-white"
                 style={{
@@ -201,24 +192,20 @@ export default function UserRowActions({ id, displayName, email, phone, role, is
               Change Role
             </label>
             <div className="flex gap-2">
-              <select
-                value={selectedRole}
-                onChange={e => setSelectedRole(e.target.value)}
+              <select value={selectedRole} onChange={e => setSelectedRole(e.target.value)}
                 className="flex-1 px-3 py-2 rounded-xl text-sm border outline-none"
                 style={{ borderColor: "#EAEAEA", color: "#3D3D3D", background: "#FAFAFA" }}>
                 {ALL_ROLES.map(r => (
                   <option key={r.value} value={r.value}>{r.label}</option>
                 ))}
               </select>
-              <button
-                onClick={changeRole}
+              <button onClick={changeRole}
                 disabled={saving || selectedRole === role}
                 className="px-4 py-2 rounded-xl text-xs font-bold text-white"
                 style={{
                   background: "#3D3D3D",
                   opacity: saving || selectedRole === role ? 0.4 : 1,
-                  border: "none",
-                  cursor: selectedRole === role ? "default" : "pointer",
+                  border: "none", cursor: selectedRole === role ? "default" : "pointer",
                 }}>
                 {saving ? "…" : "Save"}
               </button>
@@ -227,46 +214,44 @@ export default function UserRowActions({ id, displayName, email, phone, role, is
 
           <div style={{ borderTop: "1px solid #F0F0F0" }} />
 
-          {/* ── Deactivate ── */}
-          <div>
-            <label className="text-[9px] font-bold uppercase tracking-wide block mb-2"
-                   style={{ color: "#CE2033", opacity: 0.7 }}>
-              Remove Access
-            </label>
-            {isSelf ? (
-              <p className="text-[10px]" style={{ color: "#999" }}>
-                You cannot deactivate your own account.
-              </p>
-            ) : !confirmDelete ? (
-              <button
-                onClick={() => setConfirmDelete(true)}
-                className="w-full py-2 rounded-xl text-xs font-bold border"
-                style={{ borderColor: "#CE2033", color: "#CE2033", background: "#fff", cursor: "pointer" }}>
-                Deactivate {displayName.split(" ")[0]}
-              </button>
-            ) : (
-              <div className="flex flex-col gap-2">
-                <p className="text-xs font-bold text-center" style={{ color: "#CE2033" }}>
-                  Remove {displayName}&apos;s access? This cannot be easily undone.
+          {/* ── Deactivate (only shown when active) ── */}
+          {isActive && (
+            <div>
+              <label className="text-[9px] font-bold uppercase tracking-wide block mb-2"
+                     style={{ color: "#CE2033", opacity: 0.7 }}>
+                Remove Access
+              </label>
+              {isSelf ? (
+                <p className="text-[10px]" style={{ color: "#999" }}>
+                  You cannot deactivate your own account.
                 </p>
-                <div className="flex gap-2">
-                  <button
-                    onClick={deactivate}
-                    disabled={saving}
-                    className="flex-1 py-2 rounded-xl text-xs font-bold text-white"
-                    style={{ background: "#CE2033", opacity: saving ? 0.5 : 1, border: "none", cursor: "pointer" }}>
-                    {saving ? "Removing…" : "Yes, Remove"}
-                  </button>
-                  <button
-                    onClick={() => setConfirmDelete(false)}
-                    className="flex-1 py-2 rounded-xl text-xs font-bold"
-                    style={{ background: "#EAEAEA", color: "#3D3D3D", border: "none", cursor: "pointer" }}>
-                    Cancel
-                  </button>
+              ) : !confirmDelete ? (
+                <button onClick={() => setConfirmDelete(true)}
+                  className="w-full py-2 rounded-xl text-xs font-bold border"
+                  style={{ borderColor: "#CE2033", color: "#CE2033", background: "#fff", cursor: "pointer" }}>
+                  Deactivate {displayName.split(" ")[0]}
+                </button>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <p className="text-xs font-bold text-center" style={{ color: "#CE2033" }}>
+                    Remove {displayName}&apos;s access? This cannot be easily undone.
+                  </p>
+                  <div className="flex gap-2">
+                    <button onClick={() => setActiveState(false)} disabled={saving}
+                      className="flex-1 py-2 rounded-xl text-xs font-bold text-white"
+                      style={{ background: "#CE2033", opacity: saving ? 0.5 : 1, border: "none", cursor: "pointer" }}>
+                      {saving ? "Removing…" : "Yes, Remove"}
+                    </button>
+                    <button onClick={() => setConfirmDelete(false)}
+                      className="flex-1 py-2 rounded-xl text-xs font-bold"
+                      style={{ background: "#EAEAEA", color: "#3D3D3D", border: "none", cursor: "pointer" }}>
+                      Cancel
+                    </button>
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
 
           {error && (
             <p className="text-[10px] font-semibold text-center" style={{ color: "#CE2033" }}>

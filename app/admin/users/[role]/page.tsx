@@ -8,6 +8,9 @@ import Link from "next/link"
 import AddUserForm from "@/components/admin/AddUserForm"
 import UserRowActions from "@/components/admin/UserRowActions"
 
+// Always fetch live data — never serve a cached list
+export const dynamic = "force-dynamic"
+
 const VALID_ROLES = [
   "student","teacher","staff","coordinator","counselor","dean","admin","super_admin",
 ]
@@ -29,7 +32,7 @@ interface User {
   display_name: string | null
   phone:        string | null
   role:         string
-  is_active:    boolean
+  is_active:    boolean | null
 }
 
 export default async function UserRolePage({
@@ -44,14 +47,16 @@ export default async function UserRolePage({
   if (!session) redirect("/login")
   if (!["admin", "super_admin"].includes(session.user.role)) redirect("/dashboard")
 
+  // Fetch ALL users for this role (active + inactive) so none are invisible.
+  // is_active = false ones are shown with an "Inactive" badge and a reactivate option.
   const { data } = await db
     .from("users")
     .select("id, email, display_name, phone, role, is_active")
     .eq("role", role)
-    .eq("is_active", true)
     .order("display_name")
 
   const users     = (data ?? []) as User[]
+  const active    = users.filter(u => u.is_active !== false)
   const label     = ROLE_LABEL[role] ?? role
   const isStudent = role === "student"
 
@@ -64,7 +69,7 @@ export default async function UserRolePage({
             {label}
           </div>
           <div className="text-white text-[10px] opacity-70">
-            {users.length} active member{users.length !== 1 ? "s" : ""}
+            {active.length} active · {users.length} total
           </div>
         </div>
         <SignOutButton />
@@ -105,7 +110,8 @@ export default async function UserRolePage({
           <div>
             <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
                style={{ color: "#3D3D3D", opacity: 0.35 }}>
-              {label} &mdash; {users.length}
+              {label} &mdash; {active.length} active
+              {users.length !== active.length ? ` · ${users.length - active.length} inactive` : ""}
             </p>
             <div className="flex flex-col gap-1.5">
               {users.map(u => (
@@ -116,6 +122,7 @@ export default async function UserRolePage({
                   email={u.email}
                   phone={u.phone ?? null}
                   role={u.role}
+                  isActive={u.is_active !== false}
                   isSelf={u.id === session.user.userId}
                 />
               ))}

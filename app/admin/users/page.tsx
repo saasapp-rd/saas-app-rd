@@ -6,6 +6,9 @@ import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 
+// Always fetch live data — never serve a cached count
+export const dynamic = "force-dynamic"
+
 const ROLE_META: {
   role:  string
   label: string
@@ -28,14 +31,14 @@ export default async function UsersPage() {
   if (!session) redirect("/login")
   if (!["admin", "super_admin"].includes(session.user.role)) redirect("/dashboard")
 
-  // Fetch just the role column — lightweight even for 1000+ users
+  // Count active users per role (neq false also includes any remaining NULLs defensively)
   const { data } = await db
     .from("users")
-    .select("role")
-    .eq("is_active", true)
+    .select("role, is_active")
 
   const counts: Record<string, number> = {}
   for (const u of data ?? []) {
+    if (u.is_active === false) continue
     counts[u.role] = (counts[u.role] ?? 0) + 1
   }
   const total = Object.values(counts).reduce((a, b) => a + b, 0)
@@ -73,15 +76,11 @@ export default async function UsersPage() {
               <div className="rounded-xl px-4 py-4 border flex items-center justify-between"
                    style={{ background: bg, borderColor: "#EAEAEA" }}>
                 <div>
-                  <div className="text-sm font-bold" style={{ color }}>
-                    {label}
-                  </div>
+                  <div className="text-sm font-bold" style={{ color }}>{label}</div>
                   <div className="text-[10px] mt-0.5" style={{ color: "#999" }}>{desc}</div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="text-2xl font-black" style={{ color }}>
-                    {count}
-                  </div>
+                  <div className="text-2xl font-black" style={{ color }}>{count}</div>
                   <span style={{ color: "#BABABA" }}>&rarr;</span>
                 </div>
               </div>
