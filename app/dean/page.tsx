@@ -7,6 +7,9 @@ import TestModeBanner from "@/components/TestModeBanner"
 import LiveFeed from "@/components/LiveFeed"
 import Link from "next/link"
 
+// Coordinators now share dean pattern dashboard access (Tadhg feedback)
+const ALLOWED = ["coordinator", "dean", "admin", "super_admin"]
+
 interface Incident {
   id:               string
   level:            string
@@ -27,7 +30,7 @@ function minsAgo(d: string) {
 export default async function DeanPage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect("/login")
-  if (!["dean", "admin", "super_admin"].includes(session.user.role)) redirect("/dashboard")
+  if (!ALLOWED.includes(session.user.role)) redirect("/dashboard")
 
   const { data: raw } = await db
     .from("incidents")
@@ -40,12 +43,15 @@ export default async function DeanPage() {
   const openElev   = incidents.filter(i => i.status === "open")
   const closedElev = incidents.filter(i => i.status !== "open")
 
+  const isCoord = session.user.role === "coordinator"
+
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#fff" }}>
-      <header className="px-5 py-3.5 flex items-center justify-between" style={{ background: "#8B1020" }}>
+      <header className="px-5 py-3.5 flex items-center justify-between"
+              style={{ background: "#8B1020" }}>
         <div>
           <div className="text-white text-xs font-bold tracking-[0.2em] uppercase flex items-center gap-2">
-            Dean View &mdash; Elevated
+            {isCoord ? "Patterns" : "Dean View"} &mdash; Elevated
             {openElev.length > 0 && (
               <span className="px-1.5 py-0.5 rounded-full text-[10px]"
                     style={{ background: "rgba(255,255,255,0.25)" }}>
@@ -60,12 +66,22 @@ export default async function DeanPage() {
       </header>
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
       <nav className="px-5 py-2 border-b flex items-center gap-4" style={{ borderColor: "#EAEAEA" }}>
-        <Link href="/missing" className="text-xs font-bold" style={{ color: "#A6192E", textDecoration: "none" }}>
+        <Link href="/missing" className="text-xs font-bold"
+              style={{ color: "#A6192E", textDecoration: "none" }}>
           &larr; All Missing Students
         </Link>
-        <Link href="/coordinator" className="text-xs" style={{ color: "#999", textDecoration: "none" }}>
-          Coordinator
-        </Link>
+        {isCoord && (
+          <Link href="/coordinator" className="text-xs"
+                style={{ color: "#999", textDecoration: "none" }}>
+            My Queue
+          </Link>
+        )}
+        {!isCoord && (
+          <Link href="/coordinator" className="text-xs"
+                style={{ color: "#999", textDecoration: "none" }}>
+            Coordinator
+          </Link>
+        )}
       </nav>
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
@@ -87,9 +103,11 @@ export default async function DeanPage() {
               {openElev.map(inc => {
                 const s = inc.students
                 return (
-                  <Link key={inc.id} href={"/coordinator/" + inc.id} style={{ textDecoration: "none" }}>
+                  <Link key={inc.id} href={"/coordinator/" + inc.id}
+                        style={{ textDecoration: "none" }}>
                     <div className="rounded-xl p-3"
-                         style={{ background: "#FFF8F8", border: "1.5px solid #CE2033", borderLeft: "4px solid #CE2033" }}>
+                         style={{ background: "#FFF8F8", border: "1.5px solid #CE2033",
+                                  borderLeft: "4px solid #CE2033" }}>
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-sm font-bold" style={{ color: "#3D3D3D" }}>
                           {s ? s.last_name + ", " + s.first_name : "Unknown"}
@@ -122,16 +140,19 @@ export default async function DeanPage() {
               {closedElev.map(inc => {
                 const s = inc.students
                 return (
-                  <div key={inc.id} className="rounded-xl px-4 py-2.5 border flex items-center justify-between"
-                       style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
-                    <span className="text-sm font-semibold" style={{ color: "#3D3D3D" }}>
-                      {s ? s.last_name + ", " + s.first_name : "Unknown"}
-                    </span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                          style={{ background: "#F0FDF4", color: "#166534" }}>
-                      Resolved
-                    </span>
-                  </div>
+                  <Link key={inc.id} href={"/coordinator/" + inc.id}
+                        style={{ textDecoration: "none" }}>
+                    <div className="rounded-xl px-4 py-2.5 border flex items-center justify-between"
+                         style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
+                      <span className="text-sm font-semibold" style={{ color: "#3D3D3D" }}>
+                        {s ? s.last_name + ", " + s.first_name : "Unknown"}
+                      </span>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                            style={{ background: "#F0FDF4", color: "#166534" }}>
+                        Resolved
+                      </span>
+                    </div>
+                  </Link>
                 )
               })}
             </div>
