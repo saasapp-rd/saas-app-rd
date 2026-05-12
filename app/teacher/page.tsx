@@ -9,13 +9,7 @@ import Link from "next/link"
 import StudentRoster from "@/components/teacher/StudentRoster"
 
 interface Student { id: string; first_name: string; last_name: string; grade: number }
-
-interface Course {
-  id: string
-  name: string
-  block_number: number
-  room: string | null
-}
+interface Course  { id: string; name: string; block_number: number; room: string | null }
 
 export default async function TeacherPage() {
   const session = await getServerSession(authOptions)
@@ -31,11 +25,9 @@ export default async function TeacherPage() {
       .order("block_number"),
   ])
 
-  // Active block right now
   const activeBlockNum = period.type === "block" ? period.blockNumber : null
+  const courseIds      = (courses ?? []).map((c: Course) => c.id)
 
-  // Fetch enrolled students for all this teacher's courses in one query
-  const courseIds = (courses ?? []).map(c => c.id)
   let studentsByCourse: Record<string, Student[]> = {}
 
   if (courseIds.length > 0) {
@@ -50,17 +42,43 @@ export default async function TeacherPage() {
       if (!studentsByCourse[row.course_id]) studentsByCourse[row.course_id] = []
       studentsByCourse[row.course_id].push(s)
     }
-    // Sort each roster by last name
     for (const cid of Object.keys(studentsByCourse)) {
       studentsByCourse[cid].sort((a, b) => a.last_name.localeCompare(b.last_name))
     }
   }
 
+  // Fetch today's incident statuses so teacher sees correct state on page load
+  const allStudentIds = Object.values(studentsByCourse).flat().map(s => s.id)
+  const initialStatuses: Record<string, "reported" | "with_me" | "found"> = {}
+
+  if (allStudentIds.length > 0) {
+    const today = new Date().toISOString().split("T")[0]
+    const { data: todayInc } = await db
+      .from("incidents")
+      .select("student_id, status, located_excused")
+      .in("student_id", allStudentIds)
+      .gte("reported_at", today + "T00:00:00+00:00")
+      .lte("reported_at", today + "T23:59:59+00:00")
+
+    for (const inc of todayInc ?? []) {
+      if (inc.status === "open") {
+        initialStatuses[inc.student_id] = "reported"
+      } else if (inc.status === "resolved" && inc.located_excused) {
+        initialStatuses[inc.student_id] = "with_me"
+      } else if (inc.status === "resolved") {
+        // Only set "found" if not already marked by the teacher as with_me
+        if (!initialStatuses[inc.student_id]) {
+          initialStatuses[inc.student_id] = "found"
+        }
+      }
+    }
+  }
+
   const periodLabel =
-    period.type === "block"       ? `Block ${period.blockNumber} · ${period.periodStart}–${period.periodEnd}` :
-    period.type === "lunch"       ? "Lunch" :
-    period.type === "community"   ? "Community" :
-                                    "Outside school hours"
+    period.type === "block"     ? "Block " + period.blockNumber + " · " + period.periodStart + "–" + period.periodEnd :
+    period.type === "lunch"     ? "Lunch" :
+    period.type === "community" ? "Community" :
+                                  "Outside school hours"
 
   const isSchoolHours = period.type !== "outside_school"
 
@@ -82,7 +100,6 @@ export default async function TeacherPage() {
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
 
-        {/* Between-period notice */}
         {isSchoolHours && period.type !== "block" && (
           <div className="rounded-xl px-4 py-3 text-center"
                style={{ background: "#FFF8E0", border: "1px solid #F0C040" }}>
@@ -93,7 +110,6 @@ export default async function TeacherPage() {
           </div>
         )}
 
-        {/* No courses assigned */}
         {(courses ?? []).length === 0 && (
           <div className="rounded-xl px-4 py-6 text-center border" style={{ borderColor: "#EAEAEA" }}>
             <p className="text-sm font-bold mb-1" style={{ color: "#3D3D3D" }}>No courses assigned</p>
@@ -103,19 +119,16 @@ export default async function TeacherPage() {
           </div>
         )}
 
-        {/* Course rosters */}
         {(courses ?? []).map((course: Course) => {
           const students = studentsByCourse[course.id] ?? []
           const isActive = course.block_number === activeBlockNum
-
           return (
             <div key={course.id}>
-              {/* Course header */}
               <div className="flex items-center justify-between mb-2">
                 <div>
                   <p className="text-[9px] font-bold tracking-[0.25em] uppercase"
                      style={{ color: "#3D3D3D", opacity: 0.35 }}>
-                    Block {course.block_number}{course.room ? ` · ${course.room}` : ""}
+                    Block {course.block_number}{course.room ? " · " + course.room : ""}
                   </p>
                   <p className="text-sm font-bold" style={{ color: "#3D3D3D" }}>{course.name}</p>
                 </div>
@@ -126,7 +139,6 @@ export default async function TeacherPage() {
                   </span>
                 )}
               </div>
-
               {students.length === 0 ? (
                 <p className="text-xs py-3 text-center" style={{ color: "#999" }}>
                   No students enrolled — add enrollments in Admin.
@@ -136,6 +148,7 @@ export default async function TeacherPage() {
                   students={students}
                   blockNumber={course.block_number}
                   courseId={course.id}
+                  initialStatuses={initialStatuses}
                 />
               )}
             </div>
