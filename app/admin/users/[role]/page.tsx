@@ -6,6 +6,7 @@ import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 import AddUserForm from "@/components/admin/AddUserForm"
+import UserRowActions from "@/components/admin/UserRowActions"
 
 const VALID_ROLES = [
   "student","teacher","staff","coordinator","counselor","dean","admin","super_admin",
@@ -22,24 +23,12 @@ const ROLE_LABEL: Record<string, string> = {
   super_admin: "Super Admins",
 }
 
-const ROLE_STYLE: Record<string, { bg: string; color: string }> = {
-  super_admin: { bg: "#FFF0F0", color: "#A6192E" },
-  admin:       { bg: "#FFF0F0", color: "#A6192E" },
-  dean:        { bg: "#FFF8E0", color: "#8B6200" },
-  coordinator: { bg: "#EEF6FF", color: "#1E5FA6" },
-  counselor:   { bg: "#F0FDF4", color: "#166534" },
-  teacher:     { bg: "#EAEAEA", color: "#3D3D3D" },
-  staff:       { bg: "#EAEAEA", color: "#3D3D3D" },
-  student:     { bg: "#EAEAEA", color: "#3D3D3D" },
-}
-
 interface User {
   id:           string
   email:        string
   display_name: string | null
   role:         string
   is_active:    boolean
-  created_at:   string
 }
 
 export default async function UserRolePage({
@@ -56,16 +45,13 @@ export default async function UserRolePage({
 
   const { data } = await db
     .from("users")
-    .select("id, email, display_name, role, is_active, created_at")
+    .select("id, email, display_name, role, is_active")
     .eq("role", role)
     .eq("is_active", true)
     .order("display_name")
 
-  const users  = (data ?? []) as User[]
-  const label  = ROLE_LABEL[role] ?? role
-  const style  = ROLE_STYLE[role] ?? ROLE_STYLE["staff"]
-
-  // Students are managed via Veracross import, not manually added
+  const users     = (data ?? []) as User[]
+  const label     = ROLE_LABEL[role] ?? role
   const isStudent = role === "student"
 
   return (
@@ -96,7 +82,6 @@ export default async function UserRolePage({
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
 
-        {/* Add form — not shown for students (managed via import) */}
         {!isStudent && <AddUserForm defaultRole={role} />}
 
         {isStudent && (
@@ -111,11 +96,9 @@ export default async function UserRolePage({
           </div>
         )}
 
-        {/* User list */}
         {users.length === 0 ? (
           <p className="text-xs text-center py-6" style={{ color: "#999" }}>
-            No {label.toLowerCase()} yet.
-            {!isStudent && " Add one above."}
+            No {label.toLowerCase()} yet.{!isStudent && " Add one above."}
           </p>
         ) : (
           <div>
@@ -125,22 +108,14 @@ export default async function UserRolePage({
             </p>
             <div className="flex flex-col gap-1.5">
               {users.map(u => (
-                <div key={u.id}
-                     className="rounded-xl px-4 py-2.5 border flex items-center justify-between"
-                     style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm font-semibold truncate" style={{ color: "#3D3D3D" }}>
-                      {u.display_name ?? u.email}
-                    </div>
-                    <div className="text-[10px] truncate" style={{ color: "#999" }}>
-                      {u.email}
-                    </div>
-                  </div>
-                  <span className="ml-3 flex-shrink-0 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase"
-                        style={{ background: style.bg, color: style.color }}>
-                    {role.replace("_", " ")}
-                  </span>
-                </div>
+                <UserRowActions
+                  key={u.id}
+                  id={u.id}
+                  displayName={u.display_name ?? u.email}
+                  email={u.email}
+                  role={u.role}
+                  isSelf={u.id === session.user.userId}
+                />
               ))}
             </div>
           </div>
