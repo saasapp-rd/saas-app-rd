@@ -28,16 +28,18 @@ interface Props {
   id:          string
   displayName: string
   email:       string
+  phone:       string | null
   role:        string
   isSelf:      boolean
 }
 
-export default function UserRowActions({ id, displayName, email, role, isSelf }: Props) {
+export default function UserRowActions({ id, displayName, email, phone, role, isSelf }: Props) {
   const router = useRouter()
   const [open,           setOpen]           = useState(false)
   const [selectedRole,   setSelectedRole]   = useState(role)
   const [nameVal,        setNameVal]        = useState(displayName)
   const [emailVal,       setEmailVal]       = useState(email)
+  const [phoneVal,       setPhoneVal]       = useState(phone ?? "")
   const [confirmDelete,  setConfirmDelete]  = useState(false)
   const [saving,         setSaving]         = useState(false)
   const [savingDetails,  setSavingDetails]  = useState(false)
@@ -54,7 +56,12 @@ export default function UserRowActions({ id, displayName, email, role, isSelf }:
     const res = await fetch("/api/admin/users", {
       method:  "PATCH",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ id, display_name: trimName, email: trimEmail }),
+      body:    JSON.stringify({
+        id,
+        display_name: trimName,
+        email:        trimEmail,
+        phone:        phoneVal.trim() || null,
+      }),
     })
     if (res.ok) {
       router.refresh()
@@ -114,6 +121,9 @@ export default function UserRowActions({ id, displayName, email, role, isSelf }:
             {displayName}
           </div>
           <div className="text-[10px] truncate" style={{ color: "#999" }}>{email}</div>
+          {phone && (
+            <div className="text-[10px] truncate" style={{ color: "#BABABA" }}>{phone}</div>
+          )}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0 ml-3">
           <span className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase"
@@ -138,11 +148,11 @@ export default function UserRowActions({ id, displayName, email, role, isSelf }:
         <div className="px-4 py-3 border-t flex flex-col gap-4"
              style={{ background: "#fff", borderColor: "#EAEAEA" }}>
 
-          {/* ── Name + email ── */}
+          {/* ── Name, email, phone ── */}
           <div>
             <label className="text-[9px] font-bold uppercase tracking-wide block mb-2"
                    style={{ color: "#3D3D3D", opacity: 0.5 }}>
-              Name &amp; Email
+              Contact Details
             </label>
             <div className="flex flex-col gap-2">
               <input
@@ -160,16 +170,24 @@ export default function UserRowActions({ id, displayName, email, role, isSelf }:
                 className="w-full px-3 py-2 rounded-xl text-sm border outline-none"
                 style={{ borderColor: "#EAEAEA", color: "#3D3D3D", background: "#FAFAFA" }}
               />
+              <input
+                value={phoneVal}
+                onChange={e => setPhoneVal(e.target.value)}
+                placeholder="Phone number (optional)"
+                type="tel"
+                className="w-full px-3 py-2 rounded-xl text-sm border outline-none"
+                style={{ borderColor: "#EAEAEA", color: "#3D3D3D", background: "#FAFAFA" }}
+              />
               <button
                 onClick={saveDetails}
-                disabled={savingDetails || (!nameVal.trim() || !emailVal.trim())}
+                disabled={savingDetails || !nameVal.trim() || !emailVal.trim()}
                 className="w-full py-2 rounded-xl text-xs font-bold text-white"
                 style={{
                   background: "#3D3D3D",
                   opacity: savingDetails || !nameVal.trim() || !emailVal.trim() ? 0.4 : 1,
                   border: "none", cursor: "pointer",
                 }}>
-                {savingDetails ? "Saving…" : "Save Name & Email"}
+                {savingDetails ? "Saving…" : "Save Details"}
               </button>
             </div>
           </div>

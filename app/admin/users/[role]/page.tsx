@@ -27,6 +27,7 @@ interface User {
   id:           string
   email:        string
   display_name: string | null
+  phone:        string | null
   role:         string
   is_active:    boolean
 }
@@ -45,7 +46,7 @@ export default async function UserRolePage({
 
   const { data } = await db
     .from("users")
-    .select("id, email, display_name, role, is_active")
+    .select("id, email, display_name, phone, role, is_active")
     .eq("role", role)
     .eq("is_active", true)
     .order("display_name")
@@ -113,6 +114,7 @@ export default async function UserRolePage({
                   id={u.id}
                   displayName={u.display_name ?? u.email}
                   email={u.email}
+                  phone={u.phone ?? null}
                   role={u.role}
                   isSelf={u.id === session.user.userId}
                 />

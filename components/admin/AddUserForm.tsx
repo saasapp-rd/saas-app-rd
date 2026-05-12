@@ -15,6 +15,7 @@ export default function AddUserForm({ defaultRole = "teacher" }: { defaultRole?:
   const router = useRouter()
   const [email,       setEmail]       = useState("")
   const [displayName, setDisplayName] = useState("")
+  const [phone,       setPhone]       = useState("")
   const [role,        setRole]        = useState(defaultRole)
   const [loading,     setLoading]     = useState(false)
   const [error,       setError]       = useState("")
@@ -29,7 +30,12 @@ export default function AddUserForm({ defaultRole = "teacher" }: { defaultRole?:
     const r = await fetch("/api/admin/users", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ email, display_name: displayName, role }),
+      body:    JSON.stringify({
+        email,
+        display_name: displayName,
+        role,
+        phone: phone.trim() || null,
+      }),
     })
     const data = await r.json()
 
@@ -39,6 +45,7 @@ export default function AddUserForm({ defaultRole = "teacher" }: { defaultRole?:
       setSuccess(displayName + " added as " + role + ".")
       setEmail("")
       setDisplayName("")
+      setPhone("")
       setRole(defaultRole)
       router.refresh()
     }
@@ -69,6 +76,15 @@ export default function AddUserForm({ defaultRole = "teacher" }: { defaultRole?:
         value={displayName}
         onChange={e => setDisplayName(e.target.value)}
         required
+        className="w-full px-4 py-2.5 rounded-xl text-sm border outline-none"
+        style={{ borderColor: "#EAEAEA", background: "#fff", color: "#3D3D3D" }}
+      />
+
+      <input
+        type="tel"
+        placeholder="Phone number (optional)"
+        value={phone}
+        onChange={e => setPhone(e.target.value)}
         className="w-full px-4 py-2.5 rounded-xl text-sm border outline-none"
         style={{ borderColor: "#EAEAEA", background: "#fff", color: "#3D3D3D" }}
       />

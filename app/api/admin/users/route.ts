@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await db
     .from("users")
-    .select("id, email, name, display_name, role, is_active, created_at")
+    .select("id, email, name, display_name, phone, role, is_active, created_at")
     .order("role")
     .order("name")
 
@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   if (!session || !["admin","super_admin"].includes(session.user.role))
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { email, display_name, role } = await req.json()
+  const { email, display_name, role, phone } = await req.json()
   if (!email || !display_name || !role)
     return NextResponse.json({ error: "email, display_name, and role required" }, { status: 400 })
   if (!ALLOWED_ROLES.includes(role))
@@ -38,6 +38,7 @@ export async function POST(req: NextRequest) {
       name:         display_name.trim(),
       display_name: display_name.trim(),
       role,
+      phone:        phone?.trim() || null,
       is_active:    true,
     }, { onConflict: "email" })
     .select()
@@ -52,7 +53,7 @@ export async function PATCH(req: NextRequest) {
   if (!session || !["admin","super_admin"].includes(session.user.role))
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { id, is_active, role, display_name, email } = await req.json()
+  const { id, is_active, role, display_name, email, phone } = await req.json()
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 })
 
   // Prevent self-deactivation
@@ -60,15 +61,14 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "You cannot deactivate your own account." }, { status: 400 })
 
   const updates: Record<string, unknown> = {}
-  if (typeof is_active === "boolean")          updates.is_active    = is_active
-  if (role && ALLOWED_ROLES.includes(role))    updates.role         = role
+  if (typeof is_active === "boolean")       updates.is_active    = is_active
+  if (role && ALLOWED_ROLES.includes(role)) updates.role         = role
   if (display_name?.trim()) {
     updates.display_name = display_name.trim()
     updates.name         = display_name.trim()
   }
-  if (email?.trim()) {
-    updates.email = email.trim().toLowerCase()
-  }
+  if (email?.trim())          updates.email = email.trim().toLowerCase()
+  if (phone !== undefined)    updates.phone = phone ? phone.trim() || null : null
 
   if (Object.keys(updates).length === 0)
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 })
