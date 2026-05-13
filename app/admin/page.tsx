@@ -46,10 +46,9 @@ export default async function AdminPage() {
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-3">
-        <p className="text-[9px] font-bold tracking-[0.25em] uppercase"
-           style={{ color: "#3D3D3D", opacity: 0.35 }}>
-          Administration
-        </p>
+        <h1 className="text-2xl font-bold" style={{ color: "#3D3D3D" }}>
+          App Administration
+        </h1>
 
         {LINKS.map(({ href, label, desc, icon }) => (
           <Link key={href} href={href} style={{ textDecoration: "none" }}>

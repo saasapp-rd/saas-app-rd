@@ -64,8 +64,10 @@ export default async function UsersPage() {
       </nav>
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-3">
-        <p className="text-[9px] font-bold tracking-[0.25em] uppercase"
-           style={{ color: "#3D3D3D", opacity: 0.35 }}>
+        <h1 className="text-2xl font-bold" style={{ color: "#3D3D3D" }}>
+          Manage Users
+        </h1>
+        <p className="text-sm" style={{ color: "#999" }}>
           Select a group to view or add members
         </p>
 
