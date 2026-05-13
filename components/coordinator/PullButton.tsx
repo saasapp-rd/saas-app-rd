@@ -12,7 +12,7 @@ export default function PullButton({ inline = false }: { inline?: boolean }) {
           onClick={() => setOpen(true)}
           className="px-5 py-2 rounded-xl text-xs font-bold text-white"
           style={{ background: "#A6192E" }}>
-          + Open Incident
+          + Pull Student
         </button>
       ) : (
         <button

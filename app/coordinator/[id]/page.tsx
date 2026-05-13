@@ -76,7 +76,7 @@ export default async function IncidentPage({
               style={{ background: isElev ? "#8B1020" : "#A6192E" }}>
         <div>
           <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">
-            {isElev ? "Elevated" : "Routine"} Incident
+            {isElev ? "Elevated" : "Routine"} Missing Student
           </div>
           <div className="text-white text-[10px] opacity-70">
             {student ? student.last_name + ", " + student.first_name : "Unknown student"}
@@ -86,13 +86,13 @@ export default async function IncidentPage({
       </header>
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
       <nav className="px-5 py-2 border-b flex items-center gap-4" style={{ borderColor: "#EAEAEA" }}>
-        <Link href={backHref} className="text-xs font-bold"
+        <Link href="/dashboard" className="text-xs font-bold"
               style={{ color: "#A6192E", textDecoration: "none" }}>
-          &larr; {backLabel}
+          &larr; Dashboard
         </Link>
         <Link href="/missing" className="text-xs"
               style={{ color: "#999", textDecoration: "none" }}>
-          All Missing
+          Live View
         </Link>
       </nav>
 
@@ -160,7 +160,7 @@ export default async function IncidentPage({
         {isResolved && (
           <div className="rounded-xl px-4 py-3 text-center"
                style={{ background: "#F0FDF4", border: "1px solid #22C55E" }}>
-            <p className="text-sm font-bold mb-0.5" style={{ color: "#166534" }}>Incident Resolved</p>
+            <p className="text-sm font-bold mb-0.5" style={{ color: "#166534" }}>Student Located &amp; Resolved</p>
             {inc.located_location && (
               <p className="text-xs" style={{ color: "#16A34A" }}>
                 {inc.located_location}

@@ -59,9 +59,9 @@ export default async function UsersPage() {
       </header>
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
       <nav className="px-5 py-2 border-b flex items-center" style={{ borderColor: "#EAEAEA" }}>
-        <Link href="/admin" className="text-xs font-bold"
+        <Link href="/dashboard" className="text-xs font-bold"
               style={{ color: "#A6192E", textDecoration: "none" }}>
-          &larr; Admin
+          &larr; Dashboard
         </Link>
       </nav>
 

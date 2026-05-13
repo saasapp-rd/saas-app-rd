@@ -5,6 +5,7 @@ import { db } from "@/lib/supabase"
 import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
 import LiveFeed from "@/components/LiveFeed"
+import WelfareConcernLink from "@/components/WelfareConcernLink"
 import Link from "next/link"
 
 const FLAG_STYLE: Record<string, { bg: string; color: string; label: string }> = {
@@ -85,22 +86,27 @@ export default async function CounselorPage() {
         <div>
           <div className="text-white text-xs font-bold tracking-[0.2em] uppercase flex items-center gap-2">
             Counselor
-            {activeCount > 0 && (
-              <span className="px-1.5 py-0.5 rounded-full text-[10px]"
-                    style={{ background: "rgba(255,255,255,0.25)" }}>
-                {activeCount} active
-              </span>
-            )}
             <LiveFeed />
           </div>
-          <div className="text-white text-[10px] opacity-70">{session.user.displayName}</div>
+          <div className="text-white text-[10px] opacity-70">
+            {flags.length} flagged · {activeCount} active now
+          </div>
         </div>
         <SignOutButton />
       </header>
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
       <nav className="px-5 py-2 border-b flex items-center gap-4" style={{ borderColor: "#EAEAEA" }}>
-        <Link href="/missing" className="text-xs font-bold" style={{ color: "#A6192E", textDecoration: "none" }}>
-          &larr; All Missing Students
+        <Link href="/dashboard" className="text-xs font-bold"
+              style={{ color: "#A6192E", textDecoration: "none" }}>
+          Dashboard
+        </Link>
+        <Link href="/missing" className="text-xs"
+              style={{ color: "#999", textDecoration: "none" }}>
+          Live View
+        </Link>
+        <Link href="/analytics" className="text-xs"
+              style={{ color: "#999", textDecoration: "none" }}>
+          Analytics
         </Link>
       </nav>
 
@@ -150,7 +156,7 @@ export default async function CounselorPage() {
                       </div>
                       <div className="text-[10px]" style={{ color: "#999" }}>
                         Grade {s.grade}
-                        {count > 0 ? " · " + count + " incident" + (count !== 1 ? "s" : "") + " (30d)" : ""}
+                        {count > 0 ? " · " + count + " missing (30d)" : ""}
                         {open ? " · Block " + open.block_id : ""}
                       </div>
                       {f.public_note && (
@@ -192,7 +198,7 @@ export default async function CounselorPage() {
           <div>
             <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
                style={{ color: "#3D3D3D", opacity: 0.35 }}>
-              All Open Incidents &mdash; {(allOpen ?? []).length}
+              All Missing Now &mdash; {(allOpen ?? []).length}
             </p>
             <div className="flex flex-col gap-1.5">
               {(allOpen ?? []).map((inc: any) => {
@@ -221,6 +227,8 @@ export default async function CounselorPage() {
             </div>
           </div>
         )}
+
+        <WelfareConcernLink />
       </main>
     </div>
   )

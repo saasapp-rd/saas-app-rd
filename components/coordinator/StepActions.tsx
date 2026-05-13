@@ -194,7 +194,7 @@ export default function StepActions({ incident }: { incident: IncidentSteps }) {
       {isResolved && (
         <div className="rounded-xl px-4 py-3 text-center"
              style={{ background: "#F0FDF4", border: "1px solid #22C55E" }}>
-          <p className="text-sm font-bold" style={{ color: "#166534" }}>Incident Resolved</p>
+          <p className="text-sm font-bold" style={{ color: "#166534" }}>Student Located &amp; Resolved</p>
         </div>
       )}
     </div>

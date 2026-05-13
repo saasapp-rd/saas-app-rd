@@ -6,6 +6,7 @@ import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
 import LiveFeed from "@/components/LiveFeed"
 import WithMeButton from "@/components/WithMeButton"
+import WelfareConcernLink from "@/components/WelfareConcernLink"
 import Link from "next/link"
 
 interface Incident {
@@ -38,54 +39,36 @@ export default async function StaffPage() {
         <div>
           <div className="text-white text-xs font-bold tracking-[0.2em] uppercase flex items-center gap-2">
             Staff View
-            {incidents.length > 0 && (
-              <span className="px-1.5 py-0.5 rounded-full text-[10px]"
-                    style={{ background: "rgba(255,255,255,0.25)" }}>
-                {incidents.length}
-              </span>
-            )}
             <LiveFeed />
           </div>
-          <div className="text-white text-[10px] opacity-70">{session.user.displayName}</div>
+          <div className="text-white text-[10px] opacity-70">
+            {incidents.length === 0 ? "All students accounted for" : `${incidents.length} missing right now`}
+          </div>
         </div>
         <SignOutButton />
       </header>
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
       <nav className="px-5 py-2 border-b flex items-center" style={{ borderColor: "#EAEAEA" }}>
-        <Link href="/missing" className="text-xs font-bold" style={{ color: "#A6192E", textDecoration: "none" }}>
-          &larr; All Missing Students
+        <Link href="/dashboard" className="text-xs font-bold"
+              style={{ color: "#A6192E", textDecoration: "none" }}>
+          Dashboard
         </Link>
       </nav>
 
       <main className="flex-1 flex flex-col px-5 py-5 gap-4 max-w-lg mx-auto w-full">
 
-        {/* Welfare concern CTA */}
-        <Link href="/staff/concern" style={{ textDecoration: "none" }}>
-          <div className="rounded-xl p-4 flex items-center gap-3"
-               style={{ background: "#FFF0F0", border: "1.5px solid #CE2033" }}>
-            <span className="text-xl">&#x26A0;&#xFE0F;</span>
-            <div>
-              <div className="text-sm font-bold" style={{ color: "#A6192E" }}>Report a Welfare Concern</div>
-              <div className="text-[10px]" style={{ color: "#999" }}>
-                Student seems unwell, upset, or unsafe
-              </div>
-            </div>
-            <span className="ml-auto text-xs font-bold" style={{ color: "#CE2033" }}>&rarr;</span>
-          </div>
-        </Link>
-
-        {/* Open incidents — staff can mark "with me" */}
+        {/* Missing students — staff can mark "with me" */}
         {incidents.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center py-12 gap-3">
             <div className="text-4xl">&#x2705;</div>
             <p className="text-sm font-bold" style={{ color: "#3D3D3D" }}>All students accounted for</p>
-            <p className="text-xs" style={{ color: "#999" }}>No open incidents right now.</p>
+            <p className="text-xs" style={{ color: "#999" }}>No missing students right now.</p>
           </div>
         ) : (
           <div>
             <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
                style={{ color: "#3D3D3D", opacity: 0.35 }}>
-              Open Incidents &mdash; Is a student with you?
+              Missing Students &mdash; Is one with you?
             </p>
             <div className="flex flex-col gap-2">
               {incidents.map(inc => {
@@ -126,6 +109,8 @@ export default async function StaffPage() {
             </div>
           </div>
         )}
+
+        <WelfareConcernLink />
       </main>
     </div>
   )

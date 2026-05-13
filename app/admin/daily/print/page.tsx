@@ -43,7 +43,7 @@ export default async function DailyPrintPage() {
   return (
     <html>
       <head>
-        <title>Daily Incident Report — {todayStr}</title>
+        <title>Daily Missing Students Report — {todayStr}</title>
         <style>{`
           * { margin: 0; padding: 0; box-sizing: border-box; }
           body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 11px; color: #111; padding: 24px 32px; }
@@ -64,7 +64,7 @@ export default async function DailyPrintPage() {
         `}</style>
       </head>
       <body>
-        <h1>Daily Incident Report</h1>
+        <h1>Daily Missing Students Report</h1>
         <div className="sub">Seattle Academy &mdash; {todayStr}</div>
 
         <div className="stats">

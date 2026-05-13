@@ -80,13 +80,13 @@ export default async function AdminDailyPage() {
       </header>
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
       <nav className="px-5 py-2 border-b flex items-center gap-4" style={{ borderColor: "#EAEAEA" }}>
-        <Link href="/admin" className="text-xs font-bold"
+        <Link href="/dashboard" className="text-xs font-bold"
               style={{ color: "#A6192E", textDecoration: "none" }}>
-          &larr; Admin
+          &larr; Dashboard
         </Link>
         <Link href="/missing" className="text-xs"
               style={{ color: "#999", textDecoration: "none" }}>
-          Live Feed
+          Live View
         </Link>
         <Link href="/admin/daily/print" target="_blank"
               className="ml-auto text-xs font-bold"
@@ -116,12 +116,12 @@ export default async function AdminDailyPage() {
         <div>
           <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
              style={{ color: "#3D3D3D", opacity: 0.35 }}>
-            All Incidents Today
+            All Missing Students Today
           </p>
 
           {rows.length === 0 && (
             <div className="rounded-xl px-4 py-8 text-center border" style={{ borderColor: "#EAEAEA" }}>
-              <p className="text-sm font-bold mb-1" style={{ color: "#3D3D3D" }}>No incidents today</p>
+              <p className="text-sm font-bold mb-1" style={{ color: "#3D3D3D" }}>No missing students today</p>
               <p className="text-xs" style={{ color: "#999" }}>All students accounted for.</p>
             </div>
           )}

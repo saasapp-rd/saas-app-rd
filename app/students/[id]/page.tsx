@@ -113,7 +113,7 @@ export default async function StudentProfilePage({
           &larr; Back
         </button>
         <Link href="/missing" className="text-xs" style={{ color: "#999", textDecoration: "none" }}>
-          All Missing
+          Live View
         </Link>
       </nav>
 
@@ -206,11 +206,11 @@ export default async function StudentProfilePage({
         <div>
           <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
              style={{ color: "#3D3D3D", opacity: 0.35 }}>
-            Incident History &mdash; {incidents.length}
+            History &mdash; {incidents.length}
           </p>
 
           {incidents.length === 0 && (
-            <p className="text-xs text-center py-6" style={{ color: "#999" }}>No incidents on record.</p>
+            <p className="text-xs text-center py-6" style={{ color: "#999" }}>No history on record.</p>
           )}
 
           <div className="flex flex-col gap-1.5">
