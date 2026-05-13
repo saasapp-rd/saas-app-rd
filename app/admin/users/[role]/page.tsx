@@ -34,6 +34,16 @@ interface User {
   is_active:    boolean | null
 }
 
+interface Student {
+  id:            string
+  first_name:    string
+  last_name:     string
+  grade:         number
+  veracross_id:  string | null
+  phone:         string | null
+  is_active:     boolean | null
+}
+
 export default async function UserRolePage({
   params,
 }: {
@@ -46,6 +56,98 @@ export default async function UserRolePage({
   if (!session) redirect("/login")
   if (!["admin", "super_admin"].includes(session.user.role)) redirect("/dashboard")
 
+  const isStudent = role === "student"
+  const label     = ROLE_LABEL[role] ?? role
+
+  // Students come from the students roster table, not the users/login table
+  if (isStudent) {
+    const { data, error } = await db
+      .from("students")
+      .select("id, first_name, last_name, grade, veracross_id, phone, is_active")
+      .order("last_name")
+      .order("first_name")
+
+    if (error) console.error("[users/student] query error:", error.message)
+
+    const students = (data ?? []) as Student[]
+    const active   = students.filter(s => s.is_active !== false)
+
+    return (
+      <div className="min-h-screen flex flex-col" style={{ background: "#fff" }}>
+        <header className="px-5 py-3.5 flex items-center justify-between"
+                style={{ background: "#A6192E" }}>
+          <div>
+            <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">
+              {label}
+            </div>
+            <div className="text-white text-[10px] opacity-70">
+              {active.length} active · {students.length} total
+            </div>
+          </div>
+          <SignOutButton />
+        </header>
+        <TestModeBanner name={session.user.displayName} role={session.user.role} />
+        <nav className="px-5 py-2 border-b flex items-center gap-4" style={{ borderColor: "#EAEAEA" }}>
+          <Link href="/dashboard" className="text-xs font-bold"
+                style={{ color: "#A6192E", textDecoration: "none" }}>
+            &larr; Dashboard
+          </Link>
+          <Link href="/admin/users" className="text-xs"
+                style={{ color: "#999", textDecoration: "none" }}>
+            All Roles
+          </Link>
+        </nav>
+        <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
+          {students.length === 0 ? (
+            <p className="text-xs text-center py-6" style={{ color: "#999" }}>
+              No students imported yet. Use the CSV import to add the roster.
+            </p>
+          ) : (
+            <div>
+              <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
+                 style={{ color: "#3D3D3D", opacity: 0.35 }}>
+                Students &mdash; {active.length} active
+                {students.length !== active.length
+                  ? ` · ${students.length - active.length} inactive` : ""}
+              </p>
+              <div className="flex flex-col gap-1.5">
+                {students.map(s => (
+                  <div key={s.id}
+                       className="rounded-xl px-3 py-2.5 border flex items-center justify-between"
+                       style={{
+                         borderColor: s.is_active !== false ? "#EAEAEA" : "#F4F4F4",
+                         background:  s.is_active !== false ? "#FAFAFA" : "#F9F9F9",
+                         opacity:     s.is_active !== false ? 1 : 0.5,
+                       }}>
+                    <div>
+                      <p className="text-sm font-semibold" style={{ color: "#3D3D3D" }}>
+                        {s.last_name}, {s.first_name}
+                      </p>
+                      <p className="text-[10px] mt-0.5" style={{ color: "#999" }}>
+                        Gr {s.grade}
+                        {s.veracross_id
+                          ? <span> · <span style={{ fontFamily: "monospace" }}>ID {s.veracross_id}</span></span>
+                          : null}
+                        {s.phone ? ` · ${s.phone}` : ""}
+                      </p>
+                    </div>
+                    {s.is_active === false && (
+                      <span className="text-[9px] font-bold px-2 py-0.5 rounded"
+                            style={{ background: "#F4F4F4", color: "#999" }}>
+                        Inactive
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </main>
+      </div>
+    )
+  }
+
+  // All other roles: query the users/login table
   // select("*") returns whatever columns exist — never fails on missing columns
   // from unapplied migrations (e.g. phone, employee_id added later)
   const { data, error } = await db
@@ -56,10 +158,8 @@ export default async function UserRolePage({
 
   if (error) console.error("[users/role] query error:", error.message)
 
-  const users     = (data ?? []) as User[]
-  const active    = users.filter(u => u.is_active !== false)
-  const label     = ROLE_LABEL[role] ?? role
-  const isStudent = role === "student"
+  const users  = (data ?? []) as User[]
+  const active = users.filter(u => u.is_active !== false)
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#fff" }}>
@@ -89,23 +189,11 @@ export default async function UserRolePage({
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
 
-        {!isStudent && <AddUserForm defaultRole={role} />}
-
-        {isStudent && (
-          <div className="rounded-xl px-4 py-3 border text-center"
-               style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
-            <p className="text-xs font-bold mb-0.5" style={{ color: "#3D3D3D" }}>
-              Student roster is managed via Veracross
-            </p>
-            <p className="text-[10px]" style={{ color: "#999" }}>
-              Students are imported automatically. Contact IT to update the roster.
-            </p>
-          </div>
-        )}
+        <AddUserForm defaultRole={role} />
 
         {users.length === 0 ? (
           <p className="text-xs text-center py-6" style={{ color: "#999" }}>
-            No {label.toLowerCase()} yet.{!isStudent && " Add one above."}
+            No {label.toLowerCase()} yet. Add one above.
           </p>
         ) : (
           <div>

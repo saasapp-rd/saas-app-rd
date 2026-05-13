@@ -30,7 +30,7 @@ export default async function IncidentPage({
 
   const [incResult, notesResult] = await Promise.all([
     db.from("incidents")
-      .select("id, level, status, reported_at, block_id, room, suppress_email_home, step_1_sent_at, step_2_sent_at, step_3_expires_at, step_4_logged_at, step_5_logged_at, step_6_sent_at, located_location, located_excused, resolved_at, student_id, students(id, first_name, last_name, grade), reporter:reported_by(display_name), course:course_id(name, room)")
+      .select("id, level, status, reported_at, block_id, room, suppress_email_home, step_1_sent_at, step_2_sent_at, step_3_expires_at, step_4_logged_at, step_5_logged_at, step_6_sent_at, located_location, located_excused, resolved_at, student_id, students(id, first_name, last_name, grade, veracross_id), reporter:reported_by(display_name), course:course_id(name, room)")
       .eq("id", id)
       .single(),
     db.from("incident_notes")
@@ -43,7 +43,7 @@ export default async function IncidentPage({
   const inc = incResult.data as any
 
   // Normalise all joined fields (Supabase returns joins as arrays)
-  const student  = norm<{ id: string; first_name: string; last_name: string; grade: number }>(inc.students)
+  const student  = norm<{ id: string; first_name: string; last_name: string; grade: number; veracross_id: string | null }>(inc.students)
   const reporter = norm<{ display_name: string }>(inc.reporter)
   const course   = norm<{ name: string; room: string | null }>(inc.course)
 
@@ -114,6 +114,11 @@ export default async function IncidentPage({
                 </Link>
               ) : (
                 <p className="font-bold" style={{ color: "#3D3D3D" }}>Unknown</p>
+              )}
+              {student?.veracross_id && (
+                <p className="text-[10px] mt-0.5" style={{ color: "#999", fontFamily: "monospace" }}>
+                  ID {student.veracross_id}
+                </p>
               )}
             </div>
             <div>
