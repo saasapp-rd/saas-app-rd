@@ -5,10 +5,7 @@ import { db } from "@/lib/supabase"
 import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
-import AddUserForm from "@/components/admin/AddUserForm"
-import CsvImportSection from "@/components/admin/CsvImportSection"
 
-// Always fetch live data — never serve a cached count
 export const dynamic = "force-dynamic"
 
 const ROLE_META: {
@@ -33,17 +30,23 @@ export default async function UsersPage() {
   if (!session) redirect("/login")
   if (!["admin", "super_admin"].includes(session.user.role)) redirect("/dashboard")
 
-  // Count active users per role (neq false also includes any remaining NULLs defensively)
   const { data } = await db
     .from("users")
     .select("role, is_active")
 
-  const counts: Record<string, number> = {}
+  // Count ALL users per role (total), same as what the detail page displays.
+  // Separately track inactive count so we can show a badge.
+  const total:    Record<string, number> = {}
+  const inactive: Record<string, number> = {}
+
   for (const u of data ?? []) {
-    if (u.is_active === false) continue
-    counts[u.role] = (counts[u.role] ?? 0) + 1
+    total[u.role]    = (total[u.role]    ?? 0) + 1
+    if (u.is_active === false) {
+      inactive[u.role] = (inactive[u.role] ?? 0) + 1
+    }
   }
-  const total = Object.values(counts).reduce((a, b) => a + b, 0)
+
+  const grandTotal = Object.values(total).reduce((a, b) => a + b, 0)
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#fff" }}>
@@ -53,32 +56,44 @@ export default async function UsersPage() {
           <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">
             Manage Users
           </div>
-          <div className="text-white text-[10px] opacity-70">
-            Select a group to view or add members &middot; {total} active
-          </div>
+          <div className="text-white text-[10px] opacity-70">{grandTotal} members</div>
         </div>
         <SignOutButton />
       </header>
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
       <nav className="px-5 py-2 border-b flex items-center" style={{ borderColor: "#EAEAEA" }}>
-        <Link href="/dashboard" className="text-xs font-bold"
+        <Link href="/admin" className="text-xs font-bold"
               style={{ color: "#A6192E", textDecoration: "none" }}>
-          &larr; Dashboard
+          &larr; Admin
         </Link>
       </nav>
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-3">
+        <p className="text-[9px] font-bold tracking-[0.25em] uppercase"
+           style={{ color: "#3D3D3D", opacity: 0.35 }}>
+          Select a group to view or add members
+        </p>
+
         {ROLE_META.map(({ role, label, desc, bg, color }) => {
-          const count = counts[role] ?? 0
+          const count       = total[role]    ?? 0
+          const inactiveNum = inactive[role] ?? 0
           return (
             <Link key={role} href={"/admin/users/" + role} style={{ textDecoration: "none" }}>
               <div className="rounded-xl px-4 py-4 border flex items-center justify-between"
                    style={{ background: bg, borderColor: "#EAEAEA" }}>
-                <div>
+                <div className="flex-1 min-w-0">
                   <div className="text-sm font-bold" style={{ color }}>{label}</div>
-                  <div className="text-[10px] mt-0.5" style={{ color: "#999" }}>{desc}</div>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <div className="text-[10px]" style={{ color: "#999" }}>{desc}</div>
+                    {inactiveNum > 0 && (
+                      <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full"
+                            style={{ background: "#FEE2E2", color: "#CE2033" }}>
+                        {inactiveNum} inactive
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-shrink-0 ml-3">
                   <div className="text-2xl font-black" style={{ color }}>{count}</div>
                   <span style={{ color: "#BABABA" }}>&rarr;</span>
                 </div>
@@ -86,9 +101,6 @@ export default async function UsersPage() {
             </Link>
           )
         })}
-        <AddUserForm callerRole={session.user.role} />
-
-        <CsvImportSection />
       </main>
     </div>
   )
