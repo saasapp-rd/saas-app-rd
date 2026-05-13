@@ -3,20 +3,20 @@ import { usePathname } from "next/navigation"
 import { useSession }  from "next-auth/react"
 import Link            from "next/link"
 
-interface NavItem { href: string; label: string; icon: string }
+interface NavItem { href: string; label: string; icon: string; activeOn?: "exact" | "sub" }
 
 const NAV: Record<string, NavItem[]> = {
   super_admin: [
-    { href: "/admin",        label: "Dashboard", icon: "🏠" },
+    { href: "/admin",        label: "Dashboard", icon: "🏠", activeOn: "exact" },
     { href: "/missing",      label: "Live",      icon: "👁"  },
     { href: "/analytics",    label: "Analytics", icon: "📊" },
-    { href: "/admin/users",  label: "Users",     icon: "👥"  },
+    { href: "/admin",        label: "Admin",     icon: "⚙️",  activeOn: "sub"  },
   ],
   admin: [
-    { href: "/admin",        label: "Dashboard", icon: "🏠" },
+    { href: "/admin",        label: "Dashboard", icon: "🏠", activeOn: "exact" },
     { href: "/missing",      label: "Live",      icon: "👁"  },
     { href: "/analytics",    label: "Analytics", icon: "📊" },
-    { href: "/admin/users",  label: "Users",     icon: "👥"  },
+    { href: "/admin",        label: "Admin",     icon: "⚙️",  activeOn: "sub"  },
   ],
   dean: [
     { href: "/missing",     label: "Live",        icon: "👁"  },
@@ -47,12 +47,10 @@ const NAV: Record<string, NavItem[]> = {
   ],
 }
 
-function isActive(href: string, pathname: string): boolean {
-  // /admin (Dashboard) — active on /admin exactly, or any /admin/* that isn't /admin/users
-  if (href === "/admin") return pathname === "/admin" ||
-    (pathname.startsWith("/admin/") && !pathname.startsWith("/admin/users"))
-  // All other exact-prefix matches
-  return pathname === href || pathname.startsWith(href + "/")
+function isActive(item: NavItem, pathname: string): boolean {
+  if (item.activeOn === "exact") return pathname === item.href
+  if (item.activeOn === "sub")   return pathname.startsWith(item.href + "/")
+  return pathname === item.href || pathname.startsWith(item.href + "/")
 }
 
 const HIDE_ON = ["/login"]
@@ -72,7 +70,7 @@ export default function BottomNav() {
                   paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
       <div className="flex max-w-lg mx-auto">
         {items.map(item => {
-          const on = isActive(item.href, pathname)
+          const on = isActive(item, pathname)
           return (
             <Link key={item.href} href={item.href}
                   className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2.5"
