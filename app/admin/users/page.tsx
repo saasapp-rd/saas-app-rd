@@ -5,6 +5,8 @@ import { db } from "@/lib/supabase"
 import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
+import AddUserForm from "@/components/admin/AddUserForm"
+import CsvImportSection from "@/components/admin/CsvImportSection"
 
 // Always fetch live data — never serve a cached count
 export const dynamic = "force-dynamic"
@@ -84,6 +86,9 @@ export default async function UsersPage() {
             </Link>
           )
         })}
+        <AddUserForm callerRole={session.user.role} />
+
+        <CsvImportSection />
       </main>
     </div>
   )
