@@ -1,6 +1,6 @@
 # Build Waves — SAAS RD App
 
-**Last updated: 2026-05-05**
+**Last updated: 2026-05-13**
 > Build in waves so every wave is independently testable and shippable.
 > No wave starts until the previous wave passes its check.
 
@@ -48,112 +48,128 @@
 
 ---
 
-## Wave 2 — Admin Data Layer  NEXT
+## Wave 2 — Admin Data Layer COMPLETE
 
-**Size: M (1-2 days)**
-**Depends on: Wave 1**
+**Delivered:** Real students, courses, and calendar data loadable. Admin can manage all of it.
 
-**Delivers:** Real students, courses, and calendar data loaded into the DB. Coordinators assigned to blocks. Admin can import/manage this data.
+| Item | Status |
+|---|---|
+| Admin UI: CSV import for students (name, grade, school ID) | done |
+| Admin UI: Course builder (name, teacher, block, room) | done |
+| Admin UI: Student enrollment (student to course+block) | done |
+| Admin UI: School calendar editor (day type per date, holidays) | done |
+| Admin UI: Coordinator block assignments | done |
+| Admin UI: User management — list, edit, deactivate/reactivate | done |
+| Admin UI: Per-role user detail pages | done |
+| Migration 008_csv_import.sql | done |
+| Migration 009_fix_is_active.sql | done |
 
-### Tasks
-- [ ] Admin UI: CSV import for students (name, grade, ID)
-- [ ] Admin UI: Course builder (name, teacher, block, room)
-- [ ] Admin UI: Student enrollment (student to course+block)
-- [ ] Admin UI: School calendar editor (day type per date, holidays)
-- [ ] Admin UI: Coordinator block assignments
-
-**Wave 2 check:** Log in as admin, import 10 students, assign a coordinator to Block 3, calendar shows correct day type for today.
+**Wave 2 check:** Log in as admin, import students, assign a coordinator to a block, calendar shows correct day type for today.
 
 ---
 
-## Wave 3 — Teacher Attendance Report
+## Wave 3 — Teacher Attendance Report COMPLETE
 
-**Size: M**
-**Depends on: Wave 2**
+**Delivered:** Teachers report missing students. Incidents created in DB. Roster management by teacher.
 
-**Delivers:** Teachers can report a missing student from their class. Incident created in DB.
-
-### Tasks
-- [ ] Teacher view: shows their current block + enrolled students
-- [ ] Report Missing button creates incident in DB
-- [ ] Student With Me button logs context, closes teacher loop
-- [ ] Block 1 suppression: no email home if first block of day
-- [ ] Deduplication: same student + same block = no new incident
+| Item | Status |
+|---|---|
+| Teacher view: current block + enrolled students with incident status | done |
+| Report Missing button creates incident in DB | done |
+| Student With Me button logs context, closes teacher loop | done |
+| Block 1 suppression: no email home if first block of day | done (enforced in coordinator workflow) |
+| Deduplication: same student + same block = no new incident | done |
+| /teacher/courses: all blocks as accordion cards, add/remove students inline | done |
+| Enrollment API: POST/DELETE /api/teacher/enrollment (teacher-scoped, block uniqueness) | done |
 
 **Wave 3 check:** Log in as teacher, report a student missing, incident appears in /missing for coordinator.
 
 ---
 
-## Wave 4 — Coordinator Workflow
+## Wave 4 — Coordinator Workflow COMPLETE
 
-**Size: L**
-**Depends on: Wave 3**
+**Delivered:** Full 6-step coordinator workflow wired to real data.
 
-**Delivers:** Full 6-step coordinator workflow wired to real data. Triage, escalation, found/resolved.
-
-### Tasks
-- [ ] Triage queue: imperfect attendance, coordinator resolves false positives
-- [ ] Step timer: auto-escalate routine to elevated after threshold
-- [ ] Step 1-6 actions wired to DB (timestamps, status updates)
-- [ ] Student With Me / Found resolution
-- [ ] Escalate to dean button
-- [ ] Dean view: elevated incidents only + family follow-up log
+| Item | Status |
+|---|---|
+| Triage queue: imperfect attendance, coordinator resolves false positives | done |
+| Step timer: auto-escalate routine to elevated after threshold | done |
+| Step 1-6 actions wired to DB (timestamps, status updates) | done |
+| Student With Me / Found resolution | done |
+| Escalate to dean button | done |
+| Dean view: elevated incidents + family follow-up log | done |
+| Incident notes: private + public, with timestamps | done |
+| Migration 005_incident_notes.sql, 006_incident_public_note.sql | done |
 
 **Wave 4 check:** Report missing, triage, open workflow, step through to resolved.
 
 ---
 
-## Wave 5 — Notifications
+## Wave 5 — Notifications PARTIAL
 
-**Size: M**
-**Depends on: Wave 4**
+**Delivered:** Web push to coordinator on new incident and dean on escalation. Email infrastructure wired (Resend). Send-home trigger not yet connected to workflow.
 
-**Delivers:** Email home at Step 3. Coordinator gets SMS/push on new incident. Dean gets alert on escalation.
+| Item | Status |
+|---|---|
+| Push provider setup (web-push + VAPID) | done |
+| Migration 002_push_subscriptions.sql | done |
+| New incident push to assigned coordinator | done |
+| Escalation push to dean | done |
+| lib/email.ts — Resend wired | done |
+| Step 3: send email home to family | **not done** |
+| Block 1 email suppression enforced on send | **not done** |
+| SMS provider setup | **not done** |
+| Counselor auto-ping + 10-min escalation | **not done** |
 
-### Tasks
-- [ ] Email provider setup (Resend or SendGrid - decision pending)
-- [ ] SMS provider setup (Twilio - decision pending)
-- [ ] Step 3: send email home to family
-- [ ] Block 1 suppression enforced on send
-- [ ] New incident SMS/push to assigned coordinator
-- [ ] Escalation SMS/push to dean
-
-**Wave 5 check:** Report missing, reach Step 3, email arrives in test inbox.
-
----
-
-## Wave 6 — Row Level Security
-
-**Size: S**
-**Depends on: Wave 5**
-
-**Delivers:** Database locked down. Each role can only read/write what they should.
-
-### Tasks
-- [ ] RLS policies for each table x each role
-- [ ] Teacher: can only see their own incidents
-- [ ] Coordinator: can see incidents for their assigned blocks
-- [ ] Dean: elevated incidents only
-- [ ] Admin/super_admin: all rows
-
-**Wave 6 check:** Log in as teacher via anon key, can only see own rows. Service role still sees all.
+**Wave 5 check (partial):** Push notifications fire. Email-home still needs to be wired into Step 3.
 
 ---
 
-## Wave 7 — Realtime
+## Wave 6 — Row Level Security + Counselor COMPLETE
 
-**Size: S**
-**Depends on: Wave 6**
+**Delivered:** DB locked down. Counselor caseload real. RLS policies applied.
 
-**Delivers:** /missing page updates live without refresh. Timer ticks in real time.
+| Item | Status |
+|---|---|
+| RLS policies for each table x each role | done — migration 003_rls_policies.sql |
+| student_concern_flags table + counselor caseload | done |
+| Counselor dashboard: flagged students with live incident badges | done |
+| Welfare concern form: /staff/concern → notifies counselors | done |
+| Migration 007_user_phone.sql | done |
 
-### Tasks
-- [ ] Supabase Realtime subscription on incidents table
-- [ ] /missing page: new incidents appear automatically
-- [ ] Incident timer: live countdown on coordinator view
-- [ ] Optimistic UI updates on action buttons
+**Wave 6 check:** Counselor sees only their flagged students in analytics. RLS policies active.
 
-**Wave 7 check:** Open /missing in two browsers, report incident in one, appears in other within 2 seconds.
+---
+
+## Wave 7 — Realtime COMPLETE
+
+**Delivered:** /missing page updates live without refresh.
+
+| Item | Status |
+|---|---|
+| Supabase Realtime subscription on incidents table | done |
+| /missing (Live View): new incidents appear automatically | done |
+| Live missing-count on admin + staff dashboards | done |
+| Live View header: live count subtitle | done |
+
+**Wave 7 check:** Open Live View in two browsers, report incident in one, appears in other within 2 seconds.
+
+---
+
+## Wave 7.5 — UI / UX Pass COMPLETE
+
+**Delivered:** Consistent nav, unified analytics, role-appropriate dashboards, terminology aligned.
+
+| Item | Status |
+|---|---|
+| Rename "Incidents" → "Missing Students" across all UI (DB unchanged) | done |
+| Nav pattern: Dashboard \| Live View \| [role-links] on every page | done |
+| Sub-pages: ← Dashboard as primary back link | done |
+| Live missing-count widget on admin dashboard | done |
+| WelfareConcernLink shared component — all non-student roles | done |
+| /analytics page: Today + Patterns tabs, counselor-scoped | done |
+| /teacher/courses: accordion roster management | done |
+| Teacher nav: Dashboard \| Live View \| Courses | done |
 
 ---
 
@@ -207,4 +223,4 @@
 
 ---
 
-*Generated by Claude. Update this file as waves complete.*
+*Update this file as waves complete.*
