@@ -3,7 +3,23 @@ import { getServerSession }            from "next-auth"
 import { authOptions }                 from "@/lib/auth"
 import { db }                          from "@/lib/supabase"
 
-const ALLOWED_ROLES = ["teacher","staff","counselor","coordinator","dean","admin","super_admin","student"]
+const ALLOWED_ROLES = [
+  "teacher", "advisor", "staff", "counselor", "coordinator", "dean",
+  "admin", "super_admin", "student", "parent",
+]
+
+// Highest-priority role in an array, used to set the primary `role` field
+const ROLE_PRIORITY = [
+  "super_admin", "admin", "dean", "coordinator",
+  "counselor", "teacher", "advisor", "staff", "student", "parent",
+]
+
+function primaryRole(roles: string[]): string {
+  for (const r of ROLE_PRIORITY) {
+    if (roles.includes(r)) return r
+  }
+  return roles[0] ?? "staff"
+}
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -12,7 +28,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await db
     .from("users")
-    .select("id, email, name, display_name, phone, role, is_active, created_at")
+    .select("id, email, name, display_name, phone, role, roles, is_active, created_at")
     .order("role")
     .order("name")
 
@@ -25,11 +41,35 @@ export async function POST(req: NextRequest) {
   if (!session || !["admin","super_admin"].includes(session.user.role))
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { email, display_name, role, phone } = await req.json()
-  if (!email || !display_name || !role)
-    return NextResponse.json({ error: "email, display_name, and role required" }, { status: 400 })
-  if (!ALLOWED_ROLES.includes(role))
-    return NextResponse.json({ error: "Invalid role" }, { status: 400 })
+  const body = await req.json()
+  const { email, display_name, phone } = body
+  const roles: string[] | undefined = body.roles
+  const roleField: string | undefined = body.role
+
+  // Determine final roles array and primary role
+  let finalRoles: string[]
+  let finalRole: string
+
+  if (roles && roles.length > 0) {
+    if (!roles.every(r => ALLOWED_ROLES.includes(r)))
+      return NextResponse.json({ error: "Invalid role in roles array" }, { status: 400 })
+    finalRoles = roles
+    finalRole  = primaryRole(roles)
+  } else if (roleField) {
+    if (!ALLOWED_ROLES.includes(roleField))
+      return NextResponse.json({ error: "Invalid role" }, { status: 400 })
+    finalRoles = [roleField]
+    finalRole  = roleField
+  } else {
+    return NextResponse.json({ error: "role or roles required" }, { status: 400 })
+  }
+
+  if (!email || !display_name)
+    return NextResponse.json({ error: "email and display_name required" }, { status: 400 })
+
+  // Only super_admin can create super_admin accounts
+  if (finalRoles.includes("super_admin") && session.user.role !== "super_admin")
+    return NextResponse.json({ error: "Only super admins can create super admin accounts" }, { status: 403 })
 
   const { data, error } = await db
     .from("users")
@@ -37,7 +77,8 @@ export async function POST(req: NextRequest) {
       email:        email.toLowerCase().trim(),
       name:         display_name.trim(),
       display_name: display_name.trim(),
-      role,
+      role:         finalRole,
+      roles:        finalRoles,
       phone:        phone?.trim() || null,
       is_active:    true,
     }, { onConflict: "email" })
@@ -53,7 +94,11 @@ export async function PATCH(req: NextRequest) {
   if (!session || !["admin","super_admin"].includes(session.user.role))
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { id, is_active, role, display_name, email, phone } = await req.json()
+  const body = await req.json()
+  const { id, is_active, display_name, email, phone } = body
+  const roles: string[] | undefined = body.roles
+  const roleField: string | undefined = body.role
+
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 })
 
   // Prevent self-deactivation
@@ -61,14 +106,31 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "You cannot deactivate your own account." }, { status: 400 })
 
   const updates: Record<string, unknown> = {}
-  if (typeof is_active === "boolean")       updates.is_active    = is_active
-  if (role && ALLOWED_ROLES.includes(role)) updates.role         = role
+
+  if (typeof is_active === "boolean") updates.is_active = is_active
+
+  if (roles && roles.length > 0) {
+    if (!roles.every(r => ALLOWED_ROLES.includes(r)))
+      return NextResponse.json({ error: "Invalid role in roles array" }, { status: 400 })
+    if (roles.includes("super_admin") && session.user.role !== "super_admin")
+      return NextResponse.json({ error: "Only super admins can assign super admin role" }, { status: 403 })
+    updates.roles = roles
+    updates.role  = primaryRole(roles)
+  } else if (roleField) {
+    if (!ALLOWED_ROLES.includes(roleField))
+      return NextResponse.json({ error: "Invalid role" }, { status: 400 })
+    if (roleField === "super_admin" && session.user.role !== "super_admin")
+      return NextResponse.json({ error: "Only super admins can assign super admin role" }, { status: 403 })
+    updates.role  = roleField
+    updates.roles = [roleField]
+  }
+
   if (display_name?.trim()) {
     updates.display_name = display_name.trim()
     updates.name         = display_name.trim()
   }
-  if (email?.trim())          updates.email = email.trim().toLowerCase()
-  if (phone !== undefined)    updates.phone = phone ? phone.trim() || null : null
+  if (email?.trim())       updates.email = email.trim().toLowerCase()
+  if (phone !== undefined) updates.phone = phone ? phone.trim() || null : null
 
   if (Object.keys(updates).length === 0)
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 })

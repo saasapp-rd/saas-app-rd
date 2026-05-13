@@ -31,15 +31,17 @@ export async function POST(req: NextRequest) {
 
   rows.forEach((row, i) => {
     const n        = i + 2 // human row number (1-indexed + header)
-    const sid      = col(row, "student_id", "veracross_id", "vc_id", "id", "id_number", "studentid")
+    const sid      = col(row, "person_id", "student_id", "veracross_id", "vc_id", "id", "id_number", "studentid")
     const last     = col(row, "last_name", "lastname", "last", "surname")
-    const callBy   = col(row, "call_by", "callby", "preferred_name", "preferred", "nickname",
+    const callBy   = col(row, "preferred_name", "call_by", "callby", "preferred", "nickname",
                           "first_name", "firstname", "first")
     const phone    = col(row, "phone", "cell", "cell_phone", "cellphone", "mobile", "student_cell")
     const first    = col(row, "first_name", "firstname", "legal_first", "given_name") || callBy || last
-    const gradeRaw = col(row, "grade", "grade_level", "gradelevel", "year", "grad_year")
+    const gradeRaw = col(row, "current_grade", "grade", "grade_level", "gradelevel", "year", "grad_year")
     const pEmail   = col(row, "parent_email", "parentemail", "guardian_email", "family_email")
     const pName    = col(row, "parent_name", "parentname", "guardian_name", "parent_guardian")
+    const advisor  = col(row, "advisor", "advisor_name", "homeroom", "advisory")
+    const gender   = col(row, "gender", "sex")
 
     if (!sid)  { errors.push(`Row ${n}: missing student_id`); return }
     if (!last) { errors.push(`Row ${n}: missing last_name`);  return }
@@ -64,10 +66,13 @@ export async function POST(req: NextRequest) {
       call_by:      callBy || first,
       grade,
       phone:        normalizePhone(phone),
-      parent_email: pEmail || null,
-      parent_name:  pName  || null,
+      parent_email: pEmail        || null,
+      parent_name:  pName         || null,
+      advisor_name: advisor        || null,
+      gender:       gender         || null,
       is_active:    true,
       role:         "student",
+      roles:        ["student"],
     })
   })
 

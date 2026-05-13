@@ -199,14 +199,15 @@ export default function CsvImportSection() {
         title="Student Roster"
         description="Import all active students from Veracross or a spreadsheet"
         endpoint="/api/admin/import/students"
-        columns={["student_id", "last_name", "call_by", "grade", "phone"]}
-        optional={["first_name", "parent_email", "parent_name"]}
+        columns={["Person ID", "Last Name", "Preferred Name", "Current Grade"]}
+        optional={["First Name", "Phone", "Advisor", "Gender", "parent_email", "parent_name"]}
         notes={[
-          "student_id is the Veracross/school ID — used to match existing records on re-import.",
-          "call_by is the student's preferred first name (e.g. 'Emma' not 'Emmaline').",
-          "grade must be 9, 10, 11, or 12. Defaults to 9 if blank — fix manually after import.",
-          "parent_email is needed for the email-home feature.",
-          "Re-uploading is safe: existing students are updated, not duplicated.",
+          "Person ID is the Veracross school ID — used to match & update on re-import.",
+          "Preferred Name becomes the student's display name (call_by). Use their nickname, not legal name.",
+          "Current Grade must be 9, 10, 11, or 12.",
+          "Advisor stores the advisor's name on the student record — used to build advisory groups.",
+          "Column names are flexible: 'student_id', 'veracross_id', 'grade', 'call_by', etc. also work.",
+          "Re-uploading is safe — existing students are updated, not duplicated.",
         ]}
         resultLabel={r =>
           r.processed

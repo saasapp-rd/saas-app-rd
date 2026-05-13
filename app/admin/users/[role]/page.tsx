@@ -31,6 +31,7 @@ interface User {
   display_name: string | null
   phone?:       string | null
   role:         string
+  roles?:       string[] | null
   is_active:    boolean | null
 }
 
@@ -173,7 +174,7 @@ export default async function UserRolePage({
   // from unapplied migrations (e.g. phone, employee_id added later)
   const { data, error } = await db
     .from("users")
-    .select("*")
+    .select("id, email, display_name, phone, role, roles, is_active")
     .eq("role", role)
     .order("display_name")
 
@@ -233,6 +234,7 @@ export default async function UserRolePage({
                   email={u.email}
                   phone={u.phone ?? null}
                   role={u.role}
+                  roles={(u.roles as string[] | null) ?? undefined}
                   isActive={u.is_active !== false}
                   isSelf={u.id === session.user.userId}
                   myCourses={role === "teacher" ? (coursesByTeacher[u.id] ?? []) : undefined}

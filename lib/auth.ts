@@ -49,7 +49,7 @@ export const authOptions: NextAuthOptions = {
           const supabase = createServerClient()
           const { data: dbUser } = await supabase
             .from("users")
-            .select("id, role, display_name")
+            .select("id, role, roles, display_name")
             .eq("email", testUser.email)
             .single()
 
@@ -59,6 +59,7 @@ export const authOptions: NextAuthOptions = {
               name:        dbUser.display_name,
               email:       testUser.email,
               role:        dbUser.role,
+              roles:       (dbUser as any).roles ?? [dbUser.role],
               displayName: dbUser.display_name,
             }
           }
@@ -80,6 +81,7 @@ export const authOptions: NextAuthOptions = {
           name:        testUser.displayName,
           email:       testUser.email,
           role:        testUser.role,
+          roles:       [testUser.role],
           displayName: testUser.displayName,
         }
       },
@@ -110,9 +112,10 @@ export const authOptions: NextAuthOptions = {
     },
 
     async jwt({ token, user, account }) {
-      // Credentials sign-in — role already attached by authorize()
+      // Credentials sign-in — role/roles already attached by authorize()
       if (user && (user as any).role) {
         token.role        = (user as any).role
+        token.roles       = (user as any).roles ?? [(user as any).role]
         token.displayName = (user as any).displayName
         token.userId      = user.id
       }
@@ -123,12 +126,13 @@ export const authOptions: NextAuthOptions = {
           const supabase = createServerClient()
           const { data: dbUser } = await supabase
             .from("users")
-            .select("id, role, display_name")
+            .select("id, role, roles, display_name")
             .eq("email", token.email)
             .single()
           if (dbUser) {
             token.userId      = dbUser.id
             token.role        = dbUser.role
+            token.roles       = (dbUser as any).roles ?? [dbUser.role]
             token.displayName = dbUser.display_name ?? token.name
           }
         } catch (err) {
@@ -142,8 +146,9 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       if (session.user) {
         session.user.role        = token.role as string
+        session.user.roles       = (token.roles as string[]) ?? [token.role as string]
         session.user.displayName = token.displayName as string
-        ;(session.user as any).userId = token.userId
+        session.user.userId      = token.userId as string
       }
       return session
     },

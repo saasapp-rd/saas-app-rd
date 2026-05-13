@@ -3,25 +3,52 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 
 const ALL_ROLES = [
-  { value: "student",     label: "Student"     },
-  { value: "teacher",     label: "Teacher"     },
-  { value: "staff",       label: "Staff"       },
+  { value: "super_admin", label: "Super Admin" },
+  { value: "admin",       label: "Admin"       },
+  { value: "dean",        label: "Dean"        },
   { value: "coordinator", label: "Coordinator" },
   { value: "counselor",   label: "Counselor"   },
-  { value: "dean",        label: "Dean"        },
-  { value: "admin",       label: "Admin"       },
-  { value: "super_admin", label: "Super Admin" },
+  { value: "teacher",     label: "Teacher"     },
+  { value: "advisor",     label: "Advisor"     },
+  { value: "staff",       label: "Staff"       },
+  { value: "student",     label: "Student"     },
+  { value: "parent",      label: "Parent"      },
 ]
 
-const ROLE_STYLE: Record<string, { bg: string; color: string }> = {
+const ROLE_PRIORITY = [
+  "super_admin","admin","dean","coordinator","counselor","teacher","advisor","staff","student","parent",
+]
+
+function primaryRole(roles: string[]): string {
+  for (const r of ROLE_PRIORITY) { if (roles.includes(r)) return r }
+  return roles[0] ?? "staff"
+}
+
+const ROLE_STYLE: Record<string, { bg: string; color: string; selBg: string; selColor: string }> = {
+  super_admin: { bg: "#F4F4F4", color: "#BABABA", selBg: "#FFF0F0", selColor: "#A6192E" },
+  admin:       { bg: "#F4F4F4", color: "#BABABA", selBg: "#FFF0F0", selColor: "#A6192E" },
+  dean:        { bg: "#F4F4F4", color: "#BABABA", selBg: "#FFF8E0", selColor: "#8B6200" },
+  coordinator: { bg: "#F4F4F4", color: "#BABABA", selBg: "#EEF6FF", selColor: "#1E5FA6" },
+  counselor:   { bg: "#F4F4F4", color: "#BABABA", selBg: "#F0FDF4", selColor: "#166534" },
+  teacher:     { bg: "#F4F4F4", color: "#BABABA", selBg: "#EAEAEA", selColor: "#3D3D3D" },
+  advisor:     { bg: "#F4F4F4", color: "#BABABA", selBg: "#EAEAEA", selColor: "#3D3D3D" },
+  staff:       { bg: "#F4F4F4", color: "#BABABA", selBg: "#EAEAEA", selColor: "#3D3D3D" },
+  student:     { bg: "#F4F4F4", color: "#BABABA", selBg: "#EAEAEA", selColor: "#3D3D3D" },
+  parent:      { bg: "#F4F4F4", color: "#BABABA", selBg: "#EAEAEA", selColor: "#3D3D3D" },
+}
+
+// Badge style keyed by primary role
+const BADGE_STYLE: Record<string, { bg: string; color: string }> = {
   super_admin: { bg: "#FFF0F0", color: "#A6192E" },
   admin:       { bg: "#FFF0F0", color: "#A6192E" },
   dean:        { bg: "#FFF8E0", color: "#8B6200" },
   coordinator: { bg: "#EEF6FF", color: "#1E5FA6" },
   counselor:   { bg: "#F0FDF4", color: "#166534" },
   teacher:     { bg: "#EAEAEA", color: "#3D3D3D" },
+  advisor:     { bg: "#EAEAEA", color: "#3D3D3D" },
   staff:       { bg: "#EAEAEA", color: "#3D3D3D" },
   student:     { bg: "#EAEAEA", color: "#3D3D3D" },
+  parent:      { bg: "#EAEAEA", color: "#3D3D3D" },
 }
 
 export interface Course {
@@ -37,42 +64,53 @@ interface Props {
   email:       string
   phone:       string | null
   role:        string
+  roles?:      string[]
   isActive:    boolean
   isSelf:      boolean
-  // Only provided for teacher rows
   myCourses?:  Course[]
   allCourses?: Course[]
 }
 
 export default function UserRowActions({
-  id, displayName, email, phone, role, isActive, isSelf,
+  id, displayName, email, phone, role, roles: rolesProp, isActive, isSelf,
   myCourses, allCourses,
 }: Props) {
-  const router                    = useRouter()
-  const [open,           setOpen]           = useState(false)
-  const [selectedRole,   setSelectedRole]   = useState(role)
-  const [nameVal,        setNameVal]        = useState(displayName)
-  const [emailVal,       setEmailVal]       = useState(email)
-  const [phoneVal,       setPhoneVal]       = useState(phone ?? "")
-  const [confirmDelete,  setConfirmDelete]  = useState(false)
-  const [saving,         setSaving]         = useState(false)
-  const [savingDetails,  setSavingDetails]  = useState(false)
-  const [error,          setError]          = useState("")
+  const router = useRouter()
 
-  // Course assignment state (teachers only)
-  const [courses,        setCourses]        = useState<Course[]>(myCourses ?? [])
-  const [assignId,       setAssignId]       = useState("")
-  const [assigning,      setAssigning]      = useState(false)
-  const [unassigning,    setUnassigning]    = useState<string | null>(null)
-  const [courseError,    setCourseError]    = useState("")
+  const [open,          setOpen]          = useState(false)
+  const [savedRoles,    setSavedRoles]    = useState<string[]>(rolesProp?.length ? rolesProp : [role])
+  const [pendingRoles,  setPendingRoles]  = useState<string[]>(rolesProp?.length ? rolesProp : [role])
+  const [nameVal,       setNameVal]       = useState(displayName)
+  const [emailVal,      setEmailVal]      = useState(email)
+  const [phoneVal,      setPhoneVal]      = useState(phone ?? "")
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [saving,        setSaving]        = useState(false)
+  const [savingDetails, setSavingDetails] = useState(false)
+  const [savingRoles,   setSavingRoles]   = useState(false)
+  const [error,         setError]         = useState("")
 
-  const style   = ROLE_STYLE[role] ?? ROLE_STYLE["staff"]
-  const isTeach = role === "teacher"
+  const [courses,     setCourses]     = useState<Course[]>(myCourses ?? [])
+  const [assignId,    setAssignId]    = useState("")
+  const [assigning,   setAssigning]   = useState(false)
+  const [unassigning, setUnassigning] = useState<string | null>(null)
+  const [courseError, setCourseError] = useState("")
 
-  // Courses not yet assigned to this teacher
-  const unassignedCourses = (allCourses ?? []).filter(
-    c => !courses.find(mc => mc.id === c.id)
-  )
+  const primary    = primaryRole(savedRoles)
+  const badge      = BADGE_STYLE[primary] ?? BADGE_STYLE["staff"]
+  const isTeach    = savedRoles.includes("teacher")
+  const rolesChanged = JSON.stringify([...pendingRoles].sort()) !== JSON.stringify([...savedRoles].sort())
+
+  const unassignedCourses = (allCourses ?? []).filter(c => !courses.find(mc => mc.id === c.id))
+
+  function togglePendingRole(value: string) {
+    setPendingRoles(prev => {
+      if (prev.includes(value)) {
+        if (prev.length === 1) return prev
+        return prev.filter(r => r !== value)
+      }
+      return [...prev, value]
+    })
+  }
 
   async function saveDetails() {
     const trimName  = nameVal.trim()
@@ -80,7 +118,7 @@ export default function UserRowActions({
     if (!trimName || !trimEmail) return
     setSavingDetails(true); setError("")
     const res = await fetch("/api/admin/users", {
-      method:  "POST",
+      method:  "PATCH",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({ id, display_name: trimName, email: trimEmail, phone: phoneVal.trim() || null }),
     })
@@ -89,23 +127,23 @@ export default function UserRowActions({
     setSavingDetails(false)
   }
 
-  async function changeRole() {
-    if (selectedRole === role) return
-    setSaving(true); setError("")
+  async function saveRoles() {
+    if (!rolesChanged) return
+    setSavingRoles(true); setError("")
     const res = await fetch("/api/admin/users", {
-      method:  "POST",
+      method:  "PATCH",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ id, role: selectedRole }),
+      body:    JSON.stringify({ id, roles: pendingRoles }),
     })
-    if (res.ok) { router.refresh(); setOpen(false) }
-    else { const d = await res.json(); setError(d.error ?? "Failed to update role.") }
-    setSaving(false)
+    if (res.ok) { setSavedRoles(pendingRoles); router.refresh(); setOpen(false) }
+    else { const d = await res.json(); setError(d.error ?? "Failed to update roles.") }
+    setSavingRoles(false)
   }
 
   async function setActiveState(active: boolean) {
     setSaving(true); setError("")
     const res = await fetch("/api/admin/users", {
-      method:  "POST",
+      method:  "PATCH",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({ id, is_active: active }),
     })
@@ -156,6 +194,9 @@ export default function UserRowActions({
       courses.map(c => c.block_number).join(", ") +
       " · " + courses.length + " course" + (courses.length !== 1 ? "s" : "")
 
+  // Roles badge: show primary + a +N chip if multi-role
+  const extraCount = savedRoles.length - 1
+
   return (
     <div className="rounded-xl border overflow-hidden"
          style={{ borderColor: open ? "#A6192E" : isActive ? "#EAEAEA" : "#FECACA" }}>
@@ -180,18 +221,27 @@ export default function UserRowActions({
             <div className="text-[10px] truncate" style={{ color: "#BABABA" }}>{phone}</div>
           )}
           {isTeach && (
-            <div className="text-[10px] truncate mt-0.5" style={{ color: courses.length > 0 ? "#A6192E" : "#BABABA" }}>
+            <div className="text-[10px] truncate mt-0.5"
+                 style={{ color: courses.length > 0 ? "#A6192E" : "#BABABA" }}>
               {coursesSummary}
             </div>
           )}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0 ml-3">
-          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase"
-                style={{ background: style.bg, color: style.color }}>
-            {role.replace("_", " ")}
-          </span>
+          <div className="flex items-center gap-1">
+            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase"
+                  style={{ background: badge.bg, color: badge.color }}>
+              {primary.replace("_", " ")}
+            </span>
+            {extraCount > 0 && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                    style={{ background: "#EAEAEA", color: "#999" }}>
+                +{extraCount}
+              </span>
+            )}
+          </div>
           <button
-            onClick={() => { setOpen(o => !o); setConfirmDelete(false); setError(""); setCourseError("") }}
+            onClick={() => { setOpen(o => !o); setConfirmDelete(false); setError(""); setCourseError(""); setPendingRoles(savedRoles) }}
             className="text-[10px] font-bold px-2 py-1 rounded-lg"
             style={{
               background: open ? "#A6192E" : "#EAEAEA",
@@ -208,7 +258,7 @@ export default function UserRowActions({
         <div className="px-4 py-3 border-t flex flex-col gap-4"
              style={{ background: "#fff", borderColor: "#EAEAEA" }}>
 
-          {/* ── Reactivate banner (shown when inactive) ── */}
+          {/* Reactivate banner */}
           {!isActive && (
             <div className="rounded-xl px-4 py-3 flex items-center justify-between gap-3"
                  style={{ background: "#FFF0F0", border: "1px solid #FECACA" }}>
@@ -225,7 +275,7 @@ export default function UserRowActions({
             </div>
           )}
 
-          {/* ── Courses (teachers only) ── */}
+          {/* Courses (teachers only) */}
           {isTeach && (
             <div>
               <label className="text-[9px] font-bold uppercase tracking-wide block mb-2"
@@ -233,7 +283,6 @@ export default function UserRowActions({
                 Courses
               </label>
 
-              {/* Current courses */}
               {courses.length === 0 ? (
                 <p className="text-[10px] mb-2" style={{ color: "#999" }}>No courses assigned yet.</p>
               ) : (
@@ -266,7 +315,6 @@ export default function UserRowActions({
                 </div>
               )}
 
-              {/* Assign new course */}
               {unassignedCourses.length > 0 && (
                 <div className="flex gap-2">
                   <select
@@ -309,7 +357,7 @@ export default function UserRowActions({
 
           {isTeach && <div style={{ borderTop: "1px solid #F0F0F0" }} />}
 
-          {/* ── Contact Details ── */}
+          {/* Contact Details */}
           <div>
             <label className="text-[9px] font-bold uppercase tracking-wide block mb-2"
                    style={{ color: "#3D3D3D", opacity: 0.5 }}>
@@ -343,36 +391,46 @@ export default function UserRowActions({
 
           <div style={{ borderTop: "1px solid #F0F0F0" }} />
 
-          {/* ── Role ── */}
+          {/* Roles */}
           <div>
             <label className="text-[9px] font-bold uppercase tracking-wide block mb-2"
                    style={{ color: "#3D3D3D", opacity: 0.5 }}>
-              Change Role
+              Roles
             </label>
-            <div className="flex gap-2">
-              <select value={selectedRole} onChange={e => setSelectedRole(e.target.value)}
-                className="flex-1 px-3 py-2 rounded-xl text-sm border outline-none"
-                style={{ borderColor: "#EAEAEA", color: "#3D3D3D", background: "#FAFAFA" }}>
-                {ALL_ROLES.map(r => (
-                  <option key={r.value} value={r.value}>{r.label}</option>
-                ))}
-              </select>
-              <button onClick={changeRole}
-                disabled={saving || selectedRole === role}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-white"
-                style={{
-                  background: "#3D3D3D",
-                  opacity: saving || selectedRole === role ? 0.4 : 1,
-                  border: "none", cursor: selectedRole === role ? "default" : "pointer",
-                }}>
-                {saving ? "…" : "Save"}
-              </button>
+            <div className="flex flex-wrap gap-1.5 mb-2">
+              {ALL_ROLES.map(r => {
+                const sel = pendingRoles.includes(r.value)
+                const s   = ROLE_STYLE[r.value] ?? ROLE_STYLE["staff"]
+                return (
+                  <button
+                    key={r.value}
+                    type="button"
+                    onClick={() => togglePendingRole(r.value)}
+                    className="px-2.5 py-1 rounded-full text-[10px] font-bold transition-colors"
+                    style={{
+                      background: sel ? s.selBg    : s.bg,
+                      color:      sel ? s.selColor : s.color,
+                      border:     sel ? `1.5px solid ${s.selColor}` : "1.5px solid transparent",
+                      cursor:     "pointer",
+                    }}>
+                    {r.label}
+                  </button>
+                )
+              })}
             </div>
+            {rolesChanged && (
+              <button onClick={saveRoles}
+                disabled={savingRoles}
+                className="w-full py-2 rounded-xl text-xs font-bold text-white"
+                style={{ background: "#3D3D3D", opacity: savingRoles ? 0.4 : 1, border: "none", cursor: "pointer" }}>
+                {savingRoles ? "Saving…" : "Save Roles"}
+              </button>
+            )}
           </div>
 
           <div style={{ borderTop: "1px solid #F0F0F0" }} />
 
-          {/* ── Deactivate (only shown when active) ── */}
+          {/* Deactivate */}
           {isActive && (
             <div>
               <label className="text-[9px] font-bold uppercase tracking-wide block mb-2"
