@@ -30,21 +30,24 @@ export default async function UsersPage() {
   if (!session) redirect("/login")
   if (!["admin", "super_admin"].includes(session.user.role)) redirect("/dashboard")
 
-  const { data } = await db
-    .from("users")
-    .select("role, is_active")
+  const [{ data: userData }, { count: studentTotal }] = await Promise.all([
+    db.from("users").select("role, is_active"),
+    db.from("students").select("id", { count: "exact", head: true }),
+  ])
 
-  // Count ALL users per role (total), same as what the detail page displays.
-  // Separately track inactive count so we can show a badge.
+  // Count staff roles from the users table.
+  // Students live in the separate students table — use its count directly.
   const total:    Record<string, number> = {}
   const inactive: Record<string, number> = {}
 
-  for (const u of data ?? []) {
+  for (const u of userData ?? []) {
+    if (u.role === "student") continue  // students are not in users table
     total[u.role]    = (total[u.role]    ?? 0) + 1
     if (u.is_active === false) {
       inactive[u.role] = (inactive[u.role] ?? 0) + 1
     }
   }
+  total["student"] = studentTotal ?? 0
 
   const grandTotal = Object.values(total).reduce((a, b) => a + b, 0)
 

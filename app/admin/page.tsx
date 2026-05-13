@@ -37,7 +37,7 @@ export default async function AdminDashboard() {
   const { data: allStudents } = await db
     .from("students")
     .select("id, first_name, last_name, grade, call_by")
-    .neq("is_active", false)
+    .or("is_active.eq.true,is_active.is.null")
     .order("last_name")
 
   const missing  = openInc?.length ?? 0
