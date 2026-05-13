@@ -147,6 +147,26 @@ export default async function UserRolePage({
     )
   }
 
+  // Teachers: fetch courses too so we can show/edit assignments inline
+  interface CourseRow { id: string; name: string; block_number: number; room: string | null; teacher_id: string | null }
+  let allCourses:    CourseRow[] = []
+  let coursesByTeacher: Record<string, CourseRow[]> = {}
+
+  if (role === "teacher") {
+    const { data: cdata } = await db
+      .from("courses")
+      .select("id, name, block_number, room, teacher_id")
+      .eq("is_active", true)
+      .order("block_number")
+    allCourses = (cdata ?? []) as CourseRow[]
+    for (const c of allCourses) {
+      if (c.teacher_id) {
+        if (!coursesByTeacher[c.teacher_id]) coursesByTeacher[c.teacher_id] = []
+        coursesByTeacher[c.teacher_id].push(c)
+      }
+    }
+  }
+
   // All other roles: query the users/login table
   // select("*") returns whatever columns exist — never fails on missing columns
   // from unapplied migrations (e.g. phone, employee_id added later)
@@ -214,6 +234,8 @@ export default async function UserRolePage({
                   role={u.role}
                   isActive={u.is_active !== false}
                   isSelf={u.id === session.user.userId}
+                  myCourses={role === "teacher" ? (coursesByTeacher[u.id] ?? []) : undefined}
+                  allCourses={role === "teacher" ? allCourses : undefined}
                 />
               ))}
             </div>

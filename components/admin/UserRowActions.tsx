@@ -24,6 +24,13 @@ const ROLE_STYLE: Record<string, { bg: string; color: string }> = {
   student:     { bg: "#EAEAEA", color: "#3D3D3D" },
 }
 
+export interface Course {
+  id:           string
+  name:         string
+  block_number: number
+  room:         string | null
+}
+
 interface Props {
   id:          string
   displayName: string
@@ -32,10 +39,16 @@ interface Props {
   role:        string
   isActive:    boolean
   isSelf:      boolean
+  // Only provided for teacher rows
+  myCourses?:  Course[]
+  allCourses?: Course[]
 }
 
-export default function UserRowActions({ id, displayName, email, phone, role, isActive, isSelf }: Props) {
-  const router = useRouter()
+export default function UserRowActions({
+  id, displayName, email, phone, role, isActive, isSelf,
+  myCourses, allCourses,
+}: Props) {
+  const router                    = useRouter()
   const [open,           setOpen]           = useState(false)
   const [selectedRole,   setSelectedRole]   = useState(role)
   const [nameVal,        setNameVal]        = useState(displayName)
@@ -46,7 +59,20 @@ export default function UserRowActions({ id, displayName, email, phone, role, is
   const [savingDetails,  setSavingDetails]  = useState(false)
   const [error,          setError]          = useState("")
 
-  const style = ROLE_STYLE[role] ?? ROLE_STYLE["staff"]
+  // Course assignment state (teachers only)
+  const [courses,        setCourses]        = useState<Course[]>(myCourses ?? [])
+  const [assignId,       setAssignId]       = useState("")
+  const [assigning,      setAssigning]      = useState(false)
+  const [unassigning,    setUnassigning]    = useState<string | null>(null)
+  const [courseError,    setCourseError]    = useState("")
+
+  const style   = ROLE_STYLE[role] ?? ROLE_STYLE["staff"]
+  const isTeach = role === "teacher"
+
+  // Courses not yet assigned to this teacher
+  const unassignedCourses = (allCourses ?? []).filter(
+    c => !courses.find(mc => mc.id === c.id)
+  )
 
   async function saveDetails() {
     const trimName  = nameVal.trim()
@@ -54,7 +80,7 @@ export default function UserRowActions({ id, displayName, email, phone, role, is
     if (!trimName || !trimEmail) return
     setSavingDetails(true); setError("")
     const res = await fetch("/api/admin/users", {
-      method:  "PATCH",
+      method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({ id, display_name: trimName, email: trimEmail, phone: phoneVal.trim() || null }),
     })
@@ -67,7 +93,7 @@ export default function UserRowActions({ id, displayName, email, phone, role, is
     if (selectedRole === role) return
     setSaving(true); setError("")
     const res = await fetch("/api/admin/users", {
-      method:  "PATCH",
+      method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({ id, role: selectedRole }),
     })
@@ -79,13 +105,56 @@ export default function UserRowActions({ id, displayName, email, phone, role, is
   async function setActiveState(active: boolean) {
     setSaving(true); setError("")
     const res = await fetch("/api/admin/users", {
-      method:  "PATCH",
+      method:  "POST",
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({ id, is_active: active }),
     })
     if (res.ok) { router.refresh() }
     else { const d = await res.json(); setError(d.error ?? "Failed."); setSaving(false) }
   }
+
+  async function assignCourse() {
+    if (!assignId) return
+    setAssigning(true); setCourseError("")
+    const course = (allCourses ?? []).find(c => c.id === assignId)
+    const res = await fetch("/api/admin/courses", {
+      method:  "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ id: assignId, teacher_id: id }),
+    })
+    if (res.ok) {
+      if (course) setCourses(cs => [...cs, course].sort((a, b) => a.block_number - b.block_number))
+      setAssignId("")
+      router.refresh()
+    } else {
+      const d = await res.json()
+      setCourseError(d.error ?? "Failed to assign.")
+    }
+    setAssigning(false)
+  }
+
+  async function unassignCourse(courseId: string) {
+    setUnassigning(courseId); setCourseError("")
+    const res = await fetch("/api/admin/courses", {
+      method:  "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ id: courseId, teacher_id: null }),
+    })
+    if (res.ok) {
+      setCourses(cs => cs.filter(c => c.id !== courseId))
+      router.refresh()
+    } else {
+      const d = await res.json()
+      setCourseError(d.error ?? "Failed to unassign.")
+    }
+    setUnassigning(null)
+  }
+
+  const coursesSummary = courses.length === 0
+    ? "No courses assigned"
+    : "Block" + (courses.length > 1 ? "s" : "") + " " +
+      courses.map(c => c.block_number).join(", ") +
+      " · " + courses.length + " course" + (courses.length !== 1 ? "s" : "")
 
   return (
     <div className="rounded-xl border overflow-hidden"
@@ -110,6 +179,11 @@ export default function UserRowActions({ id, displayName, email, phone, role, is
           {phone && (
             <div className="text-[10px] truncate" style={{ color: "#BABABA" }}>{phone}</div>
           )}
+          {isTeach && (
+            <div className="text-[10px] truncate mt-0.5" style={{ color: courses.length > 0 ? "#A6192E" : "#BABABA" }}>
+              {coursesSummary}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0 ml-3">
           <span className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase"
@@ -117,7 +191,7 @@ export default function UserRowActions({ id, displayName, email, phone, role, is
             {role.replace("_", " ")}
           </span>
           <button
-            onClick={() => { setOpen(o => !o); setConfirmDelete(false); setError("") }}
+            onClick={() => { setOpen(o => !o); setConfirmDelete(false); setError(""); setCourseError("") }}
             className="text-[10px] font-bold px-2 py-1 rounded-lg"
             style={{
               background: open ? "#A6192E" : "#EAEAEA",
@@ -150,6 +224,90 @@ export default function UserRowActions({ id, displayName, email, phone, role, is
               </button>
             </div>
           )}
+
+          {/* ── Courses (teachers only) ── */}
+          {isTeach && (
+            <div>
+              <label className="text-[9px] font-bold uppercase tracking-wide block mb-2"
+                     style={{ color: "#3D3D3D", opacity: 0.5 }}>
+                Courses
+              </label>
+
+              {/* Current courses */}
+              {courses.length === 0 ? (
+                <p className="text-[10px] mb-2" style={{ color: "#999" }}>No courses assigned yet.</p>
+              ) : (
+                <div className="flex flex-col gap-1 mb-2">
+                  {courses.map(c => (
+                    <div key={c.id}
+                         className="flex items-center justify-between px-3 py-2 rounded-xl"
+                         style={{ background: "#FAFAFA", border: "1px solid #EAEAEA" }}>
+                      <div>
+                        <span className="text-xs font-semibold" style={{ color: "#3D3D3D" }}>
+                          {c.name}
+                        </span>
+                        <span className="ml-2 text-[10px]" style={{ color: "#999" }}>
+                          Block {c.block_number}{c.room ? ` · ${c.room}` : ""}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => unassignCourse(c.id)}
+                        disabled={unassigning === c.id}
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-lg"
+                        style={{
+                          background: "#FFF0F0", color: "#CE2033",
+                          border: "none", cursor: "pointer",
+                          opacity: unassigning === c.id ? 0.5 : 1,
+                        }}>
+                        {unassigning === c.id ? "…" : "Remove"}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Assign new course */}
+              {unassignedCourses.length > 0 && (
+                <div className="flex gap-2">
+                  <select
+                    value={assignId}
+                    onChange={e => setAssignId(e.target.value)}
+                    className="flex-1 px-3 py-2 rounded-xl text-sm border outline-none"
+                    style={{ borderColor: "#EAEAEA", color: assignId ? "#3D3D3D" : "#999", background: "#FAFAFA" }}>
+                    <option value="">Assign a course…</option>
+                    {unassignedCourses.map(c => (
+                      <option key={c.id} value={c.id}>
+                        Block {c.block_number} — {c.name}{c.room ? ` (${c.room})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={assignCourse}
+                    disabled={assigning || !assignId}
+                    className="px-3 py-2 rounded-xl text-xs font-bold text-white flex-shrink-0"
+                    style={{
+                      background: "#3D3D3D",
+                      opacity: assigning || !assignId ? 0.4 : 1,
+                      border: "none", cursor: !assignId ? "default" : "pointer",
+                    }}>
+                    {assigning ? "…" : "Assign"}
+                  </button>
+                </div>
+              )}
+
+              {unassignedCourses.length === 0 && courses.length > 0 && (
+                <p className="text-[10px]" style={{ color: "#999" }}>
+                  All active courses are assigned to this teacher.
+                </p>
+              )}
+
+              {courseError && (
+                <p className="text-[10px] font-semibold mt-1" style={{ color: "#CE2033" }}>{courseError}</p>
+              )}
+            </div>
+          )}
+
+          {isTeach && <div style={{ borderTop: "1px solid #F0F0F0" }} />}
 
           {/* ── Contact Details ── */}
           <div>

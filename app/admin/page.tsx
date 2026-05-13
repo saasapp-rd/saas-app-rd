@@ -16,9 +16,15 @@ function norm<T>(val: unknown): T | null {
 }
 
 const MGMT_LINKS = [
-  { href: "/admin/users",  label: "Manage Users",  desc: "Add, edit, or deactivate accounts by role", icon: "👥" },
-  { href: "/admin/import", label: "CSV Import",     desc: "Upload student roster, teacher list, and class schedule", icon: "📥" },
-  { href: "/admin/daily",  label: "Daily Summary",  desc: "Today's attendance overview", icon: "📅" },
+  { href: "/admin/users",            label: "Manage Users",           desc: "Add, edit, and deactivate accounts by role",              icon: "👥" },
+  { href: "/admin/courses",          label: "Manage Courses",         desc: "Create courses, assign teachers, set blocks and rooms",    icon: "📚" },
+  { href: "/admin/calendar",         label: "School Calendar",        desc: "Set day types, block rotation, and holidays",             icon: "📅" },
+  { href: "/admin/coordinators",     label: "Coordinator Assignments", desc: "Assign coordinators to blocks for each academic period", icon: "🎯" },
+  { href: "/admin/import",           label: "CSV Import",             desc: "Upload student roster, teacher list, and class schedule", icon: "📥" },
+  { href: "/admin/daily",            label: "Daily Report",           desc: "Today's attendance and missing student log",              icon: "📊" },
+  { href: "/analytics",             label: "Analytics",              desc: "Patterns, trends, and attendance data",                   icon: "📈" },
+  { href: "/admin/welfare-concerns", label: "Welfare Concerns",       desc: "View all submitted welfare concern reports",              icon: "⚠️" },
+  { href: "/admin/settings",         label: "System Settings",        desc: "Academic year, school name, and configuration",          icon: "⚙️" },
 ]
 
 export default async function AdminPage() {

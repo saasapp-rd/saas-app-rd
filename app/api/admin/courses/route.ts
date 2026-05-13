@@ -34,3 +34,21 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json(data, { status: 201 })
 }
+
+// PATCH /api/admin/courses — assign or unassign a teacher from a course
+export async function PATCH(req: NextRequest) {
+  const session = await getServerSession(authOptions)
+  if (!session || !ADMIN.includes(session.user.role))
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  const { id, teacher_id } = await req.json()
+  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 })
+
+  // teacher_id may be null (to unassign) or a valid user UUID
+  const { error } = await db.from("courses")
+    .update({ teacher_id: teacher_id ?? null })
+    .eq("id", id)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ ok: true })
+}
