@@ -44,7 +44,7 @@ export default async function AdminPage() {
   const { data: allStudents } = await db
     .from("students")
     .select("id, first_name, last_name, grade, call_by")
-    .eq("is_active", true)
+    .neq("is_active", false)
     .order("last_name")
 
   const missing  = openInc?.length ?? 0
