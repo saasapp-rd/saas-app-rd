@@ -10,13 +10,13 @@ const NAV: Record<string, NavItem[]> = {
     { href: "/admin",        label: "Dashboard", icon: "🏠", activeOn: "exact" },
     { href: "/missing",      label: "Live",      icon: "👁"  },
     { href: "/analytics",    label: "Analytics", icon: "📊" },
-    { href: "/admin",        label: "Admin",     icon: "⚙️",  activeOn: "sub"  },
+    { href: "/admin/config", label: "Admin",     icon: "⚙️",  activeOn: "sub"  },
   ],
   admin: [
     { href: "/admin",        label: "Dashboard", icon: "🏠", activeOn: "exact" },
     { href: "/missing",      label: "Live",      icon: "👁"  },
     { href: "/analytics",    label: "Analytics", icon: "📊" },
-    { href: "/admin",        label: "Admin",     icon: "⚙️",  activeOn: "sub"  },
+    { href: "/admin/config", label: "Admin",     icon: "⚙️",  activeOn: "sub"  },
   ],
   dean: [
     { href: "/missing",     label: "Live",        icon: "👁"  },

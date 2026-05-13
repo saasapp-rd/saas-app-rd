@@ -15,24 +15,18 @@ function norm<T>(val: unknown): T | null {
   return (Array.isArray(val) ? val[0] ?? null : val) as T | null
 }
 
-const MGMT_LINKS = [
-  { href: "/admin/users",            label: "Manage Users",           desc: "Add, edit, and deactivate accounts by role",              icon: "👥" },
-  { href: "/admin/courses",          label: "Manage Courses",         desc: "Create courses, assign teachers, set blocks and rooms",    icon: "📚" },
-  { href: "/admin/calendar",         label: "School Calendar",        desc: "Set day types, block rotation, and holidays",             icon: "📅" },
-  { href: "/admin/coordinators",     label: "Coordinator Assignments", desc: "Assign coordinators to blocks for each academic period", icon: "🎯" },
-  { href: "/admin/import",           label: "CSV Import",             desc: "Upload student roster, teacher list, and class schedule", icon: "📥" },
-  { href: "/admin/daily",            label: "Daily Report",           desc: "Today's attendance and missing student log",              icon: "📊" },
-  { href: "/analytics",             label: "Analytics",              desc: "Patterns, trends, and attendance data",                   icon: "📈" },
-  { href: "/admin/welfare-concerns", label: "Welfare Concerns",       desc: "View all submitted welfare concern reports",              icon: "⚠️" },
-  { href: "/admin/settings",         label: "System Settings",        desc: "Academic year, school name, and configuration",          icon: "⚙️" },
+const DAILY_LINKS = [
+  { href: "/admin/calendar",         label: "School Calendar",  desc: "Today's day type & block rotation", icon: "📅" },
+  { href: "/admin/daily",            label: "Daily Report",     desc: "Today's attendance log",            icon: "📊" },
+  { href: "/analytics",              label: "Analytics",        desc: "Patterns & trends",                 icon: "📈" },
+  { href: "/admin/welfare-concerns", label: "Welfare Concerns", desc: "Open flags needing follow-up",      icon: "⚠️" },
 ]
 
-export default async function AdminPage() {
+export default async function AdminDashboard() {
   const session = await getServerSession(authOptions)
   if (!session) redirect("/login")
   if (!["admin", "super_admin"].includes(session.user.role)) redirect("/dashboard")
 
-  // Open incidents with student info for the live widget
   const { data: openInc } = await db
     .from("incidents")
     .select("id, level, reported_at, student:student_id(id, first_name, last_name, grade)")
@@ -40,7 +34,6 @@ export default async function AdminPage() {
     .order("level",       { ascending: false })
     .order("reported_at", { ascending: true  })
 
-  // All active students for the action modals
   const { data: allStudents } = await db
     .from("students")
     .select("id, first_name, last_name, grade, call_by")
@@ -88,8 +81,6 @@ export default async function AdminPage() {
                borderColor: missing > 0 ? "#FFCCCC" : "#22C55E",
                background:  missing > 0 ? "#FFF0F0" : "#F0FDF4",
              }}>
-
-          {/* Header — tapping goes to full live view */}
           <Link href="/missing" style={{ textDecoration: "none", display: "block" }}>
             <div className="px-4 pt-4 pb-2 flex items-center justify-between">
               <div>
@@ -112,7 +103,6 @@ export default async function AdminPage() {
             </div>
           </Link>
 
-          {/* Student list — each name links to that student's status page */}
           {rows.length > 0 && (
             <div className="px-4 pb-3 flex flex-col gap-0.5 border-t mt-1"
                  style={{ borderColor: missing > 0 ? "#FFCCCC" : "#22C55E" }}>
@@ -121,8 +111,7 @@ export default async function AdminPage() {
                   key={r.id}
                   href={r.student ? "/students/" + r.student.id : "/coordinator/" + r.id}
                   style={{ textDecoration: "none", display: "block" }}>
-                  <div className="flex items-center justify-between py-1.5 px-1 rounded-lg"
-                       style={{ background: "transparent" }}>
+                  <div className="flex items-center justify-between py-1.5 px-1 rounded-lg">
                     <span className="text-xs font-semibold" style={{ color: "#3D3D3D" }}>
                       {r.student
                         ? r.student.last_name + ", " + r.student.first_name + " — Gr " + r.student.grade
@@ -144,27 +133,29 @@ export default async function AdminPage() {
           )}
         </div>
 
-        {/* ── Quick Actions (modals) ── */}
+        {/* ── Quick Actions ── */}
         <QuickActionsPanel students={students} />
 
-        {/* ── Management links ── */}
+        {/* ── Daily tools ── */}
         <p className="text-[9px] font-bold tracking-[0.25em] uppercase mt-1"
            style={{ color: "#3D3D3D", opacity: 0.35 }}>
-          Administration
+          Daily Tools
         </p>
-        {MGMT_LINKS.map(({ href, label, desc, icon }) => (
-          <Link key={href} href={href} style={{ textDecoration: "none" }}>
-            <div className="rounded-xl px-4 py-4 border flex items-center gap-4"
-                 style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
-              <span className="text-2xl">{icon}</span>
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-bold" style={{ color: "#3D3D3D" }}>{label}</div>
-                <div className="text-[10px] mt-0.5" style={{ color: "#999" }}>{desc}</div>
+        <div className="grid grid-cols-2 gap-2">
+          {DAILY_LINKS.map(({ href, label, desc, icon }) => (
+            <Link key={href} href={href} style={{ textDecoration: "none" }}>
+              <div className="rounded-xl px-4 py-4 border flex flex-col gap-2 h-full"
+                   style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
+                <span className="text-2xl">{icon}</span>
+                <div>
+                  <div className="text-xs font-bold" style={{ color: "#3D3D3D" }}>{label}</div>
+                  <div className="text-[10px] mt-0.5" style={{ color: "#999" }}>{desc}</div>
+                </div>
               </div>
-              <span style={{ color: "#BABABA" }}>&rarr;</span>
-            </div>
-          </Link>
-        ))}
+            </Link>
+          ))}
+        </div>
+
       </main>
     </div>
   )

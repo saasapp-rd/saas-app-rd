@@ -39,7 +39,7 @@ export default async function CoursesPage() {
         <Link href="/dashboard" className="text-xs font-bold" style={{ color: "#A6192E", textDecoration: "none" }}>
           &larr; Dashboard
         </Link>
-        <Link href="/admin" className="text-xs" style={{ color: "#999", textDecoration: "none" }}>
+        <Link href="/admin/config" className="text-xs" style={{ color: "#999", textDecoration: "none" }}>
           Admin
         </Link>
       </nav>

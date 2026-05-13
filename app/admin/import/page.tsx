@@ -31,7 +31,7 @@ export default async function ImportPage() {
               style={{ color: "#A6192E", textDecoration: "none" }}>
           &larr; Dashboard
         </Link>
-        <Link href="/admin" className="text-xs"
+        <Link href="/admin/config" className="text-xs"
               style={{ color: "#999", textDecoration: "none" }}>
           Admin
         </Link>
