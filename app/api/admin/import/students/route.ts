@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
       parent_email: pEmail || null,
       parent_name:  pName  || null,
       is_active:    true,
+      role:         "student",
     })
   })
 
@@ -77,7 +78,7 @@ export async function POST(req: NextRequest) {
   let dbError: string | undefined
   for (let i = 0; i < upsert.length; i += 200) {
     const { error } = await db
-      .from("students")
+      .from("users")
       .upsert(upsert.slice(i, i + 200), { onConflict: "veracross_id" })
     if (error) { dbError = error.message; break }
   }

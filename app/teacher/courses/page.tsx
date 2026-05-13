@@ -37,11 +37,11 @@ export default async function TeacherCoursesPage() {
   if (courseIds.length > 0) {
     const { data: enr } = await db
       .from("student_enrollments")
-      .select("course_id, students(id, first_name, last_name, grade)")
+      .select("course_id, student:student_id(id, first_name, last_name, grade)")
       .in("course_id", courseIds)
 
     for (const row of enr ?? []) {
-      const s = row.students as unknown as Student | null
+      const s = row.student as unknown as Student | null
       if (!s) continue
       if (!studentsByCourse[row.course_id]) studentsByCourse[row.course_id] = []
       studentsByCourse[row.course_id].push(s)

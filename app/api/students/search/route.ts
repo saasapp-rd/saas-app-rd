@@ -13,8 +13,9 @@ export async function GET(req: NextRequest) {
 
   // Search by first or last name (case-insensitive prefix / contains)
   const { data, error } = await db
-    .from("students")
+    .from("users")
     .select("id, first_name, last_name, grade")
+    .eq("role", "student")
     .or(
       "last_name.ilike." + q + "%," +
       "first_name.ilike." + q + "%," +

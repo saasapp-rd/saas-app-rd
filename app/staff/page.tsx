@@ -15,7 +15,7 @@ interface Incident {
   reported_at: string
   block_id:    number | null
   room:        string | null
-  students:    { first_name: string; last_name: string; grade: number } | null
+  student:     { first_name: string; last_name: string; grade: number } | null
   reporter:    { display_name: string } | null
 }
 
@@ -26,7 +26,7 @@ export default async function StaffPage() {
 
   const { data: raw } = await db
     .from("incidents")
-    .select("id, level, reported_at, block_id, room, students(first_name, last_name, grade), reporter:reported_by(display_name)")
+    .select("id, level, reported_at, block_id, room, student:student_id(first_name, last_name, grade), reporter:reported_by(display_name)")
     .eq("status", "open")
     .order("level",       { ascending: false })
     .order("reported_at", { ascending: true  })
@@ -72,7 +72,7 @@ export default async function StaffPage() {
             </p>
             <div className="flex flex-col gap-2">
               {incidents.map(inc => {
-                const s      = inc.students
+                const s      = inc.student
                 const isElev = inc.level === "elevated"
                 const mins   = Math.floor((Date.now() - new Date(inc.reported_at).getTime()) / 60000)
                 return (

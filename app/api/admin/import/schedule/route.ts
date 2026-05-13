@@ -110,8 +110,9 @@ export async function POST(req: NextRequest) {
   // ── 4. Look up students by veracross_id ──────────────────────────────────
   const studentIds = [...new Set(valid.map(r => r.studentId))]
   const { data: studentRows } = await db
-    .from("students")
+    .from("users")
     .select("id, veracross_id")
+    .eq("role", "student")
     .in("veracross_id", studentIds)
   const studentMap = new Map((studentRows ?? []).map(s => [s.veracross_id as string, s.id as string]))
   for (const sid of studentIds) {

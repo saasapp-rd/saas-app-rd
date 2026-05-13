@@ -13,8 +13,9 @@ export default async function StudentsPage() {
   if (!["admin", "super_admin"].includes(session.user.role)) redirect("/dashboard")
 
   const { data: students } = await db
-    .from("students")
-    .select("id, first_name, last_name, grade, student_id")
+    .from("users")
+    .select("id, first_name, last_name, grade, veracross_id")
+    .eq("role", "student")
     .eq("is_active", true)
     .order("last_name")
     .order("first_name")
@@ -50,8 +51,8 @@ export default async function StudentsPage() {
                   <span className="text-sm font-bold" style={{ color: "#3D3D3D" }}>
                     {s.last_name}, {s.first_name}
                   </span>
-                  {s.student_id && (
-                    <span className="text-[10px]" style={{ color: "#999" }}>{s.student_id}</span>
+                  {s.veracross_id && (
+                    <span className="text-[10px]" style={{ color: "#999" }}>{s.veracross_id}</span>
                   )}
                 </div>
                 <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"

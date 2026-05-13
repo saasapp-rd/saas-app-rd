@@ -21,7 +21,7 @@ export async function sendEmailHome(incidentId: string): Promise<void> {
     .from("incidents")
     .select(`
       id, block_id, reported_at, suppress_email_home,
-      students(first_name, last_name, grade, parent_email, parent_name),
+      student:student_id(first_name, last_name, grade, parent_email, parent_name),
       reporter:reported_by(display_name)
     `)
     .eq("id", incidentId)
@@ -30,7 +30,7 @@ export async function sendEmailHome(incidentId: string): Promise<void> {
   if (!inc) return
   if (inc.suppress_email_home) return
 
-  const student  = normJoin<StudentJoin>((inc as any).students)
+  const student  = normJoin<StudentJoin>((inc as any).student)
   const reporter = normJoin<{ display_name: string }>((inc as any).reporter)
 
   if (!student?.parent_email) return

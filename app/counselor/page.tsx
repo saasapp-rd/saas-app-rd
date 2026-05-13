@@ -19,7 +19,7 @@ interface FlagRow {
   flag_level:  string
   public_note: string | null
   flagged_at:  string
-  students:    { id: string; first_name: string; last_name: string; grade: number } | null
+  student:     { id: string; first_name: string; last_name: string; grade: number } | null
 }
 
 interface OpenIncident {
@@ -38,12 +38,12 @@ export default async function CounselorPage() {
   // Flagged students
   const { data: flagRows } = await db
     .from("student_concern_flags")
-    .select("id, flag_level, public_note, flagged_at, students(id, first_name, last_name, grade)")
+    .select("id, flag_level, public_note, flagged_at, student:student_id(id, first_name, last_name, grade)")
     .order("flag_level", { ascending: false })
     .order("flagged_at", { ascending: false })
 
   const flags         = (flagRows ?? []) as unknown as FlagRow[]
-  const flaggedIds    = flags.map(f => f.students?.id).filter(Boolean) as string[]
+  const flaggedIds    = flags.map(f => f.student?.id).filter(Boolean) as string[]
 
   // Open incidents right now (for "active" badge)
   const openMap: Record<string, OpenIncident> = {}
@@ -73,7 +73,7 @@ export default async function CounselorPage() {
   // All open incidents (for All Incidents tab)
   const { data: allOpen } = await db
     .from("incidents")
-    .select("id, level, reported_at, block_id, students(first_name, last_name, grade), reporter:reported_by(display_name)")
+    .select("id, level, reported_at, block_id, student:student_id(first_name, last_name, grade), reporter:reported_by(display_name)")
     .eq("status", "open")
     .order("level",       { ascending: false })
     .order("reported_at", { ascending: true  })
@@ -137,7 +137,7 @@ export default async function CounselorPage() {
             </p>
             <div className="flex flex-col divide-y" style={{ borderColor: "#EAEAEA" }}>
               {flags.map(f => {
-                const s        = f.students
+                const s        = f.student
                 if (!s) return null
                 const style    = FLAG_STYLE[f.flag_level] ?? FLAG_STYLE["watch"]
                 const isActive = !!openMap[s.id]
@@ -202,7 +202,7 @@ export default async function CounselorPage() {
             </p>
             <div className="flex flex-col gap-1.5">
               {(allOpen ?? []).map((inc: any) => {
-                const s      = inc.students as { first_name: string; last_name: string; grade: number } | null
+                const s      = inc.student as { first_name: string; last_name: string; grade: number } | null
                 const isElev = inc.level === "elevated"
                 const mins   = Math.floor((Date.now() - new Date(inc.reported_at).getTime()) / 60000)
                 return (

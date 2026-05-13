@@ -21,14 +21,14 @@ export async function POST(req: NextRequest) {
 
   const { data: inc, error: fetchErr } = await db
     .from("incidents")
-    .select("id, status, level, student_id, students(first_name, last_name)")
+    .select("id, status, level, student_id, student:student_id(first_name, last_name)")
     .eq("id", incident_id)
     .single()
 
   if (fetchErr || !inc)
     return NextResponse.json({ error: "Incident not found" }, { status: 404 })
 
-  const rawStudent = (inc as any).students
+  const rawStudent = (inc as any).student
   const student    = Array.isArray(rawStudent) ? (rawStudent[0] ?? null) : (rawStudent ?? null)
   const name       = student ? student.last_name + ", " + student.first_name : "Unknown"
 

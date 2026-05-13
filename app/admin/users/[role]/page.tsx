@@ -59,11 +59,12 @@ export default async function UserRolePage({
   const isStudent = role === "student"
   const label     = ROLE_LABEL[role] ?? role
 
-  // Students come from the students roster table, not the users/login table
+  // Students are now stored in the users table with role = 'student'
   if (isStudent) {
     const { data, error } = await db
-      .from("students")
+      .from("users")
       .select("id, first_name, last_name, grade, veracross_id, phone, is_active")
+      .eq("role", "student")
       .order("last_name")
       .order("first_name")
 

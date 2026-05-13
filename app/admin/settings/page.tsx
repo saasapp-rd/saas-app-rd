@@ -15,7 +15,7 @@ export default async function SettingsPage() {
 
   // Fetch some live stats for context
   const [{ count: studentCount }, { count: courseCount }, { count: userCount }] = await Promise.all([
-    db.from("students").select("id", { count: "exact", head: true }).eq("is_active", true),
+    db.from("users").select("id", { count: "exact", head: true }).eq("role", "student").eq("is_active", true),
     db.from("courses").select("id",  { count: "exact", head: true }).eq("is_active", true),
     db.from("users").select("id",    { count: "exact", head: true }).eq("is_active", true),
   ])

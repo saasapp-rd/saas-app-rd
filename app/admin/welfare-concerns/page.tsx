@@ -32,7 +32,7 @@ export default async function WelfareConcernsPage() {
   const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
   const { data } = await db
     .from("incidents")
-    .select("id, status, level, reported_at, students(first_name, last_name, grade), reporter:reported_by(display_name)")
+    .select("id, status, level, reported_at, student:student_id(first_name, last_name, grade), reporter:reported_by(display_name)")
     .eq("report_type", "welfare_concern")
     .gte("reported_at", since)
     .order("reported_at", { ascending: false })
@@ -51,7 +51,7 @@ export default async function WelfareConcernsPage() {
     status:      r.status,
     level:       r.level,
     reported_at: r.reported_at,
-    student:     norm<{ first_name: string; last_name: string; grade: number }>(r.students),
+    student:     norm<{ first_name: string; last_name: string; grade: number }>(r.student),
     reporter:    norm<{ display_name: string }>(r.reporter),
   }))
 

@@ -57,9 +57,10 @@ export default async function StudentProfilePage({
   if (!ALLOWED.includes(session.user.role)) redirect("/dashboard")
 
   const [stuResult, flagResult, incResult] = await Promise.all([
-    db.from("students")
-      .select("id, first_name, last_name, grade, student_id, parent_email, parent_name")
+    db.from("users")
+      .select("id, first_name, last_name, grade, veracross_id, parent_email, parent_name")
       .eq("id", id)
+      .eq("role", "student")
       .single(),
     db.from("student_concern_flags")
       .select("id, flag_level, public_note, flagged_at")
@@ -141,7 +142,7 @@ export default async function StudentProfilePage({
           </h1>
           <div className="flex flex-wrap gap-3 text-[10px]" style={{ color: "#999" }}>
             <span>Grade {stu.grade}</span>
-            {stu.student_id && <span>ID: {stu.student_id}</span>}
+            {stu.veracross_id && <span>ID: {stu.veracross_id}</span>}
             {stu.parent_email && <span>{stu.parent_email}</span>}
           </div>
         </div>

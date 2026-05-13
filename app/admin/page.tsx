@@ -35,9 +35,10 @@ export default async function AdminDashboard() {
     .order("reported_at", { ascending: true  })
 
   const { data: allStudents } = await db
-    .from("students")
+    .from("users")
     .select("id, first_name, last_name, grade, call_by")
-    .or("is_active.eq.true,is_active.is.null")
+    .eq("role", "student")
+    .eq("is_active", true)
     .order("last_name")
 
   const missing  = openInc?.length ?? 0

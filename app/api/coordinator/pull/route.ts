@@ -32,12 +32,12 @@ export async function POST(req: NextRequest) {
       block_id:       blockId,
       public_note:    reason?.trim() ?? null,
     })
-    .select("id, level, student_id, students(first_name, last_name)")
+    .select("id, level, student_id, student:student_id(first_name, last_name)")
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const student = (data as any).students as { first_name: string; last_name: string } | null
+  const student = (data as any).student as { first_name: string; last_name: string } | null
   const name    = student ? student.last_name + ", " + student.first_name : "Unknown"
 
   // Push to coordinators

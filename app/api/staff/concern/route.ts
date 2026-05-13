@@ -29,12 +29,12 @@ export async function POST(req: NextRequest) {
     block_id,
     suppress_email_home: false,
     status:              "open",
-  }).select("id, block_id, students(first_name, last_name)").single()
+  }).select("id, block_id, student:student_id(first_name, last_name)").single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   // Supabase returns joins as arrays — normalise to single object | null
-  const rawStudent = (incident as any).students
+  const rawStudent = (incident as any).student
   const student = Array.isArray(rawStudent)
     ? (rawStudent[0] as { first_name: string; last_name: string } | undefined) ?? null
     : (rawStudent as { first_name: string; last_name: string } | null)
