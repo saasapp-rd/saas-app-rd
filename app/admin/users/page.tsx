@@ -51,7 +51,9 @@ export default async function UsersPage() {
           <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">
             Manage Users
           </div>
-          <div className="text-white text-[10px] opacity-70">{total} active members</div>
+          <div className="text-white text-[10px] opacity-70">
+            Select a group to view or add members &middot; {total} active
+          </div>
         </div>
         <SignOutButton />
       </header>
@@ -64,11 +66,6 @@ export default async function UsersPage() {
       </nav>
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-3">
-        <p className="text-[9px] font-bold tracking-[0.25em] uppercase"
-           style={{ color: "#3D3D3D", opacity: 0.35 }}>
-          Select a group to view or add members
-        </p>
-
         {ROLE_META.map(({ role, label, desc, bg, color }) => {
           const count = counts[role] ?? 0
           return (
