@@ -67,7 +67,8 @@ function StudentModal({
       style={{
         position: "fixed", inset: 0, zIndex: 50,
         background: "rgba(0,0,0,0.45)",
-        display: "flex", alignItems: "flex-end", justifyContent: "center",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "20px",
       }}>
       <div
         onClick={e => e.stopPropagation()}
@@ -75,10 +76,9 @@ function StudentModal({
           width: "100%", maxWidth: 480,
           maxHeight: "85vh",
           background: "#fff",
-          borderRadius: "20px 20px 0 0",
+          borderRadius: 20,
           display: "flex", flexDirection: "column",
           overflow: "hidden",
-          paddingBottom: "env(safe-area-inset-bottom, 0px)",
         }}>
 
         {/* ── Fixed header ── */}
