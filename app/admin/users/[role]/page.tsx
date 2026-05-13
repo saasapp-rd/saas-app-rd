@@ -8,7 +8,6 @@ import Link from "next/link"
 import AddUserForm from "@/components/admin/AddUserForm"
 import UserRowActions from "@/components/admin/UserRowActions"
 
-// Always fetch live data — never serve a cached list
 export const dynamic = "force-dynamic"
 
 const VALID_ROLES = [
@@ -30,7 +29,7 @@ interface User {
   id:           string
   email:        string
   display_name: string | null
-  phone:        string | null
+  phone?:       string | null
   role:         string
   is_active:    boolean | null
 }
@@ -47,13 +46,15 @@ export default async function UserRolePage({
   if (!session) redirect("/login")
   if (!["admin", "super_admin"].includes(session.user.role)) redirect("/dashboard")
 
-  // Fetch ALL users for this role (active + inactive) so none are invisible.
-  // is_active = false ones are shown with an "Inactive" badge and a reactivate option.
-  const { data } = await db
+  // select("*") returns whatever columns exist — never fails on missing columns
+  // from unapplied migrations (e.g. phone, employee_id added later)
+  const { data, error } = await db
     .from("users")
-    .select("id, email, display_name, phone, role, is_active")
+    .select("*")
     .eq("role", role)
     .order("display_name")
+
+  if (error) console.error("[users/role] query error:", error.message)
 
   const users     = (data ?? []) as User[]
   const active    = users.filter(u => u.is_active !== false)
@@ -111,7 +112,8 @@ export default async function UserRolePage({
             <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
                style={{ color: "#3D3D3D", opacity: 0.35 }}>
               {label} &mdash; {active.length} active
-              {users.length !== active.length ? ` · ${users.length - active.length} inactive` : ""}
+              {users.length !== active.length
+                ? ` · ${users.length - active.length} inactive` : ""}
             </p>
             <div className="flex flex-col gap-1.5">
               {users.map(u => (
