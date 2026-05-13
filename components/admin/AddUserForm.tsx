@@ -9,9 +9,17 @@ const ROLES = [
   { value: "dean",        label: "Dean"        },
   { value: "staff",       label: "Staff"       },
   { value: "admin",       label: "Admin"       },
+  { value: "super_admin", label: "Super Admin" },
 ]
 
-export default function AddUserForm({ defaultRole = "teacher" }: { defaultRole?: string }) {
+export default function AddUserForm({
+  defaultRole = "teacher",
+  callerRole  = "admin",
+}: {
+  defaultRole?: string
+  callerRole?:  string
+}) {
+  const roles = callerRole === "super_admin" ? ROLES : ROLES.filter(r => r.value !== "super_admin")
   const router = useRouter()
   const [email,       setEmail]       = useState("")
   const [displayName, setDisplayName] = useState("")
@@ -95,7 +103,7 @@ export default function AddUserForm({ defaultRole = "teacher" }: { defaultRole?:
         className="w-full px-4 py-2.5 rounded-xl text-sm border outline-none"
         style={{ borderColor: "#EAEAEA", background: "#fff", color: "#3D3D3D" }}
       >
-        {ROLES.map(r => (
+        {roles.map(r => (
           <option key={r.value} value={r.value}>{r.label}</option>
         ))}
       </select>

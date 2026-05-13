@@ -209,7 +209,7 @@ export default async function UserRolePage({
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
 
-        <AddUserForm defaultRole={role} />
+        <AddUserForm defaultRole={role} callerRole={session.user.role} />
 
         {users.length === 0 ? (
           <p className="text-xs text-center py-6" style={{ color: "#999" }}>
