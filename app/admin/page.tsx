@@ -5,30 +5,20 @@ import { db } from "@/lib/supabase"
 import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
 import LiveFeed from "@/components/LiveFeed"
-import WelfareConcernLink from "@/components/WelfareConcernLink"
+import ReportMissingForm from "@/components/admin/ReportMissingForm"
 import Link from "next/link"
 
 export const dynamic = "force-dynamic"
 
-const LINKS = [
-  {
-    href:  "/admin/users",
-    label: "Manage Users",
-    desc:  "Add, edit, or deactivate accounts by role",
-    icon:  "👥",
-  },
-  {
-    href:  "/admin/import",
-    label: "CSV Import",
-    desc:  "Upload student roster, teacher list, and class schedule",
-    icon:  "📥",
-  },
-  {
-    href:  "/admin/daily",
-    label: "Daily Summary",
-    desc:  "Today\'s attendance overview",
-    icon:  "📅",
-  },
+function norm<T>(val: unknown): T | null {
+  if (!val) return null
+  return (Array.isArray(val) ? val[0] ?? null : val) as T | null
+}
+
+const MGMT_LINKS = [
+  { href: "/admin/users",  label: "Manage Users",  desc: "Add, edit, or deactivate accounts by role", icon: "👥" },
+  { href: "/admin/import", label: "CSV Import",     desc: "Upload student roster, teacher list, and class schedule", icon: "📥" },
+  { href: "/admin/daily",  label: "Daily Summary",  desc: "Today\'s attendance overview", icon: "📅" },
 ]
 
 export default async function AdminPage() {
@@ -36,12 +26,36 @@ export default async function AdminPage() {
   if (!session) redirect("/login")
   if (!["admin", "super_admin"].includes(session.user.role)) redirect("/dashboard")
 
-  const { count: missingCount } = await db
+  // Fetch open incidents WITH student names for the live widget
+  const { data: openInc } = await db
     .from("incidents")
-    .select("id", { count: "exact", head: true })
+    .select("id, level, reported_at, student:student_id(id, first_name, last_name, grade)")
     .eq("status", "open")
+    .order("level",       { ascending: false })
+    .order("reported_at", { ascending: true  })
 
-  const missing = missingCount ?? 0
+  // Fetch all students for the report-missing search
+  const { data: allStudents } = await db
+    .from("students")
+    .select("id, first_name, last_name, grade, call_by")
+    .eq("is_active", true)
+    .order("last_name")
+
+  const missing  = openInc?.length ?? 0
+  const students = (allStudents ?? []) as {
+    id: string; first_name: string; last_name: string; grade: number; call_by: string | null
+  }[]
+
+  type OpenRow = {
+    id: string; level: string; reported_at: string
+    student: { id: string; first_name: string; last_name: string; grade: number } | null
+  }
+  const rows = ((openInc ?? []) as unknown[]).map((r: any) => ({
+    id:         r.id,
+    level:      r.level,
+    reported_at: r.reported_at,
+    student:    norm<{ id: string; first_name: string; last_name: string; grade: number }>(r.student),
+  })) as OpenRow[]
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#fff" }}>
@@ -49,7 +63,7 @@ export default async function AdminPage() {
               style={{ background: "#A6192E" }}>
         <div>
           <div className="text-white text-xs font-bold tracking-[0.2em] uppercase flex items-center gap-2">
-            Admin
+            Dashboard
             <LiveFeed />
           </div>
           <div className="text-white text-[10px] opacity-70">
@@ -59,50 +73,108 @@ export default async function AdminPage() {
         <SignOutButton />
       </header>
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
-      <nav className="px-5 py-2 border-b flex items-center gap-4" style={{ borderColor: "#EAEAEA" }}>
-        <Link href="/dashboard" className="text-xs font-bold"
-              style={{ color: "#A6192E", textDecoration: "none" }}>
-          Dashboard
-        </Link>
-        <Link href="/missing" className="text-xs"
-              style={{ color: "#999", textDecoration: "none" }}>
-          Live View
-        </Link>
-        <Link href="/analytics" className="text-xs"
-              style={{ color: "#999", textDecoration: "none" }}>
-          Analytics
-        </Link>
-      </nav>
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-3">
 
-        {/* Live widget */}
+        {/* ── Live widget ── */}
         <Link href="/missing" style={{ textDecoration: "none" }}>
-          <div className="rounded-xl px-4 py-4 border flex items-center justify-between"
+          <div className="rounded-xl border overflow-hidden"
                style={{
-                 background:   missing > 0 ? "#FFF0F0" : "#F0FDF4",
-                 borderColor:  missing > 0 ? "#FFCCCC" : "#22C55E",
+                 borderColor: missing > 0 ? "#FFCCCC" : "#22C55E",
+                 background:  missing > 0 ? "#FFF0F0" : "#F0FDF4",
                }}>
-            <div>
-              <div className="text-[9px] font-bold uppercase tracking-[0.2em] mb-0.5"
-                   style={{ color: missing > 0 ? "#A6192E" : "#166534" }}>
-                Right Now
+            {/* Header count */}
+            <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+              <div>
+                <div className="text-[9px] font-bold uppercase tracking-[0.2em] mb-0.5"
+                     style={{ color: missing > 0 ? "#A6192E" : "#166534" }}>
+                  Right Now
+                </div>
+                <div className="text-3xl font-black leading-none"
+                     style={{ color: missing > 0 ? "#CE2033" : "#166534" }}>
+                  {missing}
+                </div>
+                <div className="text-[10px] mt-0.5"
+                     style={{ color: missing > 0 ? "#A6192E" : "#166534", opacity: 0.7 }}>
+                  {missing === 0 ? "all students accounted for" : missing === 1 ? "student missing" : "students missing"}
+                </div>
               </div>
-              <div className="text-2xl font-black"
-                   style={{ color: missing > 0 ? "#CE2033" : "#166534" }}>
-                {missing}
-              </div>
-              <div className="text-[10px]" style={{ color: missing > 0 ? "#A6192E" : "#166534", opacity: 0.7 }}>
-                {missing === 1 ? "student missing" : missing === 0 ? "all students accounted for" : "students missing"}
-              </div>
+              <span className="text-2xl">{missing > 0 ? "⚠" : "✓"}</span>
             </div>
-            <span className="text-lg" style={{ color: missing > 0 ? "#CE2033" : "#22C55E" }}>
-              {missing > 0 ? "⚠" : "✓"}
-            </span>
+
+            {/* Student name list */}
+            {rows.length > 0 && (
+              <div className="px-4 pb-3 flex flex-col gap-1 border-t mt-1"
+                   style={{ borderColor: missing > 0 ? "#FFCCCC" : "#22C55E" }}>
+                {rows.map(r => (
+                  <div key={r.id} className="flex items-center justify-between py-0.5">
+                    <span className="text-xs font-semibold" style={{ color: "#3D3D3D" }}>
+                      {r.student
+                        ? r.student.last_name + ", " + r.student.first_name + " — Gr " + r.student.grade
+                        : "Unknown student"}
+                    </span>
+                    {r.level === "elevated" && (
+                      <span className="text-[8px] font-black px-1.5 py-0.5 rounded uppercase"
+                            style={{ background: "#FFE0E0", color: "#A6192E" }}>
+                        Elevated
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </Link>
 
-        {LINKS.map(({ href, label, desc, icon }) => (
+        {/* ── Action CTAs ── */}
+        <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#EAEAEA" }}>
+          <div className="px-4 py-2.5 border-b" style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
+            <p className="text-[9px] font-bold uppercase tracking-[0.2em]"
+               style={{ color: "#3D3D3D", opacity: 0.45 }}>
+              Quick Actions
+            </p>
+          </div>
+          <div className="px-4 py-3 flex flex-col gap-2" style={{ background: "#fff" }}>
+            {/* Report Welfare Concern */}
+            <Link href="/staff/concern" style={{ textDecoration: "none" }}>
+              <div className="rounded-xl px-4 py-3 flex items-center gap-3"
+                   style={{ background: "#FFFBEB", border: "1px solid #FDE68A" }}>
+                <span className="text-lg">⚠️</span>
+                <div>
+                  <p className="text-xs font-bold" style={{ color: "#92400E" }}>
+                    Report Welfare Concern
+                  </p>
+                  <p className="text-[10px]" style={{ color: "#B45309" }}>
+                    Flag a student for counselor follow-up
+                  </p>
+                </div>
+              </div>
+            </Link>
+            {/* Report Missing Student — more prominent */}
+            <div className="rounded-xl px-4 py-3 flex items-center gap-3"
+                 style={{ background: "#FFF0F0", border: "2px solid #CE2033" }}>
+              <span className="text-lg">🔴</span>
+              <div>
+                <p className="text-xs font-bold" style={{ color: "#A6192E" }}>
+                  Report a Missing Student
+                </p>
+                <p className="text-[10px]" style={{ color: "#CE2033", opacity: 0.8 }}>
+                  Open an incident now — use the form below
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Student search + report form ── */}
+        <ReportMissingForm students={students} />
+
+        {/* ── Management links ── */}
+        <p className="text-[9px] font-bold tracking-[0.25em] uppercase mt-1"
+           style={{ color: "#3D3D3D", opacity: 0.35 }}>
+          Administration
+        </p>
+        {MGMT_LINKS.map(({ href, label, desc, icon }) => (
           <Link key={href} href={href} style={{ textDecoration: "none" }}>
             <div className="rounded-xl px-4 py-4 border flex items-center gap-4"
                  style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
@@ -115,8 +187,6 @@ export default async function AdminPage() {
             </div>
           </Link>
         ))}
-
-        <WelfareConcernLink />
       </main>
     </div>
   )
