@@ -70,11 +70,12 @@ export default async function MissingPage() {
       <header className="px-5 py-3.5 flex items-center justify-between"
               style={{ background: "#A6192E" }}>
         <div>
-          <div className="text-white text-sm font-black tracking-tight">
-            Seattle Academy
+          <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">
+            Live View
           </div>
           <div className="text-white text-[10px] opacity-70">
-            {session.user.displayName} &middot; {role}
+            {open.length} missing right now
+            {located.length > 0 ? ` · ${located.length} located` : ""}
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -85,12 +86,16 @@ export default async function MissingPage() {
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
 
       {/* Nav */}
-      <nav className="px-5 py-2 border-b flex items-center gap-3 overflow-x-auto"
+      <nav className="px-5 py-2 border-b flex items-center gap-4 overflow-x-auto"
            style={{ borderColor: "#EAEAEA" }}>
-        {navLinks.map(l => (
+        <Link href="/dashboard" className="text-xs font-bold whitespace-nowrap"
+              style={{ color: "#A6192E", textDecoration: "none" }}>
+          &larr; Dashboard
+        </Link>
+        {navLinks.filter(l => l.primary).map(l => (
           <Link key={l.href} href={l.href}
-                className="text-xs font-bold whitespace-nowrap"
-                style={{ color: l.primary ? "#A6192E" : "#999", textDecoration: "none" }}>
+                className="text-xs whitespace-nowrap"
+                style={{ color: "#999", textDecoration: "none" }}>
             {l.label}
           </Link>
         ))}

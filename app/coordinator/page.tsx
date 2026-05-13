@@ -7,6 +7,7 @@ import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 import LiveFeed from "@/components/LiveFeed"
 import PullButton from "@/components/coordinator/PullButton"
+import WelfareConcernLink from "@/components/WelfareConcernLink"
 
 const ALLOWED = ["coordinator","counselor","dean","admin","super_admin"]
 
@@ -48,7 +49,11 @@ export default async function CoordinatorPage() {
               style={{ background: "#A6192E" }}>
         <div>
           <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">Coordinator</div>
-          <div className="text-white text-[10px] opacity-70">{session.user.displayName}</div>
+          <div className="text-white text-[10px] opacity-70">
+            {rows.length === 0
+              ? "Queue clear"
+              : `${rows.length} active · ${elev.length} elevated`}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <LiveFeed />
@@ -57,13 +62,17 @@ export default async function CoordinatorPage() {
       </header>
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
       <nav className="px-5 py-2 border-b flex items-center gap-4" style={{ borderColor: "#EAEAEA" }}>
-        <Link href="/missing" className="text-xs font-bold"
+        <Link href="/dashboard" className="text-xs font-bold"
               style={{ color: "#A6192E", textDecoration: "none" }}>
-          &larr; Missing
+          Dashboard
         </Link>
-        <Link href="/dean" className="text-xs"
+        <Link href="/missing" className="text-xs"
               style={{ color: "#999", textDecoration: "none" }}>
-          Patterns
+          Live View
+        </Link>
+        <Link href="/analytics" className="text-xs"
+              style={{ color: "#999", textDecoration: "none" }}>
+          Analytics
         </Link>
         {isCoord && (
           <div className="ml-auto">
@@ -99,7 +108,7 @@ export default async function CoordinatorPage() {
         {rows.length === 0 && (
           <div className="rounded-xl px-4 py-8 text-center border" style={{ borderColor: "#EAEAEA" }}>
             <p className="text-sm font-bold mb-1" style={{ color: "#3D3D3D" }}>Queue clear</p>
-            <p className="text-xs mb-3" style={{ color: "#999" }}>No active incidents right now.</p>
+            <p className="text-xs mb-3" style={{ color: "#999" }}>No missing students right now.</p>
             {isCoord && <PullButton inline />}
           </div>
         )}
@@ -175,6 +184,8 @@ export default async function CoordinatorPage() {
             </div>
           </div>
         )}
+
+        <WelfareConcernLink />
       </main>
     </div>
   )
