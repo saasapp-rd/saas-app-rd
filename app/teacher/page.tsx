@@ -102,9 +102,9 @@ export default async function TeacherPage() {
               style={{ color: "#999", textDecoration: "none" }}>
           Live View
         </Link>
-        <Link href="/teacher/admin" className="text-xs"
+        <Link href="/teacher/courses" className="text-xs"
               style={{ color: "#999", textDecoration: "none" }}>
-          Admin
+          Courses
         </Link>
       </nav>
 
