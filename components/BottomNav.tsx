@@ -7,16 +7,16 @@ interface NavItem { href: string; label: string; icon: string }
 
 const NAV: Record<string, NavItem[]> = {
   super_admin: [
-    { href: "/admin",       label: "Dashboard",  icon: "🏠" },
-    { href: "/missing",     label: "Live",        icon: "👁"  },
-    { href: "/dean",        label: "Analytics",   icon: "📊" },
-    { href: "/admin/users", label: "Admin",       icon: "⚙️"  },
+    { href: "/admin",        label: "Dashboard", icon: "🏠" },
+    { href: "/missing",      label: "Live",      icon: "👁"  },
+    { href: "/analytics",    label: "Analytics", icon: "📊" },
+    { href: "/admin/users",  label: "Users",     icon: "👥"  },
   ],
   admin: [
-    { href: "/admin",       label: "Dashboard",  icon: "🏠" },
-    { href: "/missing",     label: "Live",        icon: "👁"  },
-    { href: "/dean",        label: "Analytics",   icon: "📊" },
-    { href: "/admin/users", label: "Admin",       icon: "⚙️"  },
+    { href: "/admin",        label: "Dashboard", icon: "🏠" },
+    { href: "/missing",      label: "Live",      icon: "👁"  },
+    { href: "/analytics",    label: "Analytics", icon: "📊" },
+    { href: "/admin/users",  label: "Users",     icon: "👥"  },
   ],
   dean: [
     { href: "/missing",     label: "Live",        icon: "👁"  },
@@ -48,15 +48,10 @@ const NAV: Record<string, NavItem[]> = {
 }
 
 function isActive(href: string, pathname: string): boolean {
-  // Admin users tab — active on /admin/users/* only
-  if (href === "/admin/users") return pathname.startsWith("/admin/users")
-  // Dashboard tab — active on /admin but NOT /admin/users/*
-  if (href === "/admin")       return pathname === "/admin" || (pathname.startsWith("/admin/") && !pathname.startsWith("/admin/users"))
-  if (href === "/missing")     return pathname === "/missing"
-  if (href === "/dean")        return pathname === "/dean"
-  if (href === "/counselor")   return pathname === "/counselor"
-  if (href === "/teacher")     return pathname === "/teacher"
-  if (href === "/staff")       return pathname === "/staff"
+  // /admin (Dashboard) — active on /admin exactly, or any /admin/* that isn't /admin/users
+  if (href === "/admin") return pathname === "/admin" ||
+    (pathname.startsWith("/admin/") && !pathname.startsWith("/admin/users"))
+  // All other exact-prefix matches
   return pathname === href || pathname.startsWith(href + "/")
 }
 
