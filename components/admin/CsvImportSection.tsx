@@ -14,6 +14,7 @@ interface ImportResult {
   inserted?:            number
   updated?:             number
   unmatched_teachers?:  string[]
+  teacher_role_added?:  number
   warnings?:            string[]
   errors?:              string[]
   error?:               string
@@ -273,14 +274,15 @@ export default function CsvImportSection() {
         columns={["Course", "Class ID", "Description", "Teacher", "TEACHER: Person ID", "Meeting Times"]}
         optional={["School Level", "Primary Grade Level", "Room"]}
         notes={[
-          "Faculty & Staff must be imported first — courses match teachers by Person ID, then by 'Last, First' name.",
+          "Faculty & Staff must be imported first — courses match teachers by Person ID, then by 'Last, First' name across all non-student roles.",
+          "If a matched person is in the system as staff (or coordinator, dean, etc.) the 'teacher' role is added to their roles silently — their primary role is not changed.",
           "Class ID is the dedup key (e.g. 'ACAL2001-11'); Course is the course code (e.g. 'ACAL2001') used to group sections; Description is the course name.",
           "Block number is parsed from Meeting Times via 'B<N>' (e.g. 'Odd-FwdOdd-Rev-B3-US' → block 3).",
           "Unmatched teachers are listed in warnings; the course is imported without a teacher assigned.",
         ]}
         resultLabel={r =>
           r.processed
-            ? `✓ ${r.processed} course${r.processed !== 1 ? "s" : ""} processed · ${r.inserted ?? 0} new · ${r.updated ?? 0} updated${(r.unmatched_teachers?.length ?? 0) > 0 ? ` · ${r.unmatched_teachers!.length} teacher${r.unmatched_teachers!.length !== 1 ? "s" : ""} not in system` : ""}`
+            ? `✓ ${r.processed} course${r.processed !== 1 ? "s" : ""} processed · ${r.inserted ?? 0} new · ${r.updated ?? 0} updated${(r.teacher_role_added ?? 0) > 0 ? ` · teacher role added to ${r.teacher_role_added}` : ""}${(r.unmatched_teachers?.length ?? 0) > 0 ? ` · ${r.unmatched_teachers!.length} teacher${r.unmatched_teachers!.length !== 1 ? "s" : ""} not in system` : ""}`
             : "No records imported"
         }
       />

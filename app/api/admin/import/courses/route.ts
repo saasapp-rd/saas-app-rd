@@ -95,33 +95,42 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ errors, warnings, processed: 0 }, { status: 400 })
 
   // ── Resolve teachers ──────────────────────────────────────────────
-  // Pull every active teacher/advisor once; build two lookup maps.
-  const { data: teacherRows } = await db
+  // Match against every active non-student / non-parent user so a faculty
+  // member tagged as staff (or coordinator, dean, etc.) still resolves and
+  // gets the "teacher" role appended silently — keeping their primary role.
+  const { data: userRows } = await db
     .from("users")
-    .select("id, veracross_id, last_name, first_name, display_name")
-    .in("role", ["teacher", "advisor"])
+    .select("id, veracross_id, last_name, first_name, roles")
     .eq("is_active", true)
+    .in("role", ["teacher","advisor","staff","coordinator","counselor","dean","admin","super_admin"])
+    .range(0, 9999)
 
-  const idByVcId  = new Map<string, string>()
-  const idByName  = new Map<string, string>()  // "last,first" lowercased
-  for (const t of teacherRows ?? []) {
-    if (t.veracross_id) idByVcId.set(String(t.veracross_id), t.id as string)
-    if (t.last_name && t.first_name) {
-      idByName.set(
-        `${String(t.last_name).toLowerCase()},${String(t.first_name).toLowerCase()}`,
-        t.id as string
+  interface UserMatch { id: string; roles: string[] }
+  const matchByVcId = new Map<string, UserMatch>()
+  const matchByName = new Map<string, UserMatch>()
+
+  for (const u of userRows ?? []) {
+    const m: UserMatch = {
+      id:    u.id as string,
+      roles: (u.roles ?? []) as string[],
+    }
+    if (u.veracross_id) matchByVcId.set(String(u.veracross_id), m)
+    if (u.last_name && u.first_name) {
+      matchByName.set(
+        `${String(u.last_name).toLowerCase()},${String(u.first_name).toLowerCase()}`,
+        m
       )
     }
   }
 
-  function lookupTeacher(p: ParsedRow): string | null {
+  function lookupTeacher(p: ParsedRow): UserMatch | null {
     if (p.teacherVcId) {
-      const byId = idByVcId.get(p.teacherVcId)
+      const byId = matchByVcId.get(p.teacherVcId)
       if (byId) return byId
     }
     if (p.teacherName) {
       const [last, first] = p.teacherName.split(",").map(s => s.trim().toLowerCase())
-      if (last && first) return idByName.get(`${last},${first}`) ?? null
+      if (last && first) return matchByName.get(`${last},${first}`) ?? null
     }
     return null
   }
@@ -142,15 +151,22 @@ export async function POST(req: NextRequest) {
   const inserts: object[] = []
   const updates: { id: string; rec: object }[] = []
   const unmatchedTeachers = new Set<string>()
+  // Users matched as a teacher but who don't yet have "teacher" in their
+  // roles array. We'll append it after the courses are written.
+  const needsTeacherRole = new Map<string, string[]>()  // userId → current roles
 
   for (const p of parsed) {
-    const teacherId = lookupTeacher(p)
-    if (!teacherId && p.teacherName) {
+    const match     = lookupTeacher(p)
+    const teacherId = match?.id ?? null
+    if (!match && p.teacherName) {
       const label = p.teacherVcId
         ? `${p.teacherName} (Person ID ${p.teacherVcId})`
         : p.teacherName
       unmatchedTeachers.add(label)
       warnings.push(`${p.classId}: teacher "${label}" not in system — course imported without teacher`)
+    }
+    if (match && !match.roles.includes("teacher")) {
+      needsTeacherRole.set(match.id, match.roles)
     }
 
     const rec = {
@@ -196,11 +212,26 @@ export async function POST(req: NextRequest) {
 
   if (dbError) return NextResponse.json({ error: dbError, warnings, errors }, { status: 500 })
 
+  // Append the "teacher" role to users we matched who don't have it yet.
+  // Primary `role` field is untouched — we're only widening their `roles[]`.
+  let teacherRoleAdded = 0
+  if (needsTeacherRole.size > 0) {
+    const results = await Promise.allSettled(
+      [...needsTeacherRole.entries()].map(([userId, currentRoles]) =>
+        db.from("users").update({ roles: [...currentRoles, "teacher"] }).eq("id", userId)
+      )
+    )
+    teacherRoleAdded = results.filter(r =>
+      r.status === "fulfilled" && !(r.value as { error: unknown }).error
+    ).length
+  }
+
   return NextResponse.json({
     processed:           parsed.length,
     inserted:            inserts.length,
     updated:             updates.length,
     unmatched_teachers:  [...unmatchedTeachers],
+    teacher_role_added:  teacherRoleAdded,
     skipped:             rows.length - parsed.length,
     warnings:            warnings.length ? warnings : undefined,
     errors:              errors.length   ? errors   : undefined,
