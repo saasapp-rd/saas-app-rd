@@ -16,14 +16,14 @@ const ROLE_META: {
   bg:    string
   color: string
 }[] = [
-  { role: "student",     label: "Students",     desc: "Student roster",            bg: "#F7F7F7", color: "#3D3D3D" },
-  { role: "teacher",     label: "Teachers",     desc: "Classroom teachers",        bg: "#F7F7F7", color: "#3D3D3D" },
-  { role: "staff",       label: "Staff",        desc: "Non-teaching staff",        bg: "#F7F7F7", color: "#3D3D3D" },
-  { role: "coordinator", label: "Coordinators", desc: "Attendance coordinators",   bg: "#EEF6FF", color: "#1E5FA6" },
-  { role: "counselor",   label: "Counselors",   desc: "School counselors",         bg: "#F0FDF4", color: "#166534" },
-  { role: "dean",        label: "Deans",        desc: "Dean of students",          bg: "#FFF8E0", color: "#8B6200" },
-  { role: "admin",       label: "Admins",       desc: "System administrators",     bg: "#FFF0F0", color: "#A6192E" },
-  { role: "super_admin", label: "Super Admins", desc: "Full access",               bg: "#FFF0F0", color: "#A6192E" },
+  { role: "student",     label: "Students",       desc: "Student roster",                                            bg: "#F7F7F7", color: "#3D3D3D" },
+  { role: "teacher",     label: "Teachers",       desc: "Classroom teachers",                                        bg: "#F7F7F7", color: "#3D3D3D" },
+  { role: "staff",       label: "Staff",          desc: "Non-teaching staff",                                        bg: "#F7F7F7", color: "#3D3D3D" },
+  { role: "coordinator", label: "Coordinators",   desc: "Attendance coordinators",                                   bg: "#EEF6FF", color: "#1E5FA6" },
+  { role: "counselor",   label: "Counselors",     desc: "School counselors",                                         bg: "#F0FDF4", color: "#166534" },
+  { role: "dean",        label: "Deans",          desc: "Dean of students",                                          bg: "#FFF8E0", color: "#8B6200" },
+  { role: "admin",       label: "Administrators", desc: "Division leadership — Heads, Dean of Teaching & Learning",  bg: "#FFF0F0", color: "#A6192E" },
+  { role: "super_admin", label: "Super Admins",   desc: "System administrators · full access",                       bg: "#FFF0F0", color: "#A6192E" },
 ]
 
 export default async function UsersPage() {

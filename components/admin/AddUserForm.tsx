@@ -9,7 +9,7 @@ const ALL_ROLES = [
   { value: "counselor",   label: "Counselor"   },
   { value: "dean",        label: "Dean"        },
   { value: "staff",       label: "Staff"       },
-  { value: "admin",       label: "Admin"       },
+  { value: "admin",       label: "Administrator" },
   { value: "super_admin", label: "Super Admin" },
   { value: "parent",      label: "Parent"      },
 ]

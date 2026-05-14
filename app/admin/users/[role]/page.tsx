@@ -23,7 +23,7 @@ const ROLE_LABEL: Record<string, string> = {
   coordinator: "Coordinators",
   counselor:   "Counselors",
   dean:        "Deans",
-  admin:       "Admins",
+  admin:       "Administrators",
   super_admin: "Super Admins",
 }
 

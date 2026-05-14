@@ -2,7 +2,7 @@ interface Props { name: string; role: string }
 
 const ROLE_LABELS: Record<string, string> = {
   super_admin:  "Super Admin",
-  admin:        "Admin",
+  admin:        "Administrator",
   dean:         "Dean",
   coordinator:  "Coordinator",
   counselor:    "Counselor",

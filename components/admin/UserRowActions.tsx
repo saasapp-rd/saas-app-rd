@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation"
 
 const ALL_ROLES = [
   { value: "super_admin", label: "Super Admin" },
-  { value: "admin",       label: "Admin"       },
+  { value: "admin",       label: "Administrator" },
   { value: "dean",        label: "Dean"        },
   { value: "coordinator", label: "Coordinator" },
   { value: "counselor",   label: "Counselor"   },
