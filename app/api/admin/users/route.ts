@@ -188,24 +188,33 @@ export async function DELETE(req: NextRequest) {
   if (id === session.user.userId)
     return NextResponse.json({ error: "You cannot delete your own account." }, { status: 400 })
 
-  // Students with incident history must be deactivated instead — preserve the safety record
-  const { count: incidentCount } = await db
+  // Remove all related records before deleting (order matters for FK deps)
+  // Step 1: delete incident notes that belong to this user's incidents (as student)
+  const { data: ownIncidents } = await db
     .from("incidents")
-    .select("*", { count: "exact", head: true })
+    .select("id")
     .eq("student_id", id)
+  const ownIds = (ownIncidents ?? []).map(r => r.id)
 
-  if ((incidentCount ?? 0) > 0) {
-    return NextResponse.json({
-      error: `This student has ${incidentCount} incident record${incidentCount !== 1 ? "s" : ""} on file. Deactivate instead to preserve history.`,
-    }, { status: 409 })
-  }
-
-  // Clean up all FK references before deleting so constraints don't fire
   await Promise.all([
+    // Delete incident notes for this student's incidents first
+    ownIds.length
+      ? db.from("incident_notes").delete().in("incident_id", ownIds)
+      : Promise.resolve(),
+    // Null out reporter reference on incidents this person reported
+    db.from("incidents").update({ reported_by: null }).eq("reported_by", id),
+    // Null out locating-staff reference if applicable
+    db.from("incidents").update({ located_by: null }).eq("located_by", id),
+  ])
+
+  // Step 2: now delete the student's own incidents, then everything else
+  await Promise.all([
+    ownIds.length
+      ? db.from("incidents").delete().in("id", ownIds)
+      : Promise.resolve(),
     db.from("student_enrollments").delete().eq("student_id", id),
     db.from("student_concern_flags").delete().eq("student_id", id),
     db.from("courses").update({ teacher_id: null }).eq("teacher_id", id),
-    db.from("incidents").update({ reported_by: null }).eq("reported_by", id),
     db.from("push_subscriptions").delete().eq("user_id", id),
   ])
 
