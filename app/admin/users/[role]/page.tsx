@@ -8,7 +8,7 @@ import Link from "next/link"
 import AddUserForm from "@/components/admin/AddUserForm"
 import AddStudentForm from "@/components/admin/AddStudentForm"
 import StudentList from "@/components/admin/StudentList"
-import UserRowActions from "@/components/admin/UserRowActions"
+import UserList from "@/components/admin/UserList"
 
 export const dynamic = "force-dynamic"
 
@@ -31,9 +31,9 @@ interface User {
   id:           string
   email:        string
   display_name: string | null
-  phone?:       string | null
+  phone:        string | null
   role:         string
-  roles?:       string[] | null
+  roles:        string[] | null
   is_active:    boolean | null
 }
 
@@ -51,14 +51,10 @@ interface Student {
 
 export default async function UserRolePage({
   params,
-  searchParams,
 }: {
-  params:       Promise<{ role: string }>
-  searchParams: Promise<{ inactive?: string }>
+  params: Promise<{ role: string }>
 }) {
-  const { role }     = await params
-  const { inactive } = await searchParams
-  const showInactive = inactive === "1"
+  const { role } = await params
   if (!VALID_ROLES.includes(role)) notFound()
 
   const session = await getServerSession(authOptions)
@@ -175,51 +171,16 @@ export default async function UserRolePage({
           <p className="text-xs text-center py-6" style={{ color: "#999" }}>
             No {label.toLowerCase()} yet. Add one above.
           </p>
-        ) : (() => {
-          const inactiveCount = users.length - active.length
-          const display       = showInactive ? users : active
-          const toggleHref    = showInactive
-            ? `/admin/users/${role}`
-            : `/admin/users/${role}?inactive=1`
-          return (
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-[9px] font-bold tracking-[0.25em] uppercase"
-                   style={{ color: "#3D3D3D", opacity: 0.35 }}>
-                  {label} &mdash; {active.length} active
-                </p>
-                {inactiveCount > 0 && (
-                  <Link href={toggleHref}
-                        className="text-[9px] font-bold px-2 py-0.5 rounded-full"
-                        style={{
-                          background: showInactive ? "#FEE2E2" : "#F4F4F4",
-                          color:      showInactive ? "#CE2033" : "#999",
-                          textDecoration: "none",
-                        }}>
-                    {showInactive ? "Hide inactive" : `+${inactiveCount} inactive`}
-                  </Link>
-                )}
-              </div>
-              <div className="flex flex-col gap-1.5">
-                {display.map(u => (
-                  <UserRowActions
-                    key={u.id}
-                    id={u.id}
-                    displayName={u.display_name ?? u.email}
-                    email={u.email}
-                    phone={u.phone ?? null}
-                    role={u.role}
-                    roles={(u.roles as string[] | null) ?? undefined}
-                    isActive={u.is_active !== false}
-                    isSelf={u.id === session.user.userId}
-                    myCourses={role === "teacher" ? (coursesByTeacher[u.id] ?? []) : undefined}
-                    allCourses={role === "teacher" ? allCourses : undefined}
-                  />
-                ))}
-              </div>
-            </div>
-          )
-        })()}
+        ) : (
+          <UserList
+            users={users}
+            currentUserId={session.user.userId}
+            label={label}
+            role={role}
+            coursesByUser={role === "teacher" ? coursesByTeacher : undefined}
+            allCourses={role === "teacher" ? allCourses : undefined}
+          />
+        )}
       </main>
     </div>
   )
