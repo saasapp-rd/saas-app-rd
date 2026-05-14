@@ -30,19 +30,21 @@ export default async function UsersPage() {
   if (!session) redirect("/login")
   if (!["admin", "super_admin"].includes(session.user.role)) redirect("/dashboard")
 
-  const { data: userData } = await db.from("users").select("role, is_active")
+  // Per-role HEAD counts — avoids PostgREST's 1000-row default cap that was
+  // truncating the student count once total user rows passed 1000.
+  const counts = await Promise.all(
+    ROLE_META.map(async ({ role }) => {
+      const [{ count: totalCount }, { count: inactiveCount }] = await Promise.all([
+        db.from("users").select("*", { count: "exact", head: true }).eq("role", role),
+        db.from("users").select("*", { count: "exact", head: true }).eq("role", role).eq("is_active", false),
+      ])
+      return { role, total: totalCount ?? 0, inactive: inactiveCount ?? 0 }
+    })
+  )
 
-  const total:    Record<string, number> = {}
-  const inactive: Record<string, number> = {}
-
-  for (const u of userData ?? []) {
-    total[u.role]    = (total[u.role]    ?? 0) + 1
-    if (u.is_active === false) {
-      inactive[u.role] = (inactive[u.role] ?? 0) + 1
-    }
-  }
-
-  const grandTotal = Object.values(total).reduce((a, b) => a + b, 0)
+  const total    = Object.fromEntries(counts.map(c => [c.role, c.total]))    as Record<string, number>
+  const inactive = Object.fromEntries(counts.map(c => [c.role, c.inactive])) as Record<string, number>
+  const grandTotal = counts.reduce((s, c) => s + c.total, 0)
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#fff" }}>
