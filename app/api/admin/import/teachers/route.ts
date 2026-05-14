@@ -5,14 +5,29 @@ import { db } from "@/lib/supabase"
 import { parseCSV, col, normalizePhone } from "@/lib/csvParser"
 
 /**
- * Expected CSV columns:
- *   Required : last_name, first_name, email
- *   Optional : phone, employee_id
+ * Accepts the exact Veracross faculty/staff export (CSV):
+ *   Person ID, Primary School Level, Last Name, Preferred Name,
+ *   Job Title, Email 1, Business Phone, Mobile Phone, Role
  *
- * Upserts into users table by email with role = "teacher".
- * If the user already exists (any role), their name/phone/employee_id
- * are updated but their role is NOT changed (prevents accidental downgrades).
+ * Role mapping:
+ *   "Faculty" → teacher
+ *   "Staff"   → staff
+ *   (anything else / missing) → staff
+ *
+ * Existing users whose role is coordinator, counselor, dean, admin, or
+ * super_admin are never downgraded — their role is preserved on re-import.
+ *
+ * Matched and upserted by email (Email 1).
  */
+
+const PRESERVE_ROLES = ["super_admin", "admin", "dean", "coordinator", "counselor"]
+
+function mapRole(vcRole: string): string {
+  const r = vcRole.trim().toLowerCase()
+  if (r === "faculty") return "teacher"
+  return "staff"
+}
+
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session || !["admin", "super_admin"].includes(session.user.role))
@@ -26,47 +41,89 @@ export async function POST(req: NextRequest) {
   if (!rows.length) return NextResponse.json({ error: "CSV has no data rows" }, { status: 400 })
 
   const errors: string[] = []
-  const upsert: object[] = []
-  const seen = new Set<string>()
+  const seen  = new Set<string>()
+
+  // --- Parse rows ---
+  const parsed: {
+    email:       string
+    last:        string
+    preferred:   string
+    vcRole:      string
+    veracrossId: string
+    jobTitle:    string
+    phone:       string | null
+  }[] = []
 
   rows.forEach((row, i) => {
-    const n    = i + 2
-    const last  = col(row, "last_name", "lastname", "last", "surname")
-    const first = col(row, "first_name", "firstname", "first", "given_name")
-    const email = col(row, "email", "email_address", "work_email", "school_email").toLowerCase()
-    const phone = col(row, "phone", "cell", "cell_phone", "mobile")
-    const empId = col(row, "employee_id", "employeeid", "id", "staff_id", "teacher_id")
+    const n         = i + 2
+    const email     = col(row, "email_1", "email", "email_address", "work_email", "school_email").toLowerCase()
+    const last      = col(row, "last_name", "lastname", "last", "surname")
+    const preferred = col(row, "preferred_name", "first_name", "firstname", "first", "given_name")
+    const vcRole    = col(row, "role")
+    const vcId      = col(row, "person_id", "employee_id", "employeeid", "staff_id")
+    const jobTitle  = col(row, "job_title", "jobtitle", "title", "position")
+    // Prefer mobile; fall back to business phone
+    const phone     = col(row, "mobile_phone", "business_phone", "phone", "cell", "mobile")
 
-    if (!last)                         { errors.push(`Row ${n}: missing last_name`); return }
-    if (!first)                        { errors.push(`Row ${n}: missing first_name`); return }
-    if (!email || !email.includes("@")){ errors.push(`Row ${n}: missing or invalid email`); return }
-    if (seen.has(email))               { errors.push(`Row ${n}: duplicate email "${email}"`); return }
+    if (!email || !email.includes("@")) { errors.push(`Row ${n}: missing or invalid email`); return }
+    if (!last)                          { errors.push(`Row ${n}: missing Last Name`);        return }
+    if (seen.has(email))                { errors.push(`Row ${n}: duplicate email "${email}"`); return }
 
     seen.add(email)
-    const display = `${first} ${last}`.trim()
-    upsert.push({
-      email,
-      name:         display,
-      display_name: display,
-      phone:        normalizePhone(phone),
-      employee_id:  empId || null,
-      role:         "teacher",
-      is_active:    true,
-    })
+    parsed.push({ email, last, preferred, vcRole, veracrossId: vcId, jobTitle, phone: normalizePhone(phone) })
   })
 
-  if (!upsert.length)
+  if (!parsed.length)
     return NextResponse.json({ errors, processed: 0 }, { status: 400 })
 
-  // Upsert by email — role field uses ignoreDuplicates: false so existing roles are preserved
-  // We pass role only for new inserts; existing rows keep their role via merge strategy
+  // --- Fetch existing users to preserve elevated roles ---
+  const emails = parsed.map(p => p.email)
+  const { data: existing } = await db
+    .from("users")
+    .select("email, role")
+    .in("email", emails)
+
+  const existingRole = new Map((existing ?? []).map(u => [u.email, u.role as string]))
+
+  // --- Build upsert records ---
+  const upsert = parsed.map(p => {
+    const current    = existingRole.get(p.email)
+    const finalRole  = current && PRESERVE_ROLES.includes(current)
+      ? current
+      : mapRole(p.vcRole)
+
+    const display = [p.preferred, p.last].filter(Boolean).join(" ")
+
+    return {
+      email:        p.email,
+      name:         display,
+      display_name: display,
+      first_name:   p.preferred || null,
+      last_name:    p.last,
+      phone:        p.phone,
+      veracross_id: p.veracrossId || null,
+      job_title:    p.jobTitle    || null,
+      role:         finalRole,
+      roles:        [finalRole],
+      is_active:    true,
+    }
+  })
+
   const { error } = await db
     .from("users")
     .upsert(upsert, { onConflict: "email" })
+
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  const teacherCount = upsert.filter(u => u.role === "teacher").length
+  const staffCount   = upsert.filter(u => u.role === "staff").length
+  const preserved    = upsert.filter(u => PRESERVE_ROLES.includes(u.role)).length
 
   return NextResponse.json({
     processed: upsert.length,
+    teachers:  teacherCount,
+    staff:     staffCount,
+    preserved: preserved || undefined,
     skipped:   rows.length - upsert.length,
     errors:    errors.length ? errors : undefined,
   })

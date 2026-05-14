@@ -8,6 +8,9 @@ interface ImportResult {
   skipped?:         number
   rowsSkipped?:     number
   not_found?:       number
+  teachers?:        number
+  staff?:           number
+  preserved?:       number
   warnings?:        string[]
   errors?:          string[]
   error?:           string
@@ -236,19 +239,21 @@ export default function CsvImportSection() {
       />
 
       <ImportCard
-        title="Teacher Roster"
-        description="Import staff who need to log in and report absences"
+        title="Faculty & Staff Roster"
+        description="Import all faculty and staff from Veracross — Faculty become teachers, Staff become staff"
         endpoint="/api/admin/import/teachers"
-        columns={["last_name", "first_name", "email"]}
-        optional={["phone", "employee_id"]}
+        columns={["Last Name", "Preferred Name", "Email 1", "Role"]}
+        optional={["Person ID", "Job Title", "Mobile Phone", "Business Phone"]}
         notes={[
-          "email must be the @seattleacademy.org address — it is the login key.",
-          "If a teacher already has an account, name and phone are updated; role is preserved.",
-          "Use Manage Users to assign coordinator, counselor, dean, or admin roles after import.",
+          "These are the exact Veracross column names — export the faculty/staff report and upload as-is.",
+          "Role = 'Faculty' → teacher · Role = 'Staff' → staff. Missing Role defaults to staff.",
+          "Email 1 is the login key — must be the @seattleacademy.org address.",
+          "Coordinators, counselors, deans, and admins already in the system keep their role on re-import.",
+          "After import, use Manage Users to manually promote people to coordinator, counselor, dean, etc.",
         ]}
         resultLabel={r =>
           r.processed
-            ? `✓ ${r.processed} teacher${r.processed !== 1 ? "s" : ""} imported${r.skipped ? ` · ${r.skipped} skipped` : ""}`
+            ? `✓ ${r.processed} imported · ${r.teachers ?? 0} teachers · ${r.staff ?? 0} staff${r.preserved ? ` · ${r.preserved} role preserved` : ""}${r.skipped ? ` · ${r.skipped} skipped` : ""}`
             : "No records imported"
         }
       />
