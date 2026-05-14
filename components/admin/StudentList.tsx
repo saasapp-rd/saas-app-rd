@@ -4,41 +4,50 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 
 export interface StudentRow {
-  id:           string
-  first_name:   string | null
-  last_name:    string | null
-  call_by:      string | null
-  grade:        number | null
-  veracross_id: string | null
-  phone:        string | null
-  is_active:    boolean | null
+  id:            string
+  first_name:    string | null
+  last_name:     string | null
+  call_by:       string | null
+  grade:         number | null
+  veracross_id:  string | null
+  phone:         string | null
+  is_active:     boolean | null
+  advisor_name:  string | null
 }
 
-type SortKey = "last_name" | "first_name" | "grade_asc" | "grade_desc"
+type SortField = "last_name" | "first_name" | "grade"
+type SortDir   = "asc" | "desc"
 
-const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: "last_name",   label: "Last Name"  },
-  { key: "first_name",  label: "First Name" },
-  { key: "grade_asc",   label: "Grade ↑"    },
-  { key: "grade_desc",  label: "Grade ↓"    },
+const SORT_PILLS: { field: SortField; label: string }[] = [
+  { field: "last_name",  label: "Last Name"  },
+  { field: "first_name", label: "First Name" },
+  { field: "grade",      label: "Grade"      },
 ]
 
 const PAGE_SIZE = 50
 
-function sortStudents(students: StudentRow[], key: SortKey): StudentRow[] {
+function sortStudents(students: StudentRow[], field: SortField, dir: SortDir): StudentRow[] {
   return [...students].sort((a, b) => {
-    if (key === "grade_asc")  return (a.grade ?? 99) - (b.grade ?? 99)
-    if (key === "grade_desc") return (b.grade ?? 0)  - (a.grade ?? 0)
-    if (key === "first_name") return (a.first_name ?? "").localeCompare(b.first_name ?? "")
-    return (a.last_name ?? "").localeCompare(b.last_name ?? "") ||
-           (a.first_name ?? "").localeCompare(b.first_name ?? "")
+    let cmp = 0
+    if (field === "grade") {
+      cmp = (a.grade ?? 99) - (b.grade ?? 99)
+    } else if (field === "first_name") {
+      cmp = (a.first_name ?? "").localeCompare(b.first_name ?? "")
+    } else {
+      cmp = (a.last_name ?? "").localeCompare(b.last_name ?? "") ||
+            (a.first_name ?? "").localeCompare(b.first_name ?? "")
+    }
+    return dir === "desc" ? -cmp : cmp
   })
 }
 
 export default function StudentList({ students }: { students: StudentRow[] }) {
   const router = useRouter()
   const [search,        setSearch]        = useState("")
-  const [sortKey,       setSortKey]       = useState<SortKey>("last_name")
+  const [sortField,     setSortField]     = useState<SortField>("last_name")
+  const [sortDir,       setSortDir]       = useState<SortDir>("asc")
+  const [gradeFilter,   setGradeFilter]   = useState<number[]>([])
+  const [advisorFilter, setAdvisorFilter] = useState<string[]>([])
   const [page,          setPage]          = useState(0)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [deleting,      setDeleting]      = useState<string | null>(null)
@@ -46,18 +55,36 @@ export default function StudentList({ students }: { students: StudentRow[] }) {
 
   const query = search.trim().toLowerCase()
 
+  // Derive available grades and advisors from the full list
+  const availableGrades = useMemo(() => {
+    const grades = [...new Set(students.map(s => s.grade).filter((g): g is number => g != null))]
+    return grades.sort((a, b) => a - b)
+  }, [students])
+
+  const availableAdvisors = useMemo(() => {
+    const names = [...new Set(students.map(s => s.advisor_name).filter((n): n is string => !!n))]
+    return names.sort()
+  }, [students])
+
   const filtered = useMemo(() => {
-    const base = query
+    let base = query
       ? students.filter(s =>
-          (s.last_name  ?? "").toLowerCase().includes(query) ||
-          (s.first_name ?? "").toLowerCase().includes(query) ||
-          (s.call_by    ?? "").toLowerCase().includes(query) ||
-          String(s.grade ?? "").includes(query) ||
-          (s.veracross_id ?? "").toLowerCase().includes(query)
+          (s.last_name     ?? "").toLowerCase().includes(query) ||
+          (s.first_name    ?? "").toLowerCase().includes(query) ||
+          (s.call_by       ?? "").toLowerCase().includes(query) ||
+          String(s.grade   ?? "").includes(query) ||
+          (s.veracross_id  ?? "").toLowerCase().includes(query)
         )
       : students
-    return sortStudents(base, sortKey)
-  }, [students, query, sortKey])
+
+    if (gradeFilter.length > 0)
+      base = base.filter(s => s.grade != null && gradeFilter.includes(s.grade))
+
+    if (advisorFilter.length > 0)
+      base = base.filter(s => s.advisor_name != null && advisorFilter.includes(s.advisor_name))
+
+    return sortStudents(base, sortField, sortDir)
+  }, [students, query, sortField, sortDir, gradeFilter, advisorFilter])
 
   const pageCount  = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const safePage   = Math.min(page, pageCount - 1)
@@ -65,8 +92,31 @@ export default function StudentList({ students }: { students: StudentRow[] }) {
   const start      = safePage * PAGE_SIZE + 1
   const end        = Math.min((safePage + 1) * PAGE_SIZE, filtered.length)
 
-  function handleSearch(v: string) { setSearch(v); setPage(0) }
-  function handleSort(k: SortKey)  { setSortKey(k); setPage(0) }
+  function handleSearch(v: string)  { setSearch(v);  setPage(0) }
+
+  function handleSort(field: SortField) {
+    if (field === sortField) {
+      setSortDir(d => d === "asc" ? "desc" : "asc")
+    } else {
+      setSortField(field)
+      setSortDir("asc")
+    }
+    setPage(0)
+  }
+
+  function toggleGrade(g: number) {
+    setGradeFilter(prev =>
+      prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g]
+    )
+    setPage(0)
+  }
+
+  function toggleAdvisor(name: string) {
+    setAdvisorFilter(prev =>
+      prev.includes(name) ? prev.filter(x => x !== name) : [...prev, name]
+    )
+    setPage(0)
+  }
 
   async function deleteStudent(id: string) {
     setDeleting(id); setDeleteError("")
@@ -85,7 +135,8 @@ export default function StudentList({ students }: { students: StudentRow[] }) {
     setDeleting(null)
   }
 
-  const activeCount = students.filter(s => s.is_active !== false).length
+  const activeCount   = students.filter(s => s.is_active !== false).length
+  const hasFilters    = gradeFilter.length > 0 || advisorFilter.length > 0
 
   return (
     <div className="flex flex-col gap-3">
@@ -102,23 +153,84 @@ export default function StudentList({ students }: { students: StudentRow[] }) {
 
       {/* Sort pills */}
       <div className="flex gap-1.5 flex-wrap">
-        {SORT_OPTIONS.map(o => (
-          <button key={o.key} type="button" onClick={() => handleSort(o.key)}
-            className="px-3 py-1 rounded-full text-[10px] font-bold"
-            style={{
-              background: sortKey === o.key ? "#3D3D3D" : "#F4F4F4",
-              color:      sortKey === o.key ? "#fff"    : "#999",
-              border: "none", cursor: "pointer",
-            }}>
-            {o.label}
-          </button>
-        ))}
+        {SORT_PILLS.map(o => {
+          const active = sortField === o.field
+          const arrow  = active ? (sortDir === "asc" ? " ↑" : " ↓") : ""
+          return (
+            <button key={o.field} type="button" onClick={() => handleSort(o.field)}
+              className="px-3 py-1 rounded-full text-[10px] font-bold"
+              style={{
+                background: active ? "#3D3D3D" : "#F4F4F4",
+                color:      active ? "#fff"    : "#999",
+                border: "none", cursor: "pointer",
+              }}>
+              {o.label}{arrow}
+            </button>
+          )
+        })}
       </div>
+
+      {/* Grade filter chips */}
+      {availableGrades.length > 0 && (
+        <div className="flex gap-1.5 flex-wrap items-center">
+          <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: "#999" }}>Grade</span>
+          {availableGrades.map(g => {
+            const active = gradeFilter.includes(g)
+            return (
+              <button key={g} type="button" onClick={() => toggleGrade(g)}
+                className="px-2.5 py-0.5 rounded-full text-[10px] font-bold"
+                style={{
+                  background: active ? "#A6192E" : "#F4F4F4",
+                  color:      active ? "#fff"    : "#999",
+                  border: "none", cursor: "pointer",
+                }}>
+                {g}
+              </button>
+            )
+          })}
+          {gradeFilter.length > 0 && (
+            <button type="button" onClick={() => setGradeFilter([])}
+              className="text-[9px]"
+              style={{ background: "none", border: "none", cursor: "pointer", color: "#BABABA" }}>
+              clear
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Advisor filter chips */}
+      {availableAdvisors.length > 0 && (
+        <div className="flex gap-1.5 flex-wrap items-center">
+          <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: "#999" }}>Advisor</span>
+          {availableAdvisors.map(name => {
+            const active = advisorFilter.includes(name)
+            const short  = name.split(" ").pop() ?? name  // last name only in chip
+            return (
+              <button key={name} type="button" onClick={() => toggleAdvisor(name)}
+                className="px-2.5 py-0.5 rounded-full text-[10px] font-bold"
+                style={{
+                  background: active ? "#1E5FA6" : "#F4F4F4",
+                  color:      active ? "#fff"    : "#999",
+                  border: "none", cursor: "pointer",
+                }}>
+                {short}
+              </button>
+            )
+          })}
+          {advisorFilter.length > 0 && (
+            <button type="button" onClick={() => setAdvisorFilter([])}
+              className="text-[9px]"
+              style={{ background: "none", border: "none", cursor: "pointer", color: "#BABABA" }}>
+              clear
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Count */}
       <p className="text-[9px] font-bold tracking-[0.25em] uppercase"
          style={{ color: "#3D3D3D", opacity: 0.35 }}>
-        {query
+        {query || hasFilters
           ? `${filtered.length} match${filtered.length !== 1 ? "es" : ""} · showing ${start}–${end}`
           : `${activeCount} active · ${students.length} total${pageCount > 1 ? ` · showing ${start}–${end}` : ""}`
         }
@@ -127,7 +239,7 @@ export default function StudentList({ students }: { students: StudentRow[] }) {
       {/* List */}
       {filtered.length === 0 ? (
         <p className="text-xs text-center py-6" style={{ color: "#999" }}>
-          {query ? `No students matching "${search}"` : "No students yet."}
+          {query ? `No students matching "${search}"` : "No students match the selected filters."}
         </p>
       ) : (
         <div className="flex flex-col gap-1.5">
@@ -161,7 +273,7 @@ export default function StudentList({ students }: { students: StudentRow[] }) {
                       {s.veracross_id && (
                         <span> · <span style={{ fontFamily: "monospace" }}>ID {s.veracross_id}</span></span>
                       )}
-                      {s.phone && ` · ${s.phone}`}
+                      {s.advisor_name && ` · ${s.advisor_name}`}
                     </p>
                   </Link>
 

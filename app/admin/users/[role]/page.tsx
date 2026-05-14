@@ -46,6 +46,7 @@ interface Student {
   veracross_id:  string | null
   phone:         string | null
   is_active:     boolean | null
+  advisor_name:  string | null
 }
 
 export default async function UserRolePage({
@@ -67,7 +68,7 @@ export default async function UserRolePage({
   if (isStudent) {
     const { data, error } = await db
       .from("users")
-      .select("id, first_name, last_name, call_by, grade, veracross_id, phone, is_active")
+      .select("id, first_name, last_name, call_by, grade, veracross_id, phone, is_active, advisor_name")
       .eq("role", "student")
       .order("last_name")
       .order("first_name")
