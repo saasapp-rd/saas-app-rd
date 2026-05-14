@@ -197,17 +197,16 @@ export default function CsvImportSection() {
 
       <ImportCard
         title="Student Roster"
-        description="Import all active students from Veracross or a spreadsheet"
+        description="Import from Veracross — export the student roster report as CSV or Excel"
         endpoint="/api/admin/import/students"
         columns={["Person ID", "Last Name", "Preferred Name", "Current Grade"]}
-        optional={["First Name", "Phone", "Advisor", "Gender", "parent_email", "parent_name"]}
+        optional={["Gender", "Email 1", "Mobile Phone", "Advisor"]}
         notes={[
-          "Person ID is the Veracross school ID — used to match & update on re-import.",
-          "Preferred Name becomes the student's display name (call_by). Use their nickname, not legal name.",
-          "Current Grade must be 9, 10, 11, or 12.",
-          "Advisor stores the advisor's name on the student record — used to build advisory groups.",
-          "Column names are flexible: 'student_id', 'veracross_id', 'grade', 'call_by', etc. also work.",
-          "Re-uploading is safe — existing students are updated, not duplicated.",
+          "These are the exact Veracross column names — export the roster report and upload as-is.",
+          "Person ID is used to match students on re-import, so existing records are updated, not duplicated.",
+          "Preferred Name is used as the student's first name and display name.",
+          "Current Grade can be '9' or 'Grade 9' — both work.",
+          "Advisor format from Veracross is 'Last, First' — stored as-is on the student record.",
         ]}
         resultLabel={r =>
           r.processed

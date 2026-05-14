@@ -1,23 +1,28 @@
 /** Shared CSV parsing utilities for admin import routes. */
 
-/** Parse CSV text → array of {header: value} rows. BOM-safe, quoted-field-safe. */
+/** Parse CSV or TSV text → array of {header: value} rows. BOM-safe, quoted-field-safe. */
 export function parseCSV(text: string): Record<string, string>[] {
-  const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/)
+  const lines = text.replace(/^﻿/, "").split(/\r?\n/)
   const nonEmpty = lines.map(l => l.trim()).filter(Boolean)
   if (nonEmpty.length < 2) return []
 
-  const headers = splitLine(nonEmpty[0]).map(h =>
+  // Auto-detect delimiter: more tabs than commas in the header row → TSV (Veracross/Excel export)
+  const firstLine = nonEmpty[0]
+  const delim = firstLine.split("\t").length > firstLine.split(",").length ? "\t" : ","
+
+  const headers = splitLine(firstLine, delim).map(h =>
     h.trim().toLowerCase().replace(/[\s\-\/]+/g, "_").replace(/[^a-z0-9_]/g, ""))
 
   return nonEmpty.slice(1).map(line => {
-    const vals = splitLine(line)
+    const vals = splitLine(line, delim)
     const row: Record<string, string> = {}
     headers.forEach((h, i) => { row[h] = (vals[i] ?? "").trim() })
     return row
   }).filter(r => Object.values(r).some(v => v !== ""))
 }
 
-function splitLine(line: string): string[] {
+function splitLine(line: string, delim: string): string[] {
+  if (delim === "\t") return line.split("\t").map(v => v.trim())
   const res: string[] = []; let cur = ""; let q = false
   for (let i = 0; i < line.length; i++) {
     const c = line[i]

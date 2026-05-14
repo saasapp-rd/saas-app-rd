@@ -5,12 +5,11 @@ import { db } from "@/lib/supabase"
 import { parseCSV, col, normalizePhone } from "@/lib/csvParser"
 
 /**
- * Expected CSV columns (case-insensitive, spaces OK):
- *   Required : last_name, call_by (preferred/nickname), student_id (Veracross ID)
- *   Recommended: grade (9-12), phone
- *   Optional : first_name, parent_email, parent_name
+ * Accepts the exact Veracross export columns (case-insensitive, CSV or TSV):
+ *   Required : Person ID, Last Name, Preferred Name, Current Grade
+ *   Optional : Gender, Email 1, Mobile Phone, Advisor
  *
- * Missing grade defaults to 9 with a warning.
+ * Also accepts legacy/alternative column names for compatibility.
  */
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -30,26 +29,57 @@ export async function POST(req: NextRequest) {
   const seen = new Set<string>()
 
   rows.forEach((row, i) => {
-    const n        = i + 2 // human row number (1-indexed + header)
-    const sid      = col(row, "person_id", "student_id", "veracross_id", "vc_id", "id", "id_number", "studentid")
-    const last     = col(row, "last_name", "lastname", "last", "surname")
-    const callBy   = col(row, "preferred_name", "call_by", "callby", "preferred", "nickname",
-                          "first_name", "firstname", "first")
-    const phone    = col(row, "phone", "cell", "cell_phone", "cellphone", "mobile", "student_cell")
-    const first    = col(row, "first_name", "firstname", "legal_first", "given_name") || callBy || last
-    const gradeRaw = col(row, "current_grade", "grade", "grade_level", "gradelevel", "year", "grad_year")
-    const pEmail   = col(row, "parent_email", "parentemail", "guardian_email", "family_email")
-    const pName    = col(row, "parent_name", "parentname", "guardian_name", "parent_guardian")
-    const advisor  = col(row, "advisor", "advisor_name", "homeroom", "advisory")
-    const gender   = col(row, "gender", "sex")
+    const n = i + 2 // human row number (1-indexed + header)
 
-    if (!sid)  { errors.push(`Row ${n}: missing student_id`); return }
-    if (!last) { errors.push(`Row ${n}: missing last_name`);  return }
-    if (seen.has(sid)) { errors.push(`Row ${n}: duplicate student_id "${sid}"`); return }
+    // --- Required fields ---
+    const sid = col(row,
+      "person_id",                          // Veracross: "Person ID"
+      "student_id", "veracross_id", "vc_id", "id", "id_number", "studentid",
+    )
+    const last = col(row,
+      "last_name",                           // Veracross: "Last Name"
+      "lastname", "last", "surname",
+    )
+    // Veracross exports "Preferred Name" as the student's first/display name
+    const preferred = col(row,
+      "preferred_name",                      // Veracross: "Preferred Name"
+      "call_by", "callby", "preferred", "nickname",
+      "first_name", "firstname", "first",
+    )
 
+    // --- Grade: handles "Grade 9", "9th Grade", "9", etc. ---
+    const gradeRaw = col(row,
+      "current_grade",                       // Veracross: "Current Grade"
+      "grade", "grade_level", "gradelevel", "year", "grad_year",
+    )
+
+    // --- Optional fields ---
+    const phone = col(row,
+      "mobile_phone",                        // Veracross: "Mobile Phone"
+      "phone", "cell", "cell_phone", "cellphone", "mobile", "student_cell",
+    )
+    const email = col(row,
+      "email_1",                             // Veracross: "Email 1"
+      "email", "student_email", "school_email",
+    )
+    const advisor = col(row,
+      "advisor",                             // Veracross: "Advisor"
+      "advisor_name", "homeroom", "advisory",
+    )
+    const gender = col(row,
+      "gender",                              // Veracross: "Gender"
+      "sex",
+    )
+
+    if (!sid)  { errors.push(`Row ${n}: missing Person ID`); return }
+    if (!last) { errors.push(`Row ${n}: missing Last Name`);  return }
+    if (seen.has(sid)) { errors.push(`Row ${n}: duplicate Person ID "${sid}"`); return }
+
+    // Grade: strip non-digits ("Grade 9" → "9"), then parse
     let grade = 9
     if (gradeRaw) {
-      const g = parseInt(gradeRaw)
+      const digits = gradeRaw.replace(/\D+/g, "")
+      const g = parseInt(digits, 10)
       if (isNaN(g) || g < 9 || g > 12) {
         errors.push(`Row ${n}: invalid grade "${gradeRaw}" (must be 9–12)`); return
       }
@@ -58,18 +88,19 @@ export async function POST(req: NextRequest) {
       warnings.push(`Row ${n} (${sid}): grade missing — defaulted to 9`)
     }
 
+    const firstName = preferred || last  // fallback to last if truly nothing
+
     seen.add(sid)
     upsert.push({
       veracross_id: sid,
       last_name:    last,
-      first_name:   first,
-      call_by:      callBy || first,
+      first_name:   firstName,
+      call_by:      preferred || firstName,
       grade,
       phone:        normalizePhone(phone),
-      parent_email: pEmail        || null,
-      parent_name:  pName         || null,
-      advisor_name: advisor        || null,
-      gender:       gender         || null,
+      email:        email.toLowerCase() || null,
+      advisor_name: advisor || null,
+      gender:       gender  || null,
       is_active:    true,
       role:         "student",
       roles:        ["student"],
