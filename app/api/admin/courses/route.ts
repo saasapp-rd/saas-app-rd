@@ -35,20 +35,39 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(data, { status: 201 })
 }
 
-// PATCH /api/admin/courses — assign or unassign a teacher from a course
 export async function PATCH(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session || !ADMIN.includes(session.user.role))
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { id, teacher_id } = await req.json()
+  const body = await req.json()
+  const { id } = body
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 })
 
-  // teacher_id may be null (to unassign) or a valid user UUID
-  const { error } = await db.from("courses")
-    .update({ teacher_id: teacher_id ?? null })
-    .eq("id", id)
+  const updates: Record<string, unknown> = {}
+  if (body.name?.trim())               updates.name         = body.name.trim()
+  if (body.block_number != null)       updates.block_number = Number(body.block_number)
+  if (body.room !== undefined)         updates.room         = body.room ? body.room.trim() : null
+  if ("teacher_id" in body)            updates.teacher_id   = body.teacher_id ?? null
+  if (typeof body.is_active === "boolean") updates.is_active = body.is_active
 
+  if (Object.keys(updates).length === 0)
+    return NextResponse.json({ error: "No valid fields to update" }, { status: 400 })
+
+  const { error } = await db.from("courses").update(updates).eq("id", id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ ok: true })
+}
+
+export async function DELETE(req: NextRequest) {
+  const session = await getServerSession(authOptions)
+  if (!session || !ADMIN.includes(session.user.role))
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  const { id } = await req.json()
+  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 })
+
+  const { error } = await db.from("courses").delete().eq("id", id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }
