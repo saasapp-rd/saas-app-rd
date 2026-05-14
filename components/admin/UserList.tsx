@@ -1,5 +1,5 @@
 "use client"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect, useRef, useCallback } from "react"
 import UserRowActions, { Course } from "./UserRowActions"
 
 export interface UserRow {
@@ -44,22 +44,26 @@ function sortUsers(users: UserRow[], field: SortField, dir: SortDir): UserRow[] 
 }
 
 interface Props {
-  users:          UserRow[]
-  currentUserId:  string
-  label:          string
-  role:           string
-  coursesByUser?: Record<string, Course[]>
-  allCourses?:    Course[]
+  users:              UserRow[]
+  currentUserId:      string
+  label:              string
+  role:               string
+  coursesByUser?:     Record<string, Course[]>
+  allCourses?:        Course[]
+  initialEditUserId?: string
 }
 
 export default function UserList({
-  users, currentUserId, label, role, coursesByUser, allCourses,
+  users, currentUserId, label, role, coursesByUser, allCourses, initialEditUserId,
 }: Props) {
   const [search,       setSearch]       = useState("")
   const [sortField,    setSortField]    = useState<SortField>("last_name")
   const [sortDir,      setSortDir]      = useState<SortDir>("asc")
   const [page,         setPage]         = useState(0)
   const [showInactive, setShowInactive] = useState(false)
+
+  const jumpDoneRef   = useRef(false)
+  const scrollDoneRef = useRef(false)
 
   const query = search.trim().toLowerCase()
 
@@ -86,6 +90,29 @@ export default function UserList({
   const pageSlice = filtered.slice(safePage * PAGE_SIZE, (safePage + 1) * PAGE_SIZE)
   const start     = safePage * PAGE_SIZE + 1
   const end       = Math.min((safePage + 1) * PAGE_SIZE, filtered.length)
+
+  // When arriving via ?edit=, jump to the page containing the target user
+  // and reveal inactive if needed. One-shot — refs avoid re-running on
+  // subsequent search/sort changes.
+  useEffect(() => {
+    if (jumpDoneRef.current || !initialEditUserId) return
+    const target = users.find(u => u.id === initialEditUserId)
+    if (!target) { jumpDoneRef.current = true; return }
+    if (target.is_active === false && !showInactive) {
+      setShowInactive(true)
+      return
+    }
+    const idx = filtered.findIndex(u => u.id === initialEditUserId)
+    if (idx >= 0) setPage(Math.floor(idx / PAGE_SIZE))
+    jumpDoneRef.current = true
+  }, [initialEditUserId, users, showInactive, filtered])
+
+  const editRowRef = useCallback((el: HTMLDivElement | null) => {
+    if (el && initialEditUserId && !scrollDoneRef.current) {
+      el.scrollIntoView({ behavior: "smooth", block: "center" })
+      scrollDoneRef.current = true
+    }
+  }, [initialEditUserId])
 
   function handleSearch(v: string) { setSearch(v); setPage(0) }
   function handleSort(field: SortField) {
@@ -157,21 +184,26 @@ export default function UserList({
         </p>
       ) : (
         <div className="flex flex-col gap-1.5">
-          {pageSlice.map(u => (
-            <UserRowActions
-              key={u.id}
-              id={u.id}
-              displayName={u.display_name ?? u.email}
-              email={u.email}
-              phone={u.phone}
-              role={u.role}
-              roles={u.roles ?? undefined}
-              isActive={u.is_active !== false}
-              isSelf={u.id === currentUserId}
-              myCourses={role === "teacher" ? (coursesByUser?.[u.id] ?? []) : undefined}
-              allCourses={role === "teacher" ? allCourses : undefined}
-            />
-          ))}
+          {pageSlice.map(u => {
+            const isTarget = u.id === initialEditUserId
+            return (
+              <div key={u.id} ref={isTarget ? editRowRef : undefined}>
+                <UserRowActions
+                  id={u.id}
+                  displayName={u.display_name ?? u.email}
+                  email={u.email}
+                  phone={u.phone}
+                  role={u.role}
+                  roles={u.roles ?? undefined}
+                  isActive={u.is_active !== false}
+                  isSelf={u.id === currentUserId}
+                  myCourses={role === "teacher" ? (coursesByUser?.[u.id] ?? []) : undefined}
+                  allCourses={role === "teacher" ? allCourses : undefined}
+                  defaultOpen={isTarget}
+                />
+              </div>
+            )
+          })}
         </div>
       )}
 

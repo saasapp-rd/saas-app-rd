@@ -69,15 +69,16 @@ interface Props {
   isSelf:      boolean
   myCourses?:  Course[]
   allCourses?: Course[]
+  defaultOpen?: boolean
 }
 
 export default function UserRowActions({
   id, displayName, email, phone, role, roles: rolesProp, isActive, isSelf,
-  myCourses, allCourses,
+  myCourses, allCourses, defaultOpen,
 }: Props) {
   const router = useRouter()
 
-  const [open,          setOpen]          = useState(false)
+  const [open,          setOpen]          = useState(defaultOpen ?? false)
   const [savedRoles,    setSavedRoles]    = useState<string[]>(rolesProp?.length ? rolesProp : [role])
   const [pendingRoles,  setPendingRoles]  = useState<string[]>(rolesProp?.length ? rolesProp : [role])
   const [nameVal,       setNameVal]       = useState(displayName)

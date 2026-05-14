@@ -51,10 +51,13 @@ interface Student {
 
 export default async function UserRolePage({
   params,
+  searchParams,
 }: {
-  params: Promise<{ role: string }>
+  params:       Promise<{ role: string }>
+  searchParams: Promise<{ edit?: string }>
 }) {
   const { role } = await params
+  const { edit } = await searchParams
   if (!VALID_ROLES.includes(role)) notFound()
 
   const session = await getServerSession(authOptions)
@@ -179,6 +182,7 @@ export default async function UserRolePage({
             role={role}
             coursesByUser={role === "teacher" ? coursesByTeacher : undefined}
             allCourses={role === "teacher" ? allCourses : undefined}
+            initialEditUserId={edit}
           />
         )}
       </main>

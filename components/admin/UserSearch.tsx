@@ -43,7 +43,7 @@ export default function UserSearch({ users }: { users: SearchUser[] }) {
   function hrefFor(u: SearchUser): string {
     return u.role === "student"
       ? `/students/${u.id}`
-      : `/admin/users/${u.role}`
+      : `/admin/users/${u.role}?edit=${u.id}`
   }
 
   return (
