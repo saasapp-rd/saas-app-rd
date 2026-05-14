@@ -154,6 +154,22 @@ export async function PATCH(req: NextRequest) {
   if (email?.trim())       updates.email = email.trim().toLowerCase()
   if (phone !== undefined) updates.phone = phone ? phone.trim() || null : null
 
+  // Student-specific fields
+  const ln = body.last_name  !== undefined ? String(body.last_name).trim()  : undefined
+  const fn = body.first_name !== undefined ? String(body.first_name).trim() : undefined
+  if (ln) updates.last_name  = ln
+  if (fn) updates.first_name = fn
+  if (fn && ln) {
+    updates.name         = `${fn} ${ln}`
+    updates.display_name = `${fn} ${ln}`
+  }
+  if (body.call_by !== undefined)
+    updates.call_by = body.call_by ? String(body.call_by).trim() : null
+  if (body.grade !== undefined && body.grade !== null)
+    updates.grade = Number(body.grade)
+  if (body.veracross_id !== undefined)
+    updates.veracross_id = body.veracross_id ? String(body.veracross_id).trim() : null
+
   if (Object.keys(updates).length === 0)
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 })
 

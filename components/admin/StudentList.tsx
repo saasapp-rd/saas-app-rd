@@ -1,7 +1,6 @@
 "use client"
 import { useState, useMemo } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
+import StudentRowActions from "./StudentRowActions"
 
 export interface StudentRow {
   id:            string
@@ -42,20 +41,15 @@ function sortStudents(students: StudentRow[], field: SortField, dir: SortDir): S
 }
 
 export default function StudentList({ students }: { students: StudentRow[] }) {
-  const router = useRouter()
   const [search,        setSearch]        = useState("")
   const [sortField,     setSortField]     = useState<SortField>("last_name")
   const [sortDir,       setSortDir]       = useState<SortDir>("asc")
   const [gradeFilter,   setGradeFilter]   = useState<number[]>([])
   const [advisorFilter, setAdvisorFilter] = useState<string[]>([])
   const [page,          setPage]          = useState(0)
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
-  const [deleting,      setDeleting]      = useState<string | null>(null)
-  const [deleteError,   setDeleteError]   = useState("")
 
   const query = search.trim().toLowerCase()
 
-  // Derive available grades and advisors from the full list
   const availableGrades = useMemo(() => {
     const grades = [...new Set(students.map(s => s.grade).filter((g): g is number => g != null))]
     return grades.sort((a, b) => a - b)
@@ -92,7 +86,7 @@ export default function StudentList({ students }: { students: StudentRow[] }) {
   const start      = safePage * PAGE_SIZE + 1
   const end        = Math.min((safePage + 1) * PAGE_SIZE, filtered.length)
 
-  function handleSearch(v: string)  { setSearch(v);  setPage(0) }
+  function handleSearch(v: string) { setSearch(v);  setPage(0) }
 
   function handleSort(field: SortField) {
     if (field === sortField) {
@@ -118,25 +112,8 @@ export default function StudentList({ students }: { students: StudentRow[] }) {
     setPage(0)
   }
 
-  async function deleteStudent(id: string) {
-    setDeleting(id); setDeleteError("")
-    const res = await fetch("/api/admin/users", {
-      method:  "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ id }),
-    })
-    if (res.ok) {
-      setConfirmDelete(null)
-      router.refresh()
-    } else {
-      const d = await res.json()
-      setDeleteError(d.error ?? "Failed to delete.")
-    }
-    setDeleting(null)
-  }
-
-  const activeCount   = students.filter(s => s.is_active !== false).length
-  const hasFilters    = gradeFilter.length > 0 || advisorFilter.length > 0
+  const activeCount = students.filter(s => s.is_active !== false).length
+  const hasFilters  = gradeFilter.length > 0 || advisorFilter.length > 0
 
   return (
     <div className="flex flex-col gap-3">
@@ -204,7 +181,7 @@ export default function StudentList({ students }: { students: StudentRow[] }) {
           <span className="text-[9px] font-bold uppercase tracking-wide" style={{ color: "#999" }}>Advisor</span>
           {availableAdvisors.map(name => {
             const active = advisorFilter.includes(name)
-            const short  = name.split(" ").pop() ?? name  // last name only in chip
+            const short  = name.split(" ").pop() ?? name
             return (
               <button key={name} type="button" onClick={() => toggleAdvisor(name)}
                 className="px-2.5 py-0.5 rounded-full text-[10px] font-bold"
@@ -243,83 +220,10 @@ export default function StudentList({ students }: { students: StudentRow[] }) {
         </p>
       ) : (
         <div className="flex flex-col gap-1.5">
-          {pageSlice.map(s => {
-            const isConfirming = confirmDelete === s.id
-            const isDeleting   = deleting === s.id
-            const displayName  = [s.last_name, s.first_name].filter(Boolean).join(", ") || "Unknown"
-            const preferred    = s.call_by && s.call_by !== s.first_name ? ` (${s.call_by})` : ""
-
-            return (
-              <div key={s.id}
-                   className="rounded-xl border overflow-hidden"
-                   style={{ borderColor: isConfirming ? "#FECACA" : "#EAEAEA" }}>
-
-                {/* Main row */}
-                <div className="flex items-center justify-between"
-                     style={{ background: isConfirming ? "#FFF5F5" : s.is_active !== false ? "#FAFAFA" : "#F9F9F9",
-                              opacity: s.is_active !== false ? 1 : 0.5 }}>
-                  <Link href={`/students/${s.id}`} style={{ textDecoration: "none", flex: 1, minWidth: 0 }}
-                        className="px-3 py-2.5 block">
-                    <p className="text-sm font-semibold" style={{ color: "#3D3D3D" }}>
-                      {displayName}
-                      {preferred && (
-                        <span className="text-[10px] font-normal ml-1" style={{ color: "#999" }}>
-                          {preferred}
-                        </span>
-                      )}
-                    </p>
-                    <p className="text-[10px] mt-0.5" style={{ color: "#999" }}>
-                      {s.grade ? `Gr ${s.grade}` : "No grade"}
-                      {s.veracross_id && (
-                        <span> · <span style={{ fontFamily: "monospace" }}>ID {s.veracross_id}</span></span>
-                      )}
-                      {s.advisor_name && ` · ${s.advisor_name}`}
-                    </p>
-                  </Link>
-
-                  {!isConfirming && (
-                    <button
-                      onClick={() => { setConfirmDelete(s.id); setDeleteError("") }}
-                      className="text-[9px] font-bold px-2 py-1 rounded-lg flex-shrink-0 mx-2"
-                      style={{ background: "#FEE2E2", color: "#CE2033", border: "none", cursor: "pointer" }}>
-                      Delete
-                    </button>
-                  )}
-                </div>
-
-                {/* Confirm delete row */}
-                {isConfirming && (
-                  <div className="px-3 py-2 border-t flex items-center justify-between gap-2"
-                       style={{ borderColor: "#FECACA", background: "#fff" }}>
-                    <p className="text-[10px] font-semibold" style={{ color: "#CE2033" }}>
-                      Permanently delete {s.first_name} {s.last_name}?
-                    </p>
-                    <div className="flex gap-1.5 flex-shrink-0">
-                      <button
-                        onClick={() => deleteStudent(s.id)}
-                        disabled={isDeleting}
-                        className="px-3 py-1 rounded-lg text-[10px] font-bold text-white"
-                        style={{ background: "#CE2033", border: "none", cursor: "pointer",
-                                 opacity: isDeleting ? 0.5 : 1 }}>
-                        {isDeleting ? "…" : "Yes, delete"}
-                      </button>
-                      <button
-                        onClick={() => setConfirmDelete(null)}
-                        className="px-3 py-1 rounded-lg text-[10px] font-bold"
-                        style={{ background: "#EAEAEA", color: "#3D3D3D", border: "none", cursor: "pointer" }}>
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )
-          })}
+          {pageSlice.map(s => (
+            <StudentRowActions key={s.id} s={s} />
+          ))}
         </div>
-      )}
-
-      {deleteError && (
-        <p className="text-xs font-semibold text-center" style={{ color: "#CE2033" }}>{deleteError}</p>
       )}
 
       {/* Pagination */}

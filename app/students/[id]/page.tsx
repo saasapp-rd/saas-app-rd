@@ -125,11 +125,10 @@ export default async function StudentProfilePage({
       </header>
 
       <nav className="px-5 py-2 border-b flex items-center gap-4" style={{ borderColor: "#EAEAEA" }}>
-        <button onClick={() => history.back()}
-                className="text-xs font-bold"
-                style={{ color: "#A6192E", background: "none", border: "none", cursor: "pointer" }}>
+        <Link href="/admin/users/student" className="text-xs font-bold"
+              style={{ color: "#A6192E", textDecoration: "none" }}>
           &larr; Back
-        </button>
+        </Link>
         <Link href="/missing" className="text-xs" style={{ color: "#999", textDecoration: "none" }}>
           Live View
         </Link>
