@@ -17,7 +17,7 @@ interface Incident {
   status:      string
   reported_at: string
   block_id:    number | null
-  student:     { id: string; first_name: string; last_name: string; grade: number } | null
+  student:     { id: string; first_name: string; last_name: string; grade: number; is_active: boolean | null } | null
   reporter:    { display_name: string } | null
 }
 
@@ -28,11 +28,11 @@ export default async function CoordinatorPage() {
 
   const { data: incidents } = await db
     .from("incidents")
-    .select("id, level, status, reported_at, block_id, student:student_id(id, first_name, last_name, grade), reporter:reported_by(display_name)")
+    .select("id, level, status, reported_at, block_id, student:student_id(id, first_name, last_name, grade, is_active), reporter:reported_by(display_name)")
     .in("status", ["open","located"])
     .order("reported_at", { ascending: true })
 
-  const rows   = (incidents ?? []) as unknown as Incident[]
+  const rows   = ((incidents ?? []) as unknown as Incident[]).filter(i => i.student?.is_active !== false)
   const elev   = rows.filter(r => r.level === "elevated")
   const routine = rows.filter(r => r.level !== "elevated")
 

@@ -29,7 +29,7 @@ export default async function AdminDashboard() {
 
   const { data: openInc } = await db
     .from("incidents")
-    .select("id, level, reported_at, student:student_id(id, first_name, last_name, grade)")
+    .select("id, level, reported_at, student:student_id(id, first_name, last_name, grade, is_active)")
     .eq("status", "open")
     .order("level",       { ascending: false })
     .order("reported_at", { ascending: true  })
@@ -41,7 +41,10 @@ export default async function AdminDashboard() {
     .eq("is_active", true)
     .order("last_name")
 
-  const missing  = openInc?.length ?? 0
+  const missing  = (openInc ?? []).filter((r: any) => {
+    const s = Array.isArray(r.student) ? r.student[0] : r.student
+    return s?.is_active !== false
+  }).length
   const students = (allStudents ?? []) as {
     id: string; first_name: string; last_name: string; grade: number; call_by: string | null
   }[]
@@ -50,12 +53,14 @@ export default async function AdminDashboard() {
     id: string; level: string; reported_at: string
     student: { id: string; first_name: string; last_name: string; grade: number } | null
   }
-  const rows = ((openInc ?? []) as unknown[]).map((r: any) => ({
-    id:          r.id,
-    level:       r.level,
-    reported_at: r.reported_at,
-    student:     norm<{ id: string; first_name: string; last_name: string; grade: number }>(r.student),
-  })) as OpenRow[]
+  const rows = ((openInc ?? []) as unknown[])
+    .map((r: any) => ({
+      id:          r.id,
+      level:       r.level,
+      reported_at: r.reported_at,
+      student:     norm<{ id: string; first_name: string; last_name: string; grade: number; is_active: boolean | null }>(r.student),
+    }))
+    .filter(r => r.student?.is_active !== false) as OpenRow[]
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#fff" }}>

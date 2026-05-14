@@ -15,7 +15,7 @@ interface Incident {
   reported_at: string
   block_id:    number | null
   room:        string | null
-  student:     { first_name: string; last_name: string; grade: number } | null
+  student:     { first_name: string; last_name: string; grade: number; is_active: boolean | null } | null
   reporter:    { display_name: string } | null
 }
 
@@ -26,12 +26,13 @@ export default async function StaffPage() {
 
   const { data: raw } = await db
     .from("incidents")
-    .select("id, level, reported_at, block_id, room, student:student_id(first_name, last_name, grade), reporter:reported_by(display_name)")
+    .select("id, level, reported_at, block_id, room, student:student_id(first_name, last_name, grade, is_active), reporter:reported_by(display_name)")
     .eq("status", "open")
     .order("level",       { ascending: false })
     .order("reported_at", { ascending: true  })
 
-  const incidents = (raw ?? []) as unknown as Incident[]
+  const incidents = ((raw ?? []) as unknown as Incident[])
+    .filter(i => i.student?.is_active !== false)
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#fff" }}>

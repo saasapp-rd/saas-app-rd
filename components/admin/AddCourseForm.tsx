@@ -2,7 +2,7 @@
 import { useState, FormEvent } from "react"
 import { useRouter } from "next/navigation"
 
-interface Teacher { id: string; display_name: string }
+interface Teacher { id: string; display_name: string | null }
 
 export default function AddCourseForm({ teachers }: { teachers: Teacher[] }) {
   const router = useRouter()

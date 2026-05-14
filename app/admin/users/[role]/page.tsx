@@ -51,10 +51,14 @@ interface Student {
 
 export default async function UserRolePage({
   params,
+  searchParams,
 }: {
-  params: Promise<{ role: string }>
+  params:       Promise<{ role: string }>
+  searchParams: Promise<{ inactive?: string }>
 }) {
-  const { role } = await params
+  const { role }     = await params
+  const { inactive } = await searchParams
+  const showInactive = inactive === "1"
   if (!VALID_ROLES.includes(role)) notFound()
 
   const session = await getServerSession(authOptions)
@@ -157,13 +161,9 @@ export default async function UserRolePage({
       </header>
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
       <nav className="px-5 py-2 border-b flex items-center gap-4" style={{ borderColor: "#EAEAEA" }}>
-        <Link href="/dashboard" className="text-xs font-bold"
+        <Link href="/admin/users" className="text-xs font-bold"
               style={{ color: "#A6192E", textDecoration: "none" }}>
-          &larr; Dashboard
-        </Link>
-        <Link href="/admin/users" className="text-xs"
-              style={{ color: "#999", textDecoration: "none" }}>
-          All Roles
+          &larr; Manage Users
         </Link>
       </nav>
 
@@ -175,33 +175,51 @@ export default async function UserRolePage({
           <p className="text-xs text-center py-6" style={{ color: "#999" }}>
             No {label.toLowerCase()} yet. Add one above.
           </p>
-        ) : (
-          <div>
-            <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
-               style={{ color: "#3D3D3D", opacity: 0.35 }}>
-              {label} &mdash; {active.length} active
-              {users.length !== active.length
-                ? ` · ${users.length - active.length} inactive` : ""}
-            </p>
-            <div className="flex flex-col gap-1.5">
-              {users.map(u => (
-                <UserRowActions
-                  key={u.id}
-                  id={u.id}
-                  displayName={u.display_name ?? u.email}
-                  email={u.email}
-                  phone={u.phone ?? null}
-                  role={u.role}
-                  roles={(u.roles as string[] | null) ?? undefined}
-                  isActive={u.is_active !== false}
-                  isSelf={u.id === session.user.userId}
-                  myCourses={role === "teacher" ? (coursesByTeacher[u.id] ?? []) : undefined}
-                  allCourses={role === "teacher" ? allCourses : undefined}
-                />
-              ))}
+        ) : (() => {
+          const inactiveCount = users.length - active.length
+          const display       = showInactive ? users : active
+          const toggleHref    = showInactive
+            ? `/admin/users/${role}`
+            : `/admin/users/${role}?inactive=1`
+          return (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[9px] font-bold tracking-[0.25em] uppercase"
+                   style={{ color: "#3D3D3D", opacity: 0.35 }}>
+                  {label} &mdash; {active.length} active
+                </p>
+                {inactiveCount > 0 && (
+                  <Link href={toggleHref}
+                        className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+                        style={{
+                          background: showInactive ? "#FEE2E2" : "#F4F4F4",
+                          color:      showInactive ? "#CE2033" : "#999",
+                          textDecoration: "none",
+                        }}>
+                    {showInactive ? "Hide inactive" : `+${inactiveCount} inactive`}
+                  </Link>
+                )}
+              </div>
+              <div className="flex flex-col gap-1.5">
+                {display.map(u => (
+                  <UserRowActions
+                    key={u.id}
+                    id={u.id}
+                    displayName={u.display_name ?? u.email}
+                    email={u.email}
+                    phone={u.phone ?? null}
+                    role={u.role}
+                    roles={(u.roles as string[] | null) ?? undefined}
+                    isActive={u.is_active !== false}
+                    isSelf={u.id === session.user.userId}
+                    myCourses={role === "teacher" ? (coursesByTeacher[u.id] ?? []) : undefined}
+                    allCourses={role === "teacher" ? allCourses : undefined}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )
+        })()}
       </main>
     </div>
   )

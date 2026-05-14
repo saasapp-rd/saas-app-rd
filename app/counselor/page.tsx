@@ -19,7 +19,7 @@ interface FlagRow {
   flag_level:  string
   public_note: string | null
   flagged_at:  string
-  student:     { id: string; first_name: string; last_name: string; grade: number } | null
+  student:     { id: string; first_name: string; last_name: string; grade: number; is_active: boolean | null } | null
 }
 
 interface OpenIncident {
@@ -38,11 +38,12 @@ export default async function CounselorPage() {
   // Flagged students
   const { data: flagRows } = await db
     .from("student_concern_flags")
-    .select("id, flag_level, public_note, flagged_at, student:student_id(id, first_name, last_name, grade)")
+    .select("id, flag_level, public_note, flagged_at, student:student_id(id, first_name, last_name, grade, is_active)")
     .order("flag_level", { ascending: false })
     .order("flagged_at", { ascending: false })
 
-  const flags         = (flagRows ?? []) as unknown as FlagRow[]
+  const flags         = ((flagRows ?? []) as unknown as FlagRow[])
+    .filter(f => f.student?.is_active !== false)
   const flaggedIds    = flags.map(f => f.student?.id).filter(Boolean) as string[]
 
   // Open incidents right now (for "active" badge)
@@ -71,12 +72,18 @@ export default async function CounselorPage() {
   }
 
   // All open incidents (for All Incidents tab)
-  const { data: allOpen } = await db
+  const { data: allOpenRaw } = await db
     .from("incidents")
-    .select("id, level, reported_at, block_id, student:student_id(first_name, last_name, grade), reporter:reported_by(display_name)")
+    .select("id, level, reported_at, block_id, student:student_id(first_name, last_name, grade, is_active), reporter:reported_by(display_name)")
     .eq("status", "open")
     .order("level",       { ascending: false })
     .order("reported_at", { ascending: true  })
+
+  const allOpen = ((allOpenRaw ?? []) as any[])
+    .filter(r => {
+      const s = Array.isArray(r.student) ? r.student[0] : r.student
+      return s?.is_active !== false
+    })
 
   const activeCount = Object.keys(openMap).length
 

@@ -47,6 +47,7 @@ export default function StudentList({ students }: { students: StudentRow[] }) {
   const [gradeFilter,   setGradeFilter]   = useState<number[]>([])
   const [advisorFilter, setAdvisorFilter] = useState<string[]>([])
   const [page,          setPage]          = useState(0)
+  const [showInactive,  setShowInactive]  = useState(false)
 
   const query = search.trim().toLowerCase()
 
@@ -61,15 +62,16 @@ export default function StudentList({ students }: { students: StudentRow[] }) {
   }, [students])
 
   const filtered = useMemo(() => {
+    const base0 = showInactive ? students : students.filter(s => s.is_active !== false)
     let base = query
-      ? students.filter(s =>
+      ? base0.filter(s =>
           (s.last_name     ?? "").toLowerCase().includes(query) ||
           (s.first_name    ?? "").toLowerCase().includes(query) ||
           (s.call_by       ?? "").toLowerCase().includes(query) ||
           String(s.grade   ?? "").includes(query) ||
           (s.veracross_id  ?? "").toLowerCase().includes(query)
         )
-      : students
+      : base0
 
     if (gradeFilter.length > 0)
       base = base.filter(s => s.grade != null && gradeFilter.includes(s.grade))
@@ -78,7 +80,7 @@ export default function StudentList({ students }: { students: StudentRow[] }) {
       base = base.filter(s => s.advisor_name != null && advisorFilter.includes(s.advisor_name))
 
     return sortStudents(base, sortField, sortDir)
-  }, [students, query, sortField, sortDir, gradeFilter, advisorFilter])
+  }, [students, query, sortField, sortDir, gradeFilter, advisorFilter, showInactive])
 
   const pageCount  = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const safePage   = Math.min(page, pageCount - 1)
@@ -112,7 +114,11 @@ export default function StudentList({ students }: { students: StudentRow[] }) {
     setPage(0)
   }
 
-  const activeCount = students.filter(s => s.is_active !== false).length
+  const inactiveCount = useMemo(
+    () => students.filter(s => s.is_active === false).length,
+    [students]
+  )
+  const activeCount = students.length - inactiveCount
   const hasFilters  = gradeFilter.length > 0 || advisorFilter.length > 0
 
   return (
@@ -204,14 +210,27 @@ export default function StudentList({ students }: { students: StudentRow[] }) {
         </div>
       )}
 
-      {/* Count */}
-      <p className="text-[9px] font-bold tracking-[0.25em] uppercase"
-         style={{ color: "#3D3D3D", opacity: 0.35 }}>
-        {query || hasFilters
-          ? `${filtered.length} match${filtered.length !== 1 ? "es" : ""} · showing ${start}–${end}`
-          : `${activeCount} active · ${students.length} total${pageCount > 1 ? ` · showing ${start}–${end}` : ""}`
-        }
-      </p>
+      {/* Count + inactive toggle */}
+      <div className="flex items-center justify-between">
+        <p className="text-[9px] font-bold tracking-[0.25em] uppercase"
+           style={{ color: "#3D3D3D", opacity: 0.35 }}>
+          {query || hasFilters
+            ? `${filtered.length} match${filtered.length !== 1 ? "es" : ""} · showing ${start}–${end}`
+            : `${activeCount} active · ${students.length} total${pageCount > 1 ? ` · showing ${start}–${end}` : ""}`
+          }
+        </p>
+        {inactiveCount > 0 && (
+          <button type="button" onClick={() => setShowInactive(v => !v)}
+            className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+            style={{
+              background: showInactive ? "#FEE2E2" : "#F4F4F4",
+              color:      showInactive ? "#CE2033" : "#999",
+              border: "none", cursor: "pointer",
+            }}>
+            {showInactive ? `Hide inactive` : `+${inactiveCount} inactive`}
+          </button>
+        )}
+      </div>
 
       {/* List */}
       {filtered.length === 0 ? (

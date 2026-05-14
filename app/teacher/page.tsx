@@ -34,12 +34,12 @@ export default async function TeacherPage() {
   if (courseIds.length > 0) {
     const { data: enr } = await db
       .from("student_enrollments")
-      .select("course_id, student:student_id(id, first_name, last_name, grade)")
+      .select("course_id, student:student_id(id, first_name, last_name, grade, is_active)")
       .in("course_id", courseIds)
 
     for (const row of enr ?? []) {
-      const s = row.student as unknown as Student | null
-      if (!s) continue
+      const s = row.student as unknown as (Student & { is_active?: boolean | null }) | null
+      if (!s || s.is_active === false) continue
       if (!studentsByCourse[row.course_id]) studentsByCourse[row.course_id] = []
       studentsByCourse[row.course_id].push(s)
     }
