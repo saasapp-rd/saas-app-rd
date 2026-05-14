@@ -188,6 +188,27 @@ export async function DELETE(req: NextRequest) {
   if (id === session.user.userId)
     return NextResponse.json({ error: "You cannot delete your own account." }, { status: 400 })
 
+  // Students with incident history must be deactivated instead — preserve the safety record
+  const { count: incidentCount } = await db
+    .from("incidents")
+    .select("*", { count: "exact", head: true })
+    .eq("student_id", id)
+
+  if ((incidentCount ?? 0) > 0) {
+    return NextResponse.json({
+      error: `This student has ${incidentCount} incident record${incidentCount !== 1 ? "s" : ""} on file. Deactivate instead to preserve history.`,
+    }, { status: 409 })
+  }
+
+  // Clean up all FK references before deleting so constraints don't fire
+  await Promise.all([
+    db.from("student_enrollments").delete().eq("student_id", id),
+    db.from("student_concern_flags").delete().eq("student_id", id),
+    db.from("courses").update({ teacher_id: null }).eq("teacher_id", id),
+    db.from("incidents").update({ reported_by: null }).eq("reported_by", id),
+    db.from("push_subscriptions").delete().eq("user_id", id),
+  ])
+
   const { error } = await db.from("users").delete().eq("id", id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
