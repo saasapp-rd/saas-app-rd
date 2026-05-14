@@ -6,20 +6,24 @@ import { parseCSV, col } from "@/lib/csvParser"
 
 /**
  * Accepts the Veracross course-schedule export (CSV/TSV):
- *   School Level, Primary Grade Level, Class ID, Description,
+ *   School Level, Primary Grade Level, Course, Class ID, Description,
  *   Teacher, TEACHER: Person ID, Room, Meeting Times
  *
+ * - "Course" (e.g. "ACAL2001") is stored as course_code for grouping
+ *   sections; "Class ID" (e.g. "ACAL2001-11") is the dedup key for an
+ *   individual section; "Description" is the human name.
  * - Block number is extracted from Meeting Times with /B(\d+)/i
  *   (e.g. "Odd-FwdOdd-Rev-B3-US" → 3). Odd-Fwd/Odd-Rev metadata is
  *   ignored — the block number alone determines when the course meets.
  * - Teacher matched by veracross_id first, then "Last, First" name.
- * - Class ID is the dedup key (requires migration 019).
  * - Unmatched teachers are surfaced as warnings; the course still
  *   imports with teacher_id = null.
+ * - Requires migrations 019 and 020.
  */
 
 interface ParsedRow {
   classId:      string
+  courseCode:   string
   name:         string
   teacherName:  string
   teacherVcId:  string | null
@@ -51,6 +55,7 @@ export async function POST(req: NextRequest) {
     const n = i + 2
 
     const classId     = col(row, "class_id", "classid", "id")
+    const courseCode  = col(row, "course", "course_code", "coursecode")
     const name        = col(row, "description", "course_name", "name")
     const teacherName = col(row, "teacher", "teacher_name")
     const teacherVcId = col(row,
@@ -79,7 +84,7 @@ export async function POST(req: NextRequest) {
 
     seen.add(classId)
     parsed.push({
-      classId, name, teacherName,
+      classId, courseCode, name, teacherName,
       teacherVcId: teacherVcId || null,
       schoolLevel, gradeLevel, room, meetingTimes,
       blockNumber: block,
@@ -150,6 +155,7 @@ export async function POST(req: NextRequest) {
 
     const rec = {
       class_id:      p.classId,
+      course_code:   p.courseCode || null,
       name:          p.name,
       block_number:  p.blockNumber,
       room:          p.room || null,

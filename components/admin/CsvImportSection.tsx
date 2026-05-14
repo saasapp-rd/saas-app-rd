@@ -270,11 +270,11 @@ export default function CsvImportSection() {
         title="Course Schedule"
         description="Class list from Veracross — matched and updated by Class ID on re-import"
         endpoint="/api/admin/import/courses"
-        columns={["Class ID", "Description", "Teacher", "TEACHER: Person ID", "Meeting Times"]}
+        columns={["Course", "Class ID", "Description", "Teacher", "TEACHER: Person ID", "Meeting Times"]}
         optional={["School Level", "Primary Grade Level", "Room"]}
         notes={[
           "Faculty & Staff must be imported first — courses match teachers by Person ID, then by 'Last, First' name.",
-          "Class ID is the dedup key — re-uploading updates existing courses, never duplicates.",
+          "Class ID is the dedup key (e.g. 'ACAL2001-11'); Course is the course code (e.g. 'ACAL2001') used to group sections; Description is the course name.",
           "Block number is parsed from Meeting Times via 'B<N>' (e.g. 'Odd-FwdOdd-Rev-B3-US' → block 3).",
           "Unmatched teachers are listed in warnings; the course is imported without a teacher assigned.",
         ]}
