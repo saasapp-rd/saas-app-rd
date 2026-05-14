@@ -64,24 +64,46 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "role or roles required" }, { status: 400 })
   }
 
-  if (!email || !display_name)
-    return NextResponse.json({ error: "email and display_name required" }, { status: 400 })
-
   // Only super_admin can create super_admin accounts
   if (finalRoles.includes("super_admin") && session.user.role !== "super_admin")
     return NextResponse.json({ error: "Only super admins can create super admin accounts" }, { status: 403 })
 
+  const isStudent = finalRole === "student"
+
+  // Students don't require email; staff/teachers do
+  if (!isStudent && (!email || !display_name))
+    return NextResponse.json({ error: "email and display_name required" }, { status: 400 })
+  if (isStudent && (!body.last_name || !body.first_name || !body.grade))
+    return NextResponse.json({ error: "last_name, first_name, and grade required for students" }, { status: 400 })
+
+  const record: Record<string, unknown> = {
+    role:      finalRole,
+    roles:     finalRoles,
+    is_active: true,
+    phone:     phone?.trim() || null,
+  }
+
+  if (isStudent) {
+    const ln = String(body.last_name).trim()
+    const fn = String(body.first_name).trim()
+    record.last_name    = ln
+    record.first_name   = fn
+    record.call_by      = body.call_by ? String(body.call_by).trim() : fn
+    record.grade        = Number(body.grade)
+    record.name         = `${fn} ${ln}`
+    record.display_name = `${fn} ${ln}`
+    if (body.veracross_id) record.veracross_id = String(body.veracross_id).trim()
+  } else {
+    record.email        = email.toLowerCase().trim()
+    record.name         = display_name.trim()
+    record.display_name = display_name.trim()
+  }
+
+  const conflictCol = isStudent && body.veracross_id ? "veracross_id" : (email ? "email" : "id")
+
   const { data, error } = await db
     .from("users")
-    .upsert({
-      email:        email.toLowerCase().trim(),
-      name:         display_name.trim(),
-      display_name: display_name.trim(),
-      role:         finalRole,
-      roles:        finalRoles,
-      phone:        phone?.trim() || null,
-      is_active:    true,
-    }, { onConflict: "email" })
+    .upsert(record, { onConflict: conflictCol })
     .select()
     .single()
 
@@ -136,6 +158,21 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 })
 
   const { error } = await db.from("users").update(updates).eq("id", id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ ok: true })
+}
+
+export async function DELETE(req: NextRequest) {
+  const session = await getServerSession(authOptions)
+  if (!session || !["admin","super_admin"].includes(session.user.role))
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  const { id } = await req.json()
+  if (!id) return NextResponse.json({ error: "id required" }, { status: 400 })
+  if (id === session.user.userId)
+    return NextResponse.json({ error: "You cannot delete your own account." }, { status: 400 })
+
+  const { error } = await db.from("users").delete().eq("id", id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }

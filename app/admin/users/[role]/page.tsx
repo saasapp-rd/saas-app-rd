@@ -6,6 +6,8 @@ import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 import AddUserForm from "@/components/admin/AddUserForm"
+import AddStudentForm from "@/components/admin/AddStudentForm"
+import StudentList from "@/components/admin/StudentList"
 import UserRowActions from "@/components/admin/UserRowActions"
 
 export const dynamic = "force-dynamic"
@@ -37,9 +39,10 @@ interface User {
 
 interface Student {
   id:            string
-  first_name:    string
-  last_name:     string
-  grade:         number
+  first_name:    string | null
+  last_name:     string | null
+  call_by:       string | null
+  grade:         number | null
   veracross_id:  string | null
   phone:         string | null
   is_active:     boolean | null
@@ -64,7 +67,7 @@ export default async function UserRolePage({
   if (isStudent) {
     const { data, error } = await db
       .from("users")
-      .select("id, first_name, last_name, grade, veracross_id, phone, is_active")
+      .select("id, first_name, last_name, call_by, grade, veracross_id, phone, is_active")
       .eq("role", "student")
       .order("last_name")
       .order("first_name")
@@ -100,50 +103,8 @@ export default async function UserRolePage({
           </Link>
         </nav>
         <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
-          {students.length === 0 ? (
-            <p className="text-xs text-center py-6" style={{ color: "#999" }}>
-              No students imported yet. Use the CSV import to add the roster.
-            </p>
-          ) : (
-            <div>
-              <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
-                 style={{ color: "#3D3D3D", opacity: 0.35 }}>
-                Students &mdash; {active.length} active
-                {students.length !== active.length
-                  ? ` · ${students.length - active.length} inactive` : ""}
-              </p>
-              <div className="flex flex-col gap-1.5">
-                {students.map(s => (
-                  <div key={s.id}
-                       className="rounded-xl px-3 py-2.5 border flex items-center justify-between"
-                       style={{
-                         borderColor: s.is_active !== false ? "#EAEAEA" : "#F4F4F4",
-                         background:  s.is_active !== false ? "#FAFAFA" : "#F9F9F9",
-                         opacity:     s.is_active !== false ? 1 : 0.5,
-                       }}>
-                    <div>
-                      <p className="text-sm font-semibold" style={{ color: "#3D3D3D" }}>
-                        {s.last_name}, {s.first_name}
-                      </p>
-                      <p className="text-[10px] mt-0.5" style={{ color: "#999" }}>
-                        Gr {s.grade}
-                        {s.veracross_id
-                          ? <span> · <span style={{ fontFamily: "monospace" }}>ID {s.veracross_id}</span></span>
-                          : null}
-                        {s.phone ? ` · ${s.phone}` : ""}
-                      </p>
-                    </div>
-                    {s.is_active === false && (
-                      <span className="text-[9px] font-bold px-2 py-0.5 rounded"
-                            style={{ background: "#F4F4F4", color: "#999" }}>
-                        Inactive
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          <AddStudentForm />
+          <StudentList students={students} />
         </main>
       </div>
     )

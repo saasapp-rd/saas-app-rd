@@ -2,132 +2,124 @@
 import { useState, FormEvent } from "react"
 import { useRouter } from "next/navigation"
 
+const GRADES = [9, 10, 11, 12]
+
 export default function AddStudentForm() {
   const router = useRouter()
-  const [tab, setTab] = useState<"single" | "bulk">("single")
+  const [open,        setOpen]        = useState(false)
+  const [lastName,    setLastName]    = useState("")
+  const [firstName,   setFirstName]   = useState("")
+  const [callBy,      setCallBy]      = useState("")
+  const [grade,       setGrade]       = useState<number | null>(null)
+  const [phone,       setPhone]       = useState("")
+  const [veracrossId, setVeracrossId] = useState("")
+  const [loading,     setLoading]     = useState(false)
+  const [error,       setError]       = useState("")
+  const [success,     setSuccess]     = useState("")
 
-  // Single fields
-  const [firstName, setFirstName] = useState("")
-  const [lastName,  setLastName]  = useState("")
-  const [grade,     setGrade]     = useState("")
-  const [studentId, setStudentId] = useState("")
-
-  // Bulk
-  const [bulkText, setBulkText] = useState("")
-
-  const [status,  setStatus]  = useState("")
-  const [loading, setLoading] = useState(false)
-
-  async function handleSingle(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    setLoading(true); setStatus("")
-    const res = await fetch("/api/admin/students", {
-      method: "POST",
+    if (!grade) { setError("Select a grade."); return }
+    setLoading(true); setError(""); setSuccess("")
+
+    const res = await fetch("/api/admin/users", {
+      method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        first_name: firstName, last_name: lastName,
-        grade: Number(grade), student_id: studentId || undefined,
+      body:    JSON.stringify({
+        last_name:    lastName.trim(),
+        first_name:   firstName.trim(),
+        call_by:      callBy.trim() || firstName.trim(),
+        grade,
+        phone:        phone.trim() || null,
+        veracross_id: veracrossId.trim() || null,
+        role:         "student",
+        roles:        ["student"],
       }),
     })
-    if (res.ok) {
-      setFirstName(""); setLastName(""); setGrade(""); setStudentId("")
-      setStatus("Student added.")
-      router.refresh()
+    const data = await res.json()
+
+    if (!res.ok) {
+      setError(data.error ?? "Failed to add student.")
     } else {
-      const err = await res.json()
-      setStatus("Error: " + err.error)
+      setSuccess(`${lastName}, ${firstName} (Gr ${grade}) added.`)
+      setLastName(""); setFirstName(""); setCallBy("")
+      setGrade(null); setPhone(""); setVeracrossId("")
+      router.refresh()
     }
     setLoading(false)
   }
 
-  async function handleBulk(e: FormEvent) {
-    e.preventDefault()
-    setLoading(true); setStatus("")
-    const students = bulkText.trim().split("\n")
-      .map(line => {
-        const [fn, ln, gr, sid] = line.split(",").map(s => s.trim())
-        return { first_name: fn, last_name: ln, grade: Number(gr), student_id: sid || undefined }
-      })
-      .filter(s => s.first_name && s.last_name && s.grade >= 6 && s.grade <= 12)
-
-    const res = await fetch("/api/admin/students", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ bulk: students }),
-    })
-    if (res.ok) {
-      const d = await res.json()
-      setBulkText("")
-      setStatus("Added " + d.count + " students.")
-      router.refresh()
-    } else {
-      const err = await res.json()
-      setStatus("Error: " + err.error)
-    }
-    setLoading(false)
-  }
-
-  const inputStyle = { borderColor: "#EAEAEA", background: "#fff", color: "#3D3D3D" }
+  const inp = "w-full px-3 py-2.5 rounded-xl text-sm border outline-none"
+  const inpStyle = { borderColor: "#EAEAEA", background: "#fff", color: "#3D3D3D" }
 
   return (
-    <div className="rounded-xl border p-4" style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
-      <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-3" style={{ color: "#3D3D3D", opacity: 0.35 }}>
-        Add Students
-      </p>
-
-      <div className="flex gap-2 mb-4">
-        {(["single", "bulk"] as const).map(t => (
-          <button key={t} type="button" onClick={() => setTab(t)}
-            className="px-3 py-1.5 rounded-lg text-[10px] font-bold"
-            style={{ background: tab === t ? "#A6192E" : "#EAEAEA", color: tab === t ? "#fff" : "#3D3D3D" }}>
-            {t === "single" ? "Single" : "Bulk (CSV)"}
-          </button>
-        ))}
-      </div>
-
-      {tab === "single" ? (
-        <form onSubmit={handleSingle} className="flex flex-col gap-2">
-          <div className="grid grid-cols-2 gap-2">
-            <input value={firstName} onChange={e => setFirstName(e.target.value)} placeholder="First name" required
-              className="px-3 py-2 rounded-lg text-sm border outline-none" style={inputStyle} />
-            <input value={lastName} onChange={e => setLastName(e.target.value)} placeholder="Last name" required
-              className="px-3 py-2 rounded-lg text-sm border outline-none" style={inputStyle} />
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <input value={grade} onChange={e => setGrade(e.target.value)} placeholder="Grade (6-12)"
-              required type="number" min="6" max="12"
-              className="px-3 py-2 rounded-lg text-sm border outline-none" style={inputStyle} />
-            <input value={studentId} onChange={e => setStudentId(e.target.value)} placeholder="Student ID (optional)"
-              className="px-3 py-2 rounded-lg text-sm border outline-none" style={inputStyle} />
-          </div>
-          <button type="submit" disabled={loading}
-            className="py-2 rounded-lg text-xs font-bold text-white"
-            style={{ background: "#A6192E", opacity: loading ? 0.6 : 1 }}>
-            {loading ? "Adding..." : "Add Student"}
-          </button>
-        </form>
-      ) : (
-        <form onSubmit={handleBulk} className="flex flex-col gap-2">
-          <p className="text-[10px]" style={{ color: "#999" }}>
-            One per line: FirstName, LastName, Grade, StudentID (ID optional)
-          </p>
-          <textarea value={bulkText} onChange={e => setBulkText(e.target.value)} required rows={6}
-            placeholder={"Jane, Doe, 10, V12345\nMarcus, Lee, 11\nMaya, Torres, 10, V12347"}
-            className="px-3 py-2 rounded-lg text-sm border outline-none font-mono"
-            style={{ ...inputStyle, resize: "vertical" }} />
-          <button type="submit" disabled={loading}
-            className="py-2 rounded-lg text-xs font-bold text-white"
-            style={{ background: "#A6192E", opacity: loading ? 0.6 : 1 }}>
-            {loading ? "Importing..." : "Import Students"}
-          </button>
-        </form>
-      )}
-
-      {status && (
-        <p className="mt-2 text-xs font-semibold"
-          style={{ color: status.startsWith("Error") ? "#CE2033" : "#2D7D46" }}>
-          {status}
+    <div className="rounded-xl border overflow-hidden" style={{ borderColor: "#EAEAEA" }}>
+      <button
+        type="button"
+        onClick={() => { setOpen(o => !o); setError(""); setSuccess("") }}
+        className="w-full px-4 py-3 flex items-center justify-between"
+        style={{ background: open ? "#FFF8F8" : "#FAFAFA", border: "none", cursor: "pointer" }}>
+        <p className="text-[9px] font-bold tracking-[0.25em] uppercase"
+           style={{ color: open ? "#A6192E" : "#3D3D3D", opacity: open ? 1 : 0.4 }}>
+          Add Student
         </p>
+        <span className="text-xs" style={{ color: open ? "#A6192E" : "#BABABA" }}>
+          {open ? "▲" : "▼"}
+        </span>
+      </button>
+
+      {open && (
+        <form onSubmit={handleSubmit}
+              className="px-4 pb-4 pt-1 flex flex-col gap-2.5 border-t"
+              style={{ background: "#fff", borderColor: "#EAEAEA" }}>
+
+          <div className="grid grid-cols-2 gap-2">
+            <input value={lastName}  onChange={e => setLastName(e.target.value)}
+              placeholder="Last name" required className={inp} style={inpStyle} />
+            <input value={firstName} onChange={e => setFirstName(e.target.value)}
+              placeholder="First name" required className={inp} style={inpStyle} />
+          </div>
+
+          <input value={callBy} onChange={e => setCallBy(e.target.value)}
+            placeholder="Preferred name (if different from first)"
+            className={inp} style={inpStyle} />
+
+          <div>
+            <p className="text-[9px] font-bold tracking-[0.2em] uppercase mb-1.5"
+               style={{ color: "#3D3D3D", opacity: 0.4 }}>
+              Grade
+            </p>
+            <div className="flex gap-2">
+              {GRADES.map(g => (
+                <button key={g} type="button" onClick={() => setGrade(g)}
+                  className="flex-1 py-2 rounded-xl text-sm font-bold"
+                  style={{
+                    background: grade === g ? "#A6192E" : "#F4F4F4",
+                    color:      grade === g ? "#fff"    : "#999",
+                    border:     "none", cursor: "pointer",
+                  }}>
+                  {g}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <input value={phone} onChange={e => setPhone(e.target.value)}
+              placeholder="Phone (optional)" type="tel" className={inp} style={inpStyle} />
+            <input value={veracrossId} onChange={e => setVeracrossId(e.target.value)}
+              placeholder="Person ID (optional)" className={inp} style={inpStyle} />
+          </div>
+
+          {error   && <p className="text-xs font-semibold" style={{ color: "#CE2033" }}>{error}</p>}
+          {success && <p className="text-xs font-semibold" style={{ color: "#166534" }}>{success}</p>}
+
+          <button type="submit" disabled={loading || !grade}
+            className="w-full py-3 rounded-xl text-sm font-bold text-white"
+            style={{ background: "#A6192E", opacity: loading || !grade ? 0.5 : 1, border: "none", cursor: "pointer" }}>
+            {loading ? "Adding…" : "Add Student"}
+          </button>
+        </form>
       )}
     </div>
   )
