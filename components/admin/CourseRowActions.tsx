@@ -8,6 +8,7 @@ export interface CourseRow {
   block_number: number
   room:         string | null
   is_advisory:  boolean
+  is_active:    boolean
   teacher:      { display_name: string | null } | null
 }
 
@@ -32,24 +33,28 @@ export default function CourseRowActions({
 }) {
   const router = useRouter()
 
-  const [open,          setOpen]          = useState(false)
-  const [nameVal,       setNameVal]       = useState(course.name)
-  const [blockVal,      setBlockVal]      = useState(course.block_number)
-  const [roomVal,       setRoomVal]       = useState(course.room ?? "")
-  const [teacherIdVal,  setTeacherIdVal]  = useState(
+  const [open,           setOpen]           = useState(false)
+  const [nameVal,        setNameVal]        = useState(course.name)
+  const [blockVal,       setBlockVal]       = useState(course.block_number)
+  const [roomVal,        setRoomVal]        = useState(course.room ?? "")
+  const [teacherIdVal,   setTeacherIdVal]   = useState(
     teachers.find(t => t.display_name === course.teacher?.display_name)?.id ?? ""
   )
-  const [confirmDelete, setConfirmDelete] = useState(false)
-  const [saving,        setSaving]        = useState(false)
-  const [deactivating,  setDeactivating]  = useState(false)
-  const [deleting,      setDeleting]      = useState(false)
-  const [error,         setError]         = useState("")
+  const [confirmDelete,  setConfirmDelete]  = useState(false)
+  const [confirmPurge,   setConfirmPurge]   = useState(false)
+  const [saving,         setSaving]         = useState(false)
+  const [deactivating,   setDeactivating]   = useState(false)
+  const [reactivating,   setReactivating]   = useState(false)
+  const [deleting,       setDeleting]       = useState(false)
+  const [error,          setError]          = useState("")
 
+  const isActive   = course.is_active !== false
   const blockLabel = course.block_number === 9 ? "Advisory" : `Block ${course.block_number}`
 
   function openPanel() {
     setOpen(true)
     setConfirmDelete(false)
+    setConfirmPurge(false)
     setError("")
     setNameVal(course.name)
     setBlockVal(course.block_number)
@@ -57,6 +62,17 @@ export default function CourseRowActions({
     setTeacherIdVal(
       teachers.find(t => t.display_name === course.teacher?.display_name)?.id ?? ""
     )
+  }
+
+  async function reactivate() {
+    setReactivating(true); setError("")
+    const res = await fetch("/api/admin/courses", {
+      method:  "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ id: course.id, is_active: true }),
+    })
+    if (res.ok) { router.refresh() }
+    else { const d = await res.json(); setError(d.error ?? "Failed."); setReactivating(false) }
   }
 
   async function saveDetails() {
@@ -104,14 +120,15 @@ export default function CourseRowActions({
 
   return (
     <div className="rounded-xl border overflow-hidden"
-         style={{ borderColor: open ? "#A6192E" : "#EAEAEA" }}>
+         style={{ borderColor: open ? "#A6192E" : isActive ? "#EAEAEA" : "#FECACA" }}>
 
       {/* Main row */}
       <div className="px-4 py-2.5 flex items-center justify-between"
-           style={{ background: open ? "#FFF8F8" : "#FAFAFA" }}>
+           style={{ background: open ? "#FFF8F8" : isActive ? "#FAFAFA" : "#FFF5F5" }}>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-bold truncate" style={{ color: "#3D3D3D" }}>
+            <span className="text-sm font-bold truncate"
+                  style={{ color: isActive ? "#3D3D3D" : "#999" }}>
               {course.name}
             </span>
             <span className="text-[9px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
@@ -121,6 +138,12 @@ export default function CourseRowActions({
                   }}>
               {blockLabel}
             </span>
+            {!isActive && (
+              <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase flex-shrink-0"
+                    style={{ background: "#FEE2E2", color: "#CE2033" }}>
+                Inactive
+              </span>
+            )}
           </div>
           <div className="text-[10px] mt-0.5" style={{ color: "#999" }}>
             {course.teacher?.display_name ?? "No teacher"}
@@ -144,6 +167,21 @@ export default function CourseRowActions({
       {open && (
         <div className="px-4 py-3 border-t flex flex-col gap-4"
              style={{ background: "#fff", borderColor: "#EAEAEA" }}>
+
+          {/* Reactivate banner */}
+          {!isActive && (
+            <div className="rounded-xl px-4 py-3 flex items-center justify-between gap-3"
+                 style={{ background: "#FFF0F0", border: "1px solid #FECACA" }}>
+              <p className="text-xs font-semibold" style={{ color: "#CE2033" }}>
+                This course is deactivated.
+              </p>
+              <button onClick={reactivate} disabled={reactivating}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold text-white flex-shrink-0"
+                style={{ background: "#166534", opacity: reactivating ? 0.5 : 1, border: "none", cursor: "pointer" }}>
+                {reactivating ? "…" : "Reactivate"}
+              </button>
+            </div>
+          )}
 
           {/* Course details */}
           <div>
@@ -204,50 +242,81 @@ export default function CourseRowActions({
 
           <div style={{ borderTop: "1px solid #F0F0F0" }} />
 
-          {/* Remove / Delete */}
-          <div>
-            <label className="text-[9px] font-bold uppercase tracking-wide block mb-2"
-                   style={{ color: "#CE2033", opacity: 0.7 }}>
-              Remove Course
-            </label>
-            {!confirmDelete ? (
-              <div className="flex flex-col gap-1.5">
+          {/* Deactivate (active courses) */}
+          {isActive && (
+            <div>
+              <label className="text-[9px] font-bold uppercase tracking-wide block mb-2"
+                     style={{ color: "#CE2033", opacity: 0.7 }}>
+                Remove Course
+              </label>
+              {!confirmDelete ? (
                 <button onClick={() => setConfirmDelete(true)}
                   className="w-full py-2 rounded-xl text-xs font-bold border"
                   style={{ borderColor: "#CE2033", color: "#CE2033", background: "#fff", cursor: "pointer" }}>
                   Deactivate {course.name}
                 </button>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2">
-                <p className="text-xs font-bold text-center" style={{ color: "#CE2033" }}>
-                  Remove {course.name}?
-                </p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <p className="text-xs font-bold text-center" style={{ color: "#CE2033" }}>
+                    Remove {course.name}?
+                  </p>
+                  <button onClick={deactivate} disabled={deactivating}
+                    className="w-full py-2 rounded-xl text-xs font-bold border"
+                    style={{ borderColor: "#CE2033", color: "#CE2033", background: "#fff",
+                             opacity: deactivating ? 0.5 : 1, cursor: "pointer" }}>
+                    {deactivating ? "Deactivating…" : "Deactivate (hide from schedules)"}
+                  </button>
+                  <div style={{ borderTop: "1px solid #F0F0F0" }} />
+                  <button onClick={deleteCourse} disabled={deleting}
+                    className="w-full py-2 rounded-xl text-xs font-bold text-white"
+                    style={{ background: "#7B0000", opacity: deleting ? 0.5 : 1,
+                             border: "none", cursor: "pointer" }}>
+                    {deleting ? "Deleting…" : "Delete permanently"}
+                  </button>
+                  <button onClick={() => setConfirmDelete(false)}
+                    className="w-full py-2 rounded-xl text-xs font-bold"
+                    style={{ background: "#EAEAEA", color: "#3D3D3D", border: "none", cursor: "pointer" }}>
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
-                <button onClick={deactivate} disabled={deactivating}
+          {/* Permanent delete (inactive courses) */}
+          {!isActive && (
+            <div>
+              <label className="text-[9px] font-bold uppercase tracking-wide block mb-2"
+                     style={{ color: "#CE2033", opacity: 0.7 }}>
+                Permanently Delete
+              </label>
+              {!confirmPurge ? (
+                <button onClick={() => setConfirmPurge(true)}
                   className="w-full py-2 rounded-xl text-xs font-bold border"
-                  style={{ borderColor: "#CE2033", color: "#CE2033", background: "#fff",
-                           opacity: deactivating ? 0.5 : 1, cursor: "pointer" }}>
-                  {deactivating ? "Deactivating…" : "Deactivate (hide from schedules)"}
+                  style={{ borderColor: "#CE2033", color: "#CE2033", background: "#fff", cursor: "pointer" }}>
+                  Delete {course.name} permanently
                 </button>
-
-                <div style={{ borderTop: "1px solid #F0F0F0" }} />
-
-                <button onClick={deleteCourse} disabled={deleting}
-                  className="w-full py-2 rounded-xl text-xs font-bold text-white"
-                  style={{ background: "#7B0000", opacity: deleting ? 0.5 : 1,
-                           border: "none", cursor: "pointer" }}>
-                  {deleting ? "Deleting…" : "Delete permanently"}
-                </button>
-
-                <button onClick={() => setConfirmDelete(false)}
-                  className="w-full py-2 rounded-xl text-xs font-bold"
-                  style={{ background: "#EAEAEA", color: "#3D3D3D", border: "none", cursor: "pointer" }}>
-                  Cancel
-                </button>
-              </div>
-            )}
-          </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <p className="text-xs font-bold text-center" style={{ color: "#CE2033" }}>
+                    Permanently delete {course.name}? Enrollments and incident references will be cleared.
+                  </p>
+                  <div className="flex gap-2">
+                    <button onClick={deleteCourse} disabled={deleting}
+                      className="flex-1 py-2 rounded-xl text-xs font-bold text-white"
+                      style={{ background: "#7B0000", opacity: deleting ? 0.5 : 1, border: "none", cursor: "pointer" }}>
+                      {deleting ? "Deleting…" : "Yes, Delete"}
+                    </button>
+                    <button onClick={() => setConfirmPurge(false)}
+                      className="flex-1 py-2 rounded-xl text-xs font-bold"
+                      style={{ background: "#EAEAEA", color: "#3D3D3D", border: "none", cursor: "pointer" }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {error && (
             <p className="text-[10px] font-semibold text-center" style={{ color: "#CE2033" }}>
