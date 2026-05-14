@@ -97,6 +97,21 @@ export async function POST(req: NextRequest) {
     record.email        = email.toLowerCase().trim()
     record.name         = display_name.trim()
     record.display_name = display_name.trim()
+    if (body.veracross_id) record.veracross_id = String(body.veracross_id).trim()
+  }
+
+  // Optional fields for any role
+  if (body.business_phone !== undefined && body.business_phone !== null) {
+    const bp = String(body.business_phone).trim()
+    if (bp) record.business_phone = bp
+  }
+  if (body.job_title !== undefined && body.job_title !== null) {
+    const jt = String(body.job_title).trim()
+    if (jt) record.job_title = jt
+  }
+  if (Array.isArray(body.dean_grades) && body.dean_grades.length > 0) {
+    record.dean_grades = body.dean_grades
+      .filter((g: unknown) => typeof g === "number" && [9,10,11,12].includes(g))
   }
 
   const conflictCol = isStudent && body.veracross_id ? "veracross_id" : (email ? "email" : "id")
