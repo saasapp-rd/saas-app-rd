@@ -2,18 +2,21 @@
 import { useState, useRef, ChangeEvent } from "react"
 
 interface ImportResult {
-  processed?:       number
-  coursesUpserted?: number
-  enrollments?:     number
-  skipped?:         number
-  rowsSkipped?:     number
-  not_found?:       number
-  teachers?:        number
-  staff?:           number
-  preserved?:       number
-  warnings?:        string[]
-  errors?:          string[]
-  error?:           string
+  processed?:           number
+  coursesUpserted?:     number
+  enrollments?:         number
+  skipped?:             number
+  rowsSkipped?:         number
+  not_found?:           number
+  teachers?:            number
+  staff?:               number
+  preserved?:           number
+  inserted?:            number
+  updated?:             number
+  unmatched_teachers?:  string[]
+  warnings?:            string[]
+  errors?:              string[]
+  error?:               string
 }
 
 function ImportCard({
@@ -197,7 +200,7 @@ export default function CsvImportSection() {
 
       <p className="text-[9px] font-bold tracking-[0.25em] uppercase"
          style={{ color: "#3D3D3D", opacity: 0.35 }}>
-        Import order: Faculty &amp; Staff → Students → Parents
+        Import order: Faculty &amp; Staff → Students → Parents → Course Schedule
       </p>
 
       {/* ── 1. Faculty & Staff ── */}
@@ -258,6 +261,26 @@ export default function CsvImportSection() {
         resultLabel={r =>
           r.processed != null
             ? `✓ ${r.processed} student${r.processed !== 1 ? "s" : ""} updated${r.not_found ? ` · ${r.not_found} student${r.not_found !== 1 ? "s" : ""} not found` : ""}`
+            : "No records imported"
+        }
+      />
+
+      {/* ── 4. Course Schedule ── */}
+      <ImportCard
+        title="Course Schedule"
+        description="Class list from Veracross — matched and updated by Class ID on re-import"
+        endpoint="/api/admin/import/courses"
+        columns={["Class ID", "Description", "Teacher", "TEACHER: Person ID", "Meeting Times"]}
+        optional={["School Level", "Primary Grade Level", "Room"]}
+        notes={[
+          "Faculty & Staff must be imported first — courses match teachers by Person ID, then by 'Last, First' name.",
+          "Class ID is the dedup key — re-uploading updates existing courses, never duplicates.",
+          "Block number is parsed from Meeting Times via 'B<N>' (e.g. 'Odd-FwdOdd-Rev-B3-US' → block 3).",
+          "Unmatched teachers are listed in warnings; the course is imported without a teacher assigned.",
+        ]}
+        resultLabel={r =>
+          r.processed
+            ? `✓ ${r.processed} course${r.processed !== 1 ? "s" : ""} processed · ${r.inserted ?? 0} new · ${r.updated ?? 0} updated${(r.unmatched_teachers?.length ?? 0) > 0 ? ` · ${r.unmatched_teachers!.length} teacher${r.unmatched_teachers!.length !== 1 ? "s" : ""} not in system` : ""}`
             : "No records imported"
         }
       />
