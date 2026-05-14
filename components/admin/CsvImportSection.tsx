@@ -79,7 +79,7 @@ function ImportCard({
           <div>
             <p className="text-[9px] font-bold uppercase tracking-widest mb-2"
                style={{ color: "#3D3D3D", opacity: 0.4 }}>
-              Required CSV columns
+              Required columns
             </p>
             <div className="flex flex-wrap gap-1.5">
               {columns.map(c => (
@@ -112,7 +112,7 @@ function ImportCard({
                  style={{ background: "#FFFBEB", border: "1px solid #FDE68A" }}>
               <p className="text-[9px] font-bold uppercase tracking-widest"
                  style={{ color: "#92400E" }}>
-                ⚠ Notes
+                Notes
               </p>
               {notes.map((n, i) => (
                 <p key={i} className="text-[10px]" style={{ color: "#78350F" }}>{n}</p>
@@ -121,7 +121,7 @@ function ImportCard({
           )}
 
           <div>
-            <input ref={inputRef} type="file" accept=".csv,text/csv"
+            <input ref={inputRef} type="file" accept=".csv,.tsv,text/csv"
                    onChange={pickFile} className="hidden" />
             <button
               onClick={() => inputRef.current?.click()}
@@ -194,23 +194,46 @@ function ImportCard({
 export default function CsvImportSection() {
   return (
     <div className="flex flex-col gap-3">
+
       <p className="text-[9px] font-bold tracking-[0.25em] uppercase"
          style={{ color: "#3D3D3D", opacity: 0.35 }}>
-        CSV Import — students → teachers → schedule
+        Import order: Faculty &amp; Staff → Students → Parents
       </p>
 
+      {/* ── 1. Faculty & Staff ── */}
       <ImportCard
-        title="Student Roster"
-        description="Import from Veracross — export the student roster report as CSV or Excel"
+        title="Faculty &amp; Staff"
+        description="All faculty and staff from Veracross — Faculty → teacher, Staff → staff"
+        endpoint="/api/admin/import/teachers"
+        columns={["Last Name", "Preferred Name", "Email 1", "Role"]}
+        optional={["Person ID", "Job Title", "Mobile Phone", "Business Phone"]}
+        notes={[
+          "Export the Faculty/Staff report from Veracross and upload as-is.",
+          "Role = 'Faculty' → teacher · Role = 'Staff' → staff.",
+          "Email 1 is the login key — must be the school email address.",
+          "Coordinators, counselors, deans, and admins already in the system keep their role on re-import.",
+          "After import, use Manage Users to promote people to coordinator, counselor, dean, etc.",
+        ]}
+        resultLabel={r =>
+          r.processed
+            ? `✓ ${r.processed} imported · ${r.teachers ?? 0} teachers · ${r.staff ?? 0} staff${r.preserved ? ` · ${r.preserved} role${r.preserved !== 1 ? "s" : ""} preserved` : ""}${r.skipped ? ` · ${r.skipped} skipped` : ""}`
+            : "No records imported"
+        }
+      />
+
+      {/* ── 2. Students ── */}
+      <ImportCard
+        title="Students"
+        description="Student roster from Veracross — matched and updated by Person ID on re-import"
         endpoint="/api/admin/import/students"
         columns={["Person ID", "Last Name", "Preferred Name", "Current Grade"]}
         optional={["Gender", "Email 1", "Mobile Phone", "Advisor"]}
         notes={[
-          "These are the exact Veracross column names — export the roster report and upload as-is.",
-          "Person ID is used to match students on re-import, so existing records are updated, not duplicated.",
+          "Export the Student Roster report from Veracross and upload as-is.",
+          "Person ID is the match key — re-uploading updates existing students, never duplicates.",
           "Preferred Name is used as the student's first name and display name.",
-          "Current Grade can be '9' or 'Grade 9' — both work.",
-          "Advisor format from Veracross is 'Last, First' — stored as-is on the student record.",
+          "Current Grade accepts 'Grade 9' or '9' — both work.",
+          "Advisor is stored as-is from Veracross ('Last, First') and used to build advisory groups.",
         ]}
         resultLabel={r =>
           r.processed
@@ -219,63 +242,26 @@ export default function CsvImportSection() {
         }
       />
 
+      {/* ── 3. Parents ── */}
       <ImportCard
-        title="Parent Contact Info"
-        description="Import parent/guardian contacts from Veracross — links to students by Person ID"
+        title="Parent Contacts"
+        description="Parent/guardian contacts from Veracross — linked to students by Person ID"
         endpoint="/api/admin/import/parents"
         columns={["Person ID", "PARENT 1: Preferred Name", "PARENT 1: Last Name", "PARENT 1: Email 1"]}
-        optional={["PARENT 1: Mobile Phone", "PARENT 1: Person ID", "PARENT 2 – 4 (same columns)"]}
+        optional={["PARENT 1: Mobile Phone", "PARENT 1: Person ID", "PARENT 2 – 4 same columns"]}
         notes={[
-          "Export the 'Parent Contact' report from Veracross and upload as-is.",
-          "Students must already be imported — matched by Person ID.",
+          "Export the Parent Contact report from Veracross and upload as-is.",
+          "Students must be imported first — matched by Person ID.",
           "Up to 4 parents per student. Empty parent slots are skipped automatically.",
-          "Re-uploading is safe — parent data on existing students is replaced.",
+          "Re-uploading replaces parent data on existing students.",
         ]}
         resultLabel={r =>
           r.processed != null
-            ? `✓ ${r.processed} student${r.processed !== 1 ? "s" : ""} updated${r.not_found ? ` · ${r.not_found} not found` : ""}`
+            ? `✓ ${r.processed} student${r.processed !== 1 ? "s" : ""} updated${r.not_found ? ` · ${r.not_found} student${r.not_found !== 1 ? "s" : ""} not found` : ""}`
             : "No records imported"
         }
       />
 
-      <ImportCard
-        title="Faculty & Staff Roster"
-        description="Import all faculty and staff from Veracross — Faculty become teachers, Staff become staff"
-        endpoint="/api/admin/import/teachers"
-        columns={["Last Name", "Preferred Name", "Email 1", "Role"]}
-        optional={["Person ID", "Job Title", "Mobile Phone", "Business Phone"]}
-        notes={[
-          "These are the exact Veracross column names — export the faculty/staff report and upload as-is.",
-          "Role = 'Faculty' → teacher · Role = 'Staff' → staff. Missing Role defaults to staff.",
-          "Email 1 is the login key — must be the @seattleacademy.org address.",
-          "Coordinators, counselors, deans, and admins already in the system keep their role on re-import.",
-          "After import, use Manage Users to manually promote people to coordinator, counselor, dean, etc.",
-        ]}
-        resultLabel={r =>
-          r.processed
-            ? `✓ ${r.processed} imported · ${r.teachers ?? 0} teachers · ${r.staff ?? 0} staff${r.preserved ? ` · ${r.preserved} role preserved` : ""}${r.skipped ? ` · ${r.skipped} skipped` : ""}`
-            : "No records imported"
-        }
-      />
-
-      <ImportCard
-        title="Class Schedule"
-        description="Import block assignments — which students are in which class each block"
-        endpoint="/api/admin/import/schedule"
-        columns={["block", "course_code", "course_name", "teacher_email", "student_id"]}
-        optional={["room", "academic_year"]}
-        notes={[
-          "block is the period number (1–8). course_code must be unique per block.",
-          "teacher_email must match an existing user. Import teachers first.",
-          "student_id must match an existing student. Import students first.",
-          "⚠ Re-uploading REPLACES all enrollments for every course in the file.",
-        ]}
-        resultLabel={r =>
-          r.coursesUpserted !== undefined
-            ? `✓ ${r.coursesUpserted} course${r.coursesUpserted !== 1 ? "s" : ""} · ${r.enrollments ?? 0} enrollment${(r.enrollments ?? 0) !== 1 ? "s" : ""}${r.rowsSkipped ? ` · ${r.rowsSkipped} skipped` : ""}`
-            : "No records imported"
-        }
-      />
     </div>
   )
 }
