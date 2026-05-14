@@ -7,6 +7,7 @@ interface ImportResult {
   enrollments?:     number
   skipped?:         number
   rowsSkipped?:     number
+  not_found?:       number
   warnings?:        string[]
   errors?:          string[]
   error?:           string
@@ -211,6 +212,25 @@ export default function CsvImportSection() {
         resultLabel={r =>
           r.processed
             ? `✓ ${r.processed} student${r.processed !== 1 ? "s" : ""} imported${r.skipped ? ` · ${r.skipped} skipped` : ""}`
+            : "No records imported"
+        }
+      />
+
+      <ImportCard
+        title="Parent Contact Info"
+        description="Import parent/guardian contacts from Veracross — links to students by Person ID"
+        endpoint="/api/admin/import/parents"
+        columns={["Person ID", "PARENT 1: Preferred Name", "PARENT 1: Last Name", "PARENT 1: Email 1"]}
+        optional={["PARENT 1: Mobile Phone", "PARENT 1: Person ID", "PARENT 2 – 4 (same columns)"]}
+        notes={[
+          "Export the 'Parent Contact' report from Veracross and upload as-is.",
+          "Students must already be imported — matched by Person ID.",
+          "Up to 4 parents per student. Empty parent slots are skipped automatically.",
+          "Re-uploading is safe — parent data on existing students is replaced.",
+        ]}
+        resultLabel={r =>
+          r.processed != null
+            ? `✓ ${r.processed} student${r.processed !== 1 ? "s" : ""} updated${r.not_found ? ` · ${r.not_found} not found` : ""}`
             : "No records imported"
         }
       />
