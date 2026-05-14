@@ -110,14 +110,50 @@ export async function POST(req: NextRequest) {
   if (!upsert.length)
     return NextResponse.json({ errors, warnings, processed: 0 }, { status: 400 })
 
-  // Batch upsert in chunks of 200
-  let dbError: string | undefined
-  for (let i = 0; i < upsert.length; i += 200) {
-    const { error } = await db
-      .from("users")
-      .upsert(upsert.slice(i, i + 200), { onConflict: "veracross_id" })
-    if (error) { dbError = error.message; break }
+  // Lookup existing students by veracross_id — avoids needing a unique constraint
+  // on veracross_id for an ON CONFLICT upsert.
+  const vcIds = upsert.map(u => (u as { veracross_id: string }).veracross_id)
+  const { data: existingRows } = await db
+    .from("users")
+    .select("id, veracross_id")
+    .eq("role", "student")
+    .in("veracross_id", vcIds)
+
+  const idByVcId = new Map(
+    (existingRows ?? []).map(r => [r.veracross_id as string, r.id as string])
+  )
+
+  const inserts: object[] = []
+  const updates: { id: string; rec: object }[] = []
+  for (const rec of upsert) {
+    const vcId       = (rec as { veracross_id: string }).veracross_id
+    const existingId = idByVcId.get(vcId)
+    if (existingId) updates.push({ id: existingId, rec })
+    else            inserts.push(rec)
   }
+
+  let dbError: string | undefined
+
+  for (let i = 0; i < inserts.length && !dbError; i += 200) {
+    const { error } = await db.from("users").insert(inserts.slice(i, i + 200))
+    if (error) dbError = error.message
+  }
+
+  if (!dbError && updates.length) {
+    const results = await Promise.allSettled(
+      updates.map(u => db.from("users").update(u.rec).eq("id", u.id))
+    )
+    const failed = results.find(r =>
+      r.status === "rejected" ||
+      (r.status === "fulfilled" && (r.value as { error: { message: string } | null }).error)
+    )
+    if (failed) {
+      dbError = failed.status === "fulfilled"
+        ? (failed.value as { error: { message: string } | null }).error?.message
+        : "Update failed"
+    }
+  }
+
   if (dbError) return NextResponse.json({ error: dbError }, { status: 500 })
 
   return NextResponse.json({

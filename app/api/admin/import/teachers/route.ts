@@ -102,10 +102,11 @@ export async function POST(req: NextRequest) {
       last_name:    p.last,
       phone:        p.phone,
       veracross_id: p.veracrossId || null,
-      job_title:    p.jobTitle    || null,
       role:         finalRole,
       roles:        [finalRole],
       is_active:    true,
+      // job_title intentionally omitted — requires migration 015_faculty_fields.sql.
+      // Once that migration is run in Supabase, add it back: job_title: p.jobTitle || null
     }
   })
 

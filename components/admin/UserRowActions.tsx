@@ -84,9 +84,11 @@ export default function UserRowActions({
   const [emailVal,      setEmailVal]      = useState(email)
   const [phoneVal,      setPhoneVal]      = useState(phone ?? "")
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [confirmPurge,  setConfirmPurge]  = useState(false)
   const [saving,        setSaving]        = useState(false)
   const [savingDetails, setSavingDetails] = useState(false)
   const [savingRoles,   setSavingRoles]   = useState(false)
+  const [deleting,      setDeleting]      = useState(false)
   const [error,         setError]         = useState("")
 
   const [courses,     setCourses]     = useState<Course[]>(myCourses ?? [])
@@ -149,6 +151,17 @@ export default function UserRowActions({
     })
     if (res.ok) { router.refresh() }
     else { const d = await res.json(); setError(d.error ?? "Failed."); setSaving(false) }
+  }
+
+  async function deleteUser() {
+    setDeleting(true); setError("")
+    const res = await fetch("/api/admin/users", {
+      method:  "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ id }),
+    })
+    if (res.ok) { router.refresh() }
+    else { const d = await res.json(); setError(d.error ?? "Failed to delete."); setDeleting(false) }
   }
 
   async function assignCourse() {
@@ -430,7 +443,7 @@ export default function UserRowActions({
 
           <div style={{ borderTop: "1px solid #F0F0F0" }} />
 
-          {/* Deactivate */}
+          {/* Deactivate (active users) */}
           {isActive && (
             <div>
               <label className="text-[9px] font-bold uppercase tracking-wide block mb-2"
@@ -439,7 +452,7 @@ export default function UserRowActions({
               </label>
               {isSelf ? (
                 <p className="text-[10px]" style={{ color: "#999" }}>
-                  You cannot deactivate your own account.
+                  You cannot deactivate or delete your own account.
                 </p>
               ) : !confirmDelete ? (
                 <button onClick={() => setConfirmDelete(true)}
@@ -450,15 +463,60 @@ export default function UserRowActions({
               ) : (
                 <div className="flex flex-col gap-2">
                   <p className="text-xs font-bold text-center" style={{ color: "#CE2033" }}>
-                    Remove {displayName}&apos;s access? This cannot be easily undone.
+                    Remove {displayName}&apos;s access?
                   </p>
                   <div className="flex gap-2">
                     <button onClick={() => setActiveState(false)} disabled={saving}
                       className="flex-1 py-2 rounded-xl text-xs font-bold text-white"
                       style={{ background: "#CE2033", opacity: saving ? 0.5 : 1, border: "none", cursor: "pointer" }}>
-                      {saving ? "Removing…" : "Yes, Remove"}
+                      {saving ? "Removing…" : "Yes, Deactivate"}
                     </button>
-                    <button onClick={() => setConfirmDelete(false)}
+                    <button onClick={() => { setConfirmDelete(false); setConfirmPurge(false) }}
+                      className="flex-1 py-2 rounded-xl text-xs font-bold"
+                      style={{ background: "#EAEAEA", color: "#3D3D3D", border: "none", cursor: "pointer" }}>
+                      Cancel
+                    </button>
+                  </div>
+                  <div style={{ borderTop: "1px solid #F0F0F0", marginTop: 4 }} />
+                  <p className="text-[9px] font-bold uppercase tracking-wide text-center"
+                     style={{ color: "#CE2033", opacity: 0.6 }}>
+                    Or permanently delete
+                  </p>
+                  <button onClick={deleteUser} disabled={deleting}
+                    className="w-full py-2 rounded-xl text-xs font-bold text-white"
+                    style={{ background: "#7B0000", opacity: deleting ? 0.5 : 1, border: "none", cursor: "pointer" }}>
+                    {deleting ? "Deleting…" : `Delete ${displayName.split(" ")[0]} permanently`}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Permanent delete (inactive users) */}
+          {!isActive && !isSelf && (
+            <div>
+              <label className="text-[9px] font-bold uppercase tracking-wide block mb-2"
+                     style={{ color: "#CE2033", opacity: 0.7 }}>
+                Permanently Delete
+              </label>
+              {!confirmPurge ? (
+                <button onClick={() => setConfirmPurge(true)}
+                  className="w-full py-2 rounded-xl text-xs font-bold border"
+                  style={{ borderColor: "#CE2033", color: "#CE2033", background: "#fff", cursor: "pointer" }}>
+                  Delete {displayName.split(" ")[0]} permanently
+                </button>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <p className="text-xs font-bold text-center" style={{ color: "#CE2033" }}>
+                    Permanently delete {displayName}? This cannot be undone.
+                  </p>
+                  <div className="flex gap-2">
+                    <button onClick={deleteUser} disabled={deleting}
+                      className="flex-1 py-2 rounded-xl text-xs font-bold text-white"
+                      style={{ background: "#7B0000", opacity: deleting ? 0.5 : 1, border: "none", cursor: "pointer" }}>
+                      {deleting ? "Deleting…" : "Yes, Delete"}
+                    </button>
+                    <button onClick={() => setConfirmPurge(false)}
                       className="flex-1 py-2 rounded-xl text-xs font-bold"
                       style={{ background: "#EAEAEA", color: "#3D3D3D", border: "none", cursor: "pointer" }}>
                       Cancel
