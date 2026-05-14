@@ -153,6 +153,15 @@ export async function PATCH(req: NextRequest) {
   }
   if (email?.trim())       updates.email = email.trim().toLowerCase()
   if (phone !== undefined) updates.phone = phone ? phone.trim() || null : null
+  if (body.business_phone !== undefined)
+    updates.business_phone = body.business_phone
+      ? String(body.business_phone).trim() || null
+      : null
+  if (body.dean_grades !== undefined && Array.isArray(body.dean_grades))
+    updates.dean_grades = body.dean_grades
+      .filter((g: unknown) => typeof g === "number" && [9,10,11,12].includes(g))
+  if (body.job_title !== undefined)
+    updates.job_title = body.job_title ? String(body.job_title).trim() || null : null
 
   // Student-specific fields
   const ln = body.last_name  !== undefined ? String(body.last_name).trim()  : undefined

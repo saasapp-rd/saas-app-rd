@@ -10,15 +10,19 @@ import UserList, { UserRow } from "@/components/admin/UserList"
 export const dynamic = "force-dynamic"
 
 interface UserRecord {
-  id:           string
-  email:        string | null
-  display_name: string | null
-  first_name:   string | null
-  last_name:    string | null
-  phone:        string | null
-  role:         string
-  roles:        string[] | null
-  is_active:    boolean | null
+  id:             string
+  email:          string | null
+  display_name:   string | null
+  first_name:     string | null
+  last_name:      string | null
+  phone:          string | null
+  business_phone: string | null
+  role:           string
+  roles:          string[] | null
+  is_active:      boolean | null
+  veracross_id:   string | null
+  dean_grades:    number[] | null
+  job_title:      string | null
 }
 
 export default async function AllUsersPage() {
@@ -29,19 +33,25 @@ export default async function AllUsersPage() {
   // Range bumped past PostgREST's 1000-row default.
   const { data } = await db
     .from("users")
-    .select("id, email, display_name, first_name, last_name, phone, role, roles, is_active")
+    .select("id, email, display_name, first_name, last_name, phone, business_phone, role, roles, is_active, veracross_id, dean_grades, job_title")
     .range(0, 9999)
 
   const users: UserRow[] = ((data ?? []) as UserRecord[]).map(u => {
     const fullName = [u.first_name, u.last_name].filter(Boolean).join(" ")
     return {
-      id:           u.id,
-      email:        u.email ?? "",
-      display_name: u.display_name || fullName || null,
-      phone:        u.phone,
-      role:         u.role,
-      roles:        u.roles,
-      is_active:    u.is_active,
+      id:             u.id,
+      email:          u.email ?? "",
+      display_name:   u.display_name || fullName || null,
+      first_name:     u.first_name,
+      last_name:      u.last_name,
+      phone:          u.phone,
+      business_phone: u.business_phone,
+      role:           u.role,
+      roles:          u.roles,
+      is_active:      u.is_active,
+      veracross_id:   u.veracross_id,
+      dean_grades:    u.dean_grades,
+      job_title:      u.job_title,
     }
   })
 

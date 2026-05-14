@@ -37,7 +37,6 @@ const ROLE_STYLE: Record<string, { bg: string; color: string; selBg: string; sel
   parent:      { bg: "#F4F4F4", color: "#BABABA", selBg: "#EAEAEA", selColor: "#3D3D3D" },
 }
 
-// Badge style keyed by primary role
 const BADGE_STYLE: Record<string, { bg: string; color: string }> = {
   super_admin: { bg: "#FFF0F0", color: "#A6192E" },
   admin:       { bg: "#FFF0F0", color: "#A6192E" },
@@ -51,6 +50,8 @@ const BADGE_STYLE: Record<string, { bg: string; color: string }> = {
   parent:      { bg: "#EAEAEA", color: "#3D3D3D" },
 }
 
+const DEAN_GRADE_OPTIONS = [9, 10, 11, 12]
+
 export interface Course {
   id:           string
   name:         string
@@ -59,38 +60,53 @@ export interface Course {
 }
 
 interface Props {
-  id:          string
-  displayName: string
-  email:       string
-  phone:       string | null
-  role:        string
-  roles?:      string[]
-  isActive:    boolean
-  isSelf:      boolean
-  myCourses?:  Course[]
-  allCourses?: Course[]
-  defaultOpen?: boolean
+  id:             string
+  displayName:    string
+  firstName?:     string | null
+  lastName?:      string | null
+  email:          string
+  phone:          string | null
+  businessPhone?: string | null
+  role:           string
+  roles?:         string[]
+  isActive:       boolean
+  isSelf:         boolean
+  veracrossId?:   string | null
+  deanGrades?:    number[] | null
+  jobTitle?:      string | null
+  myCourses?:     Course[]
+  allCourses?:    Course[]
+  defaultOpen?:   boolean
 }
 
+type Mode = "none" | "view" | "edit"
+
 export default function UserRowActions({
-  id, displayName, email, phone, role, roles: rolesProp, isActive, isSelf,
+  id, displayName, firstName, lastName, email, phone, businessPhone,
+  role, roles: rolesProp, isActive, isSelf,
+  veracrossId, deanGrades, jobTitle,
   myCourses, allCourses, defaultOpen,
 }: Props) {
   const router = useRouter()
 
-  const [open,          setOpen]          = useState(defaultOpen ?? false)
-  const [savedRoles,    setSavedRoles]    = useState<string[]>(rolesProp?.length ? rolesProp : [role])
-  const [pendingRoles,  setPendingRoles]  = useState<string[]>(rolesProp?.length ? rolesProp : [role])
-  const [nameVal,       setNameVal]       = useState(displayName)
-  const [emailVal,      setEmailVal]      = useState(email)
-  const [phoneVal,      setPhoneVal]      = useState(phone ?? "")
-  const [confirmDelete, setConfirmDelete] = useState(false)
-  const [confirmPurge,  setConfirmPurge]  = useState(false)
-  const [saving,        setSaving]        = useState(false)
-  const [savingDetails, setSavingDetails] = useState(false)
-  const [savingRoles,   setSavingRoles]   = useState(false)
-  const [deleting,      setDeleting]      = useState(false)
-  const [error,         setError]         = useState("")
+  const [mode,             setMode]             = useState<Mode>(defaultOpen ? "edit" : "none")
+  const [savedRoles,       setSavedRoles]       = useState<string[]>(rolesProp?.length ? rolesProp : [role])
+  const [pendingRoles,     setPendingRoles]     = useState<string[]>(rolesProp?.length ? rolesProp : [role])
+  const [nameVal,          setNameVal]          = useState(displayName)
+  const [emailVal,         setEmailVal]         = useState(email)
+  const [phoneVal,         setPhoneVal]         = useState(phone ?? "")
+  const [businessPhoneVal, setBusinessPhoneVal] = useState(businessPhone ?? "")
+  const [vcIdVal,          setVcIdVal]          = useState(veracrossId ?? "")
+  const [editingVcId,      setEditingVcId]      = useState(false)
+  const [confirmEditVcId,  setConfirmEditVcId]  = useState(false)
+  const [deanGradesVal,    setDeanGradesVal]    = useState<number[]>(deanGrades ?? [])
+  const [confirmDelete,    setConfirmDelete]    = useState(false)
+  const [confirmPurge,     setConfirmPurge]     = useState(false)
+  const [saving,           setSaving]           = useState(false)
+  const [savingDetails,    setSavingDetails]    = useState(false)
+  const [savingRoles,      setSavingRoles]      = useState(false)
+  const [deleting,         setDeleting]         = useState(false)
+  const [error,            setError]            = useState("")
 
   const [courses,     setCourses]     = useState<Course[]>(myCourses ?? [])
   const [assignId,    setAssignId]    = useState("")
@@ -98,12 +114,38 @@ export default function UserRowActions({
   const [unassigning, setUnassigning] = useState<string | null>(null)
   const [courseError, setCourseError] = useState("")
 
-  const primary    = primaryRole(savedRoles)
-  const badge      = BADGE_STYLE[primary] ?? BADGE_STYLE["staff"]
-  const isTeach    = savedRoles.includes("teacher")
+  const primary      = primaryRole(savedRoles)
+  const badge        = BADGE_STYLE[primary] ?? BADGE_STYLE["staff"]
+  const isTeach      = savedRoles.includes("teacher")
+  const isDean       = savedRoles.includes("dean")
+  const isPendingDean = pendingRoles.includes("dean")
   const rolesChanged = JSON.stringify([...pendingRoles].sort()) !== JSON.stringify([...savedRoles].sort())
-
   const unassignedCourses = (allCourses ?? []).filter(c => !courses.find(mc => mc.id === c.id))
+
+  function toggleView() {
+    if (mode === "edit") return  // don't interrupt editing
+    setMode(mode === "view" ? "none" : "view")
+  }
+
+  function toggleEdit() {
+    if (mode === "edit") {
+      setMode("none")
+      setEditingVcId(false)
+      setConfirmEditVcId(false)
+      setConfirmDelete(false)
+      setConfirmPurge(false)
+      setError("")
+      setCourseError("")
+      setPendingRoles(savedRoles)
+    } else {
+      setMode("edit")
+      setConfirmDelete(false)
+      setConfirmPurge(false)
+      setError("")
+      setCourseError("")
+      setPendingRoles(savedRoles)
+    }
+  }
 
   function togglePendingRole(value: string) {
     setPendingRoles(prev => {
@@ -115,18 +157,40 @@ export default function UserRowActions({
     })
   }
 
+  function toggleDeanGrade(g: number) {
+    setDeanGradesVal(prev =>
+      prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g].sort((a, b) => a - b)
+    )
+  }
+
   async function saveDetails() {
     const trimName  = nameVal.trim()
     const trimEmail = emailVal.trim().toLowerCase()
     if (!trimName || !trimEmail) return
     setSavingDetails(true); setError("")
+    const body: Record<string, unknown> = {
+      id,
+      display_name:   trimName,
+      email:          trimEmail,
+      phone:          phoneVal.trim() || null,
+      business_phone: businessPhoneVal.trim() || null,
+    }
+    if (editingVcId) body.veracross_id = vcIdVal.trim() || null
+    if (isPendingDean) body.dean_grades = deanGradesVal
     const res = await fetch("/api/admin/users", {
       method:  "PATCH",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ id, display_name: trimName, email: trimEmail, phone: phoneVal.trim() || null }),
+      body:    JSON.stringify(body),
     })
-    if (res.ok) { router.refresh(); setOpen(false) }
-    else { const d = await res.json(); setError(d.error ?? "Failed to update.") }
+    if (res.ok) {
+      router.refresh()
+      setMode("none")
+      setEditingVcId(false)
+      setConfirmEditVcId(false)
+    } else {
+      const d = await res.json()
+      setError(d.error ?? "Failed to update.")
+    }
     setSavingDetails(false)
   }
 
@@ -138,7 +202,7 @@ export default function UserRowActions({
       headers: { "Content-Type": "application/json" },
       body:    JSON.stringify({ id, roles: pendingRoles }),
     })
-    if (res.ok) { setSavedRoles(pendingRoles); router.refresh(); setOpen(false) }
+    if (res.ok) { setSavedRoles(pendingRoles); router.refresh() }
     else { const d = await res.json(); setError(d.error ?? "Failed to update roles.") }
     setSavingRoles(false)
   }
@@ -208,19 +272,22 @@ export default function UserRowActions({
       courses.map(c => c.block_number).join(", ") +
       " · " + courses.length + " course" + (courses.length !== 1 ? "s" : "")
 
-  // Roles badge: show primary + a +N chip if multi-role
-  const extraCount = savedRoles.length - 1
+  const extraCount  = savedRoles.length - 1
+  const phoneLabel  = (phone && businessPhone) ? "Mobile" : "Phone"
 
   return (
     <div className="rounded-xl border overflow-hidden"
-         style={{ borderColor: open ? "#A6192E" : isActive ? "#EAEAEA" : "#FECACA" }}>
+         style={{ borderColor: mode !== "none" ? "#A6192E" : isActive ? "#EAEAEA" : "#FECACA" }}>
 
       {/* Main row */}
       <div className="px-4 py-2.5 flex items-center justify-between"
-           style={{ background: open ? "#FFF8F8" : isActive ? "#FAFAFA" : "#FFF5F5" }}>
-        <div className="min-w-0 flex-1">
+           style={{ background: mode !== "none" ? "#FFF8F8" : isActive ? "#FAFAFA" : "#FFF5F5" }}>
+        <div onClick={toggleView}
+             className="min-w-0 flex-1"
+             style={{ cursor: mode === "edit" ? "default" : "pointer" }}>
           <div className="flex items-center gap-1.5">
-            <div className="text-sm font-semibold truncate" style={{ color: isActive ? "#3D3D3D" : "#999" }}>
+            <div className="text-sm font-semibold truncate"
+                 style={{ color: isActive ? "#3D3D3D" : "#999" }}>
               {displayName}
             </div>
             {!isActive && (
@@ -232,7 +299,14 @@ export default function UserRowActions({
           </div>
           <div className="text-[10px] truncate" style={{ color: "#999" }}>{email}</div>
           {phone && (
-            <div className="text-[10px] truncate" style={{ color: "#BABABA" }}>{phone}</div>
+            <div className="text-[10px] truncate" style={{ color: "#BABABA" }}>
+              {phoneLabel}: {phone}{businessPhone ? ` · Business: ${businessPhone}` : ""}
+            </div>
+          )}
+          {!phone && businessPhone && (
+            <div className="text-[10px] truncate" style={{ color: "#BABABA" }}>
+              Business: {businessPhone}
+            </div>
           )}
           {isTeach && (
             <div className="text-[10px] truncate mt-0.5"
@@ -245,7 +319,7 @@ export default function UserRowActions({
           <div className="flex items-center gap-1">
             <span className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase"
                   style={{ background: badge.bg, color: badge.color }}>
-              {primary.replace("_", " ")}
+              {primary === "admin" ? "Administrator" : primary.replace("_", " ")}
             </span>
             {extraCount > 0 && (
               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
@@ -255,20 +329,60 @@ export default function UserRowActions({
             )}
           </div>
           <button
-            onClick={() => { setOpen(o => !o); setConfirmDelete(false); setError(""); setCourseError(""); setPendingRoles(savedRoles) }}
+            onClick={toggleEdit}
             className="text-[10px] font-bold px-2 py-1 rounded-lg"
             style={{
-              background: open ? "#A6192E" : "#EAEAEA",
-              color:      open ? "#fff"    : "#3D3D3D",
+              background: mode === "edit" ? "#A6192E" : "#EAEAEA",
+              color:      mode === "edit" ? "#fff"    : "#3D3D3D",
               border: "none", cursor: "pointer",
             }}>
-            {open ? "✕" : "Edit"}
+            {mode === "edit" ? "✕" : "Edit"}
           </button>
         </div>
       </div>
 
-      {/* Expanded edit panel */}
-      {open && (
+      {/* View panel — full read-only details */}
+      {mode === "view" && (
+        <div className="px-4 py-3 border-t"
+             style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
+          <dl className="grid gap-x-3 gap-y-1.5 text-xs"
+              style={{ gridTemplateColumns: "auto 1fr" }}>
+            <ViewField label="Display name" value={displayName} />
+            {(firstName || lastName) && (
+              <ViewField label="First / Last"
+                         value={[firstName, lastName].filter(Boolean).join(" / ")} />
+            )}
+            <ViewField label="Email" value={email} />
+            {phone && <ViewField label={businessPhone ? "Mobile phone" : "Phone"} value={phone} />}
+            {businessPhone && <ViewField label="Business phone" value={businessPhone} />}
+            {jobTitle && <ViewField label="Job title" value={jobTitle} />}
+            <ViewField label={`Role${savedRoles.length > 1 ? "s" : ""}`}
+                       value={savedRoles.map(r => r === "admin" ? "Administrator" : r === "super_admin" ? "Super Admin" : r[0].toUpperCase() + r.slice(1)).join(", ")} />
+            {isDean && (
+              <ViewField label="Grade levels"
+                         value={(deanGrades && deanGrades.length > 0) ? deanGrades.join(", ") : "—"} />
+            )}
+            {isTeach && courses.length > 0 && (
+              <ViewField label="Courses" value={coursesSummary} />
+            )}
+            {veracrossId && (
+              <ViewField label="Veracross ID" value={veracrossId} mono />
+            )}
+            <ViewField label="Account ID" value={id} mono dim />
+            <ViewField label="Status" value={isActive ? "Active" : "Deactivated"} />
+          </dl>
+          <div className="mt-3 flex justify-end">
+            <button onClick={toggleEdit}
+              className="text-[10px] font-bold px-3 py-1.5 rounded-lg"
+              style={{ background: "#A6192E", color: "#fff", border: "none", cursor: "pointer" }}>
+              Edit details
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Edit panel */}
+      {mode === "edit" && (
         <div className="px-4 py-3 border-t flex flex-col gap-4"
              style={{ background: "#fff", borderColor: "#EAEAEA" }}>
 
@@ -279,9 +393,7 @@ export default function UserRowActions({
               <p className="text-xs font-semibold" style={{ color: "#CE2033" }}>
                 This account is deactivated.
               </p>
-              <button
-                onClick={() => setActiveState(true)}
-                disabled={saving}
+              <button onClick={() => setActiveState(true)} disabled={saving}
                 className="px-3 py-1.5 rounded-lg text-xs font-bold text-white flex-shrink-0"
                 style={{ background: "#166534", opacity: saving ? 0.5 : 1, border: "none", cursor: "pointer" }}>
                 {saving ? "…" : "Reactivate"}
@@ -296,7 +408,6 @@ export default function UserRowActions({
                      style={{ color: "#3D3D3D", opacity: 0.5 }}>
                 Courses
               </label>
-
               {courses.length === 0 ? (
                 <p className="text-[10px] mb-2" style={{ color: "#999" }}>No courses assigned yet.</p>
               ) : (
@@ -306,34 +417,24 @@ export default function UserRowActions({
                          className="flex items-center justify-between px-3 py-2 rounded-xl"
                          style={{ background: "#FAFAFA", border: "1px solid #EAEAEA" }}>
                       <div>
-                        <span className="text-xs font-semibold" style={{ color: "#3D3D3D" }}>
-                          {c.name}
-                        </span>
+                        <span className="text-xs font-semibold" style={{ color: "#3D3D3D" }}>{c.name}</span>
                         <span className="ml-2 text-[10px]" style={{ color: "#999" }}>
                           Block {c.block_number}{c.room ? ` · ${c.room}` : ""}
                         </span>
                       </div>
-                      <button
-                        onClick={() => unassignCourse(c.id)}
-                        disabled={unassigning === c.id}
+                      <button onClick={() => unassignCourse(c.id)} disabled={unassigning === c.id}
                         className="text-[10px] font-bold px-2 py-0.5 rounded-lg"
-                        style={{
-                          background: "#FFF0F0", color: "#CE2033",
-                          border: "none", cursor: "pointer",
-                          opacity: unassigning === c.id ? 0.5 : 1,
-                        }}>
+                        style={{ background: "#FFF0F0", color: "#CE2033", border: "none", cursor: "pointer",
+                                 opacity: unassigning === c.id ? 0.5 : 1 }}>
                         {unassigning === c.id ? "…" : "Remove"}
                       </button>
                     </div>
                   ))}
                 </div>
               )}
-
               {unassignedCourses.length > 0 && (
                 <div className="flex gap-2">
-                  <select
-                    value={assignId}
-                    onChange={e => setAssignId(e.target.value)}
+                  <select value={assignId} onChange={e => setAssignId(e.target.value)}
                     className="flex-1 px-3 py-2 rounded-xl text-sm border outline-none"
                     style={{ borderColor: "#EAEAEA", color: assignId ? "#3D3D3D" : "#999", background: "#FAFAFA" }}>
                     <option value="">Assign a course…</option>
@@ -343,26 +444,19 @@ export default function UserRowActions({
                       </option>
                     ))}
                   </select>
-                  <button
-                    onClick={assignCourse}
-                    disabled={assigning || !assignId}
+                  <button onClick={assignCourse} disabled={assigning || !assignId}
                     className="px-3 py-2 rounded-xl text-xs font-bold text-white flex-shrink-0"
-                    style={{
-                      background: "#3D3D3D",
-                      opacity: assigning || !assignId ? 0.4 : 1,
-                      border: "none", cursor: !assignId ? "default" : "pointer",
-                    }}>
+                    style={{ background: "#3D3D3D", opacity: assigning || !assignId ? 0.4 : 1,
+                             border: "none", cursor: !assignId ? "default" : "pointer" }}>
                     {assigning ? "…" : "Assign"}
                   </button>
                 </div>
               )}
-
               {unassignedCourses.length === 0 && courses.length > 0 && (
                 <p className="text-[10px]" style={{ color: "#999" }}>
                   All active courses are assigned to this teacher.
                 </p>
               )}
-
               {courseError && (
                 <p className="text-[10px] font-semibold mt-1" style={{ color: "#CE2033" }}>{courseError}</p>
               )}
@@ -386,13 +480,111 @@ export default function UserRowActions({
                 placeholder="Email address" type="email"
                 className="w-full px-3 py-2 rounded-xl text-sm border outline-none"
                 style={{ borderColor: "#EAEAEA", color: "#3D3D3D", background: "#FAFAFA" }} />
-              <input value={phoneVal} onChange={e => setPhoneVal(e.target.value)}
-                placeholder="Phone number (optional)" type="tel"
-                className="w-full px-3 py-2 rounded-xl text-sm border outline-none"
-                style={{ borderColor: "#EAEAEA", color: "#3D3D3D", background: "#FAFAFA" }} />
+              <div className="flex gap-2">
+                <div className="flex-1">
+                  <p className="text-[9px] font-bold uppercase tracking-wide mb-1"
+                     style={{ color: "#3D3D3D", opacity: 0.4 }}>Mobile</p>
+                  <input value={phoneVal} onChange={e => setPhoneVal(e.target.value)}
+                    placeholder="Mobile phone" type="tel"
+                    className="w-full px-3 py-2 rounded-xl text-sm border outline-none"
+                    style={{ borderColor: "#EAEAEA", color: "#3D3D3D", background: "#FAFAFA" }} />
+                </div>
+                <div className="flex-1">
+                  <p className="text-[9px] font-bold uppercase tracking-wide mb-1"
+                     style={{ color: "#3D3D3D", opacity: 0.4 }}>Business</p>
+                  <input value={businessPhoneVal} onChange={e => setBusinessPhoneVal(e.target.value)}
+                    placeholder="Business phone" type="tel"
+                    className="w-full px-3 py-2 rounded-xl text-sm border outline-none"
+                    style={{ borderColor: "#EAEAEA", color: "#3D3D3D", background: "#FAFAFA" }} />
+                </div>
+              </div>
+
+              {/* Dean grade levels */}
+              {isPendingDean && (
+                <div>
+                  <p className="text-[9px] font-bold uppercase tracking-wide mb-1.5"
+                     style={{ color: "#3D3D3D", opacity: 0.4 }}>
+                    Grade Levels of Responsibility
+                  </p>
+                  <div className="flex gap-1.5">
+                    {DEAN_GRADE_OPTIONS.map(g => (
+                      <button key={g} type="button" onClick={() => toggleDeanGrade(g)}
+                        className="px-4 py-1.5 rounded-xl text-xs font-bold flex-1"
+                        style={{
+                          background: deanGradesVal.includes(g) ? "#8B6200" : "#F4F4F4",
+                          color:      deanGradesVal.includes(g) ? "#fff"    : "#999",
+                          border: "none", cursor: "pointer",
+                        }}>
+                        {g}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Veracross ID — confirm before enabling edit */}
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-wide mb-1"
+                   style={{ color: "#3D3D3D", opacity: 0.4 }}>Veracross ID</p>
+                {!editingVcId ? (
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 px-3 py-2 rounded-xl text-sm"
+                          style={{ background: "#F7F7F7", color: vcIdVal ? "#3D3D3D" : "#BABABA",
+                                   fontFamily: "monospace" }}>
+                      {vcIdVal || "Not set"}
+                    </code>
+                    {!confirmEditVcId ? (
+                      <button type="button" onClick={() => setConfirmEditVcId(true)}
+                        className="text-[10px] font-bold px-3 py-2 rounded-xl"
+                        style={{ background: "#EAEAEA", color: "#3D3D3D",
+                                 border: "none", cursor: "pointer" }}>
+                        Edit ID
+                      </button>
+                    ) : (
+                      <>
+                        <button type="button"
+                          onClick={() => { setEditingVcId(true); setConfirmEditVcId(false) }}
+                          className="text-[10px] font-bold px-3 py-2 rounded-xl text-white"
+                          style={{ background: "#CE2033", border: "none", cursor: "pointer" }}>
+                          Confirm
+                        </button>
+                        <button type="button" onClick={() => setConfirmEditVcId(false)}
+                          className="text-[10px] font-bold px-3 py-2 rounded-xl"
+                          style={{ background: "#EAEAEA", color: "#3D3D3D",
+                                   border: "none", cursor: "pointer" }}>
+                          Cancel
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ) : (
+                  <input value={vcIdVal} onChange={e => setVcIdVal(e.target.value)}
+                    placeholder="Veracross ID"
+                    className="w-full px-3 py-2 rounded-xl text-sm border outline-none"
+                    style={{ borderColor: "#CE2033", color: "#3D3D3D", background: "#FFF",
+                             fontFamily: "monospace" }} />
+                )}
+                {confirmEditVcId && !editingVcId && (
+                  <p className="text-[10px] mt-1" style={{ color: "#999" }}>
+                    Changing this can break Veracross sync. Confirm to edit.
+                  </p>
+                )}
+              </div>
+
+              {/* Account ID — read-only */}
+              <div>
+                <p className="text-[9px] font-bold uppercase tracking-wide mb-1"
+                   style={{ color: "#3D3D3D", opacity: 0.4 }}>Account ID</p>
+                <code className="block px-3 py-2 rounded-xl text-[10px]"
+                      style={{ background: "#F7F7F7", color: "#999", fontFamily: "monospace",
+                               wordBreak: "break-all" }}>
+                  {id}
+                </code>
+              </div>
+
               <button onClick={saveDetails}
                 disabled={savingDetails || !nameVal.trim() || !emailVal.trim()}
-                className="w-full py-2 rounded-xl text-xs font-bold text-white"
+                className="w-full py-2 rounded-xl text-xs font-bold text-white mt-1"
                 style={{
                   background: "#3D3D3D",
                   opacity: savingDetails || !nameVal.trim() || !emailVal.trim() ? 0.4 : 1,
@@ -416,10 +608,7 @@ export default function UserRowActions({
                 const sel = pendingRoles.includes(r.value)
                 const s   = ROLE_STYLE[r.value] ?? ROLE_STYLE["staff"]
                 return (
-                  <button
-                    key={r.value}
-                    type="button"
-                    onClick={() => togglePendingRole(r.value)}
+                  <button key={r.value} type="button" onClick={() => togglePendingRole(r.value)}
                     className="px-2.5 py-1 rounded-full text-[10px] font-bold transition-colors"
                     style={{
                       background: sel ? s.selBg    : s.bg,
@@ -433,8 +622,7 @@ export default function UserRowActions({
               })}
             </div>
             {rolesChanged && (
-              <button onClick={saveRoles}
-                disabled={savingRoles}
+              <button onClick={saveRoles} disabled={savingRoles}
                 className="w-full py-2 rounded-xl text-xs font-bold text-white"
                 style={{ background: "#3D3D3D", opacity: savingRoles ? 0.4 : 1, border: "none", cursor: "pointer" }}>
                 {savingRoles ? "Saving…" : "Save Roles"}
@@ -536,5 +724,26 @@ export default function UserRowActions({
         </div>
       )}
     </div>
+  )
+}
+
+function ViewField({ label, value, mono, dim }: {
+  label: string
+  value: string
+  mono?: boolean
+  dim?: boolean
+}) {
+  return (
+    <>
+      <dt style={{ color: "#999" }}>{label}</dt>
+      <dd style={{
+        color:      dim ? "#999" : "#3D3D3D",
+        fontFamily: mono ? "monospace" : undefined,
+        fontSize:   mono ? "11px" : undefined,
+        wordBreak:  mono ? "break-all" : undefined,
+      }}>
+        {value}
+      </dd>
+    </>
   )
 }

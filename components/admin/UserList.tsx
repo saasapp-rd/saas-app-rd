@@ -3,13 +3,19 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react"
 import UserRowActions, { Course } from "./UserRowActions"
 
 export interface UserRow {
-  id:           string
-  email:        string
-  display_name: string | null
-  phone:        string | null
-  role:         string
-  roles:        string[] | null
-  is_active:    boolean | null
+  id:             string
+  email:          string
+  display_name:   string | null
+  first_name?:    string | null
+  last_name?:     string | null
+  phone:          string | null
+  business_phone?: string | null
+  role:           string
+  roles:          string[] | null
+  is_active:      boolean | null
+  veracross_id?:  string | null
+  dean_grades?:   number[] | null
+  job_title?:     string | null
 }
 
 type SortField = "last_name" | "first_name" | "email"
@@ -191,12 +197,18 @@ export default function UserList({
                 <UserRowActions
                   id={u.id}
                   displayName={u.display_name ?? u.email}
+                  firstName={u.first_name ?? null}
+                  lastName={u.last_name ?? null}
                   email={u.email}
                   phone={u.phone}
+                  businessPhone={u.business_phone ?? null}
                   role={u.role}
                   roles={u.roles ?? undefined}
                   isActive={u.is_active !== false}
                   isSelf={u.id === currentUserId}
+                  veracrossId={u.veracross_id ?? null}
+                  deanGrades={u.dean_grades ?? null}
+                  jobTitle={u.job_title ?? null}
                   myCourses={role === "teacher" ? (coursesByUser?.[u.id] ?? []) : undefined}
                   allCourses={role === "teacher" ? allCourses : undefined}
                   defaultOpen={isTarget}
