@@ -5,6 +5,8 @@ import { db } from "@/lib/supabase"
 import SignOutButton from "@/components/SignOutButton"
 import Link from "next/link"
 import FlagManager from "@/components/counselor/FlagManager"
+import StudentSchedule from "@/components/admin/StudentSchedule"
+import type { EnrollmentRow, CourseOption } from "@/components/admin/StudentSchedule"
 
 const ALLOWED      = ["coordinator","counselor","dean","admin","super_admin","teacher","staff"]
 const FLAG_ALLOWED = ["counselor","dean","admin","super_admin"]
@@ -56,9 +58,11 @@ export default async function StudentProfilePage({
   if (!session) redirect("/login")
   if (!ALLOWED.includes(session.user.role)) redirect("/dashboard")
 
-  const [stuResult, flagResult, incResult] = await Promise.all([
+  const canEdit = ["admin", "super_admin"].includes(session.user.role)
+
+  const [stuResult, flagResult, incResult, enrollResult, courseResult] = await Promise.all([
     db.from("users")
-      .select("id, first_name, last_name, grade, veracross_id, parent_email, parent_name")
+      .select("id, first_name, last_name, grade, veracross_id, parent_email, parent_name, call_by")
       .eq("id", id)
       .eq("role", "student")
       .single(),
@@ -71,12 +75,25 @@ export default async function StudentProfilePage({
       .eq("student_id", id)
       .order("reported_at", { ascending: false })
       .limit(50),
+    db.from("student_enrollments")
+      .select("id, course_id, block_number, course:course_id(id, name, room, is_advisory, teacher:teacher_id(display_name))")
+      .eq("student_id", id)
+      .order("block_number"),
+    canEdit
+      ? db.from("courses")
+          .select("id, name, block_number, room, is_advisory, teacher:teacher_id(display_name)")
+          .eq("is_active", true)
+          .order("block_number")
+          .order("name")
+      : Promise.resolve({ data: [], error: null }),
   ])
 
   if (stuResult.error || !stuResult.data) notFound()
-  const stu       = stuResult.data
-  const flags     = (flagResult.data ?? []) as FlagRow[]
-  const incidents = (incResult.data ?? []) as unknown as IncidentRow[]
+  const stu         = stuResult.data
+  const flags       = (flagResult.data ?? []) as FlagRow[]
+  const incidents   = (incResult.data ?? []) as unknown as IncidentRow[]
+  const enrollments = (enrollResult.data ?? []) as unknown as EnrollmentRow[]
+  const allCourses  = (courseResult.data  ?? []) as unknown as CourseOption[]
 
   const canManageFlags = FLAG_ALLOWED.includes(session.user.role)
   const now            = Date.now()
@@ -145,6 +162,20 @@ export default async function StudentProfilePage({
             {stu.veracross_id && <span>ID: {stu.veracross_id}</span>}
             {stu.parent_email && <span>{stu.parent_email}</span>}
           </div>
+        </div>
+
+        {/* Schedule */}
+        <div>
+          <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
+             style={{ color: "#3D3D3D", opacity: 0.35 }}>
+            Schedule — {enrollments.length} block{enrollments.length !== 1 ? "s" : ""} enrolled
+          </p>
+          <StudentSchedule
+            studentId={stu.id}
+            enrollments={enrollments}
+            allCourses={allCourses}
+            canEdit={canEdit}
+          />
         </div>
 
         {/* Stats */}

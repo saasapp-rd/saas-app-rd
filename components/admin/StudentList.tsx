@@ -1,6 +1,7 @@
 "use client"
 import { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 
 export interface StudentRow {
   id:           string
@@ -142,10 +143,11 @@ export default function StudentList({ students }: { students: StudentRow[] }) {
                    style={{ borderColor: isConfirming ? "#FECACA" : "#EAEAEA" }}>
 
                 {/* Main row */}
-                <div className="px-3 py-2.5 flex items-center justify-between"
+                <div className="flex items-center justify-between"
                      style={{ background: isConfirming ? "#FFF5F5" : s.is_active !== false ? "#FAFAFA" : "#F9F9F9",
                               opacity: s.is_active !== false ? 1 : 0.5 }}>
-                  <div className="min-w-0 flex-1">
+                  <Link href={`/students/${s.id}`} style={{ textDecoration: "none", flex: 1, minWidth: 0 }}
+                        className="px-3 py-2.5 block">
                     <p className="text-sm font-semibold" style={{ color: "#3D3D3D" }}>
                       {displayName}
                       {preferred && (
@@ -161,12 +163,12 @@ export default function StudentList({ students }: { students: StudentRow[] }) {
                       )}
                       {s.phone && ` · ${s.phone}`}
                     </p>
-                  </div>
+                  </Link>
 
                   {!isConfirming && (
                     <button
                       onClick={() => { setConfirmDelete(s.id); setDeleteError("") }}
-                      className="text-[9px] font-bold px-2 py-1 rounded-lg flex-shrink-0 ml-2"
+                      className="text-[9px] font-bold px-2 py-1 rounded-lg flex-shrink-0 mx-2"
                       style={{ background: "#FEE2E2", color: "#CE2033", border: "none", cursor: "pointer" }}>
                       Delete
                     </button>
