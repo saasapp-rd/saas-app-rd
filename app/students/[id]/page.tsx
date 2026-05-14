@@ -118,7 +118,7 @@ export default async function StudentProfilePage({
         <div>
           <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">Student Profile</div>
           <div className="text-white text-[10px] opacity-70">
-            {stu.last_name}, {stu.first_name} &middot; Grade {stu.grade}
+            {stu.last_name ?? "—"}, {stu.first_name ?? "—"} &middot; Grade {stu.grade}
           </div>
         </div>
         <SignOutButton />
@@ -142,7 +142,7 @@ export default async function StudentProfilePage({
           <div className="flex items-start justify-between mb-3">
             <div className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-black"
                  style={{ background: "#EAEAEA", color: "#888" }}>
-              {stu.last_name[0]}{stu.first_name[0]}
+              {(stu.last_name ?? "?")[0]}{(stu.first_name ?? "?")[0]}
             </div>
             {flags.length > 0 && (
               <span className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase"
@@ -155,7 +155,7 @@ export default async function StudentProfilePage({
             )}
           </div>
           <h1 className="text-lg font-black mb-0.5" style={{ color: "#3D3D3D" }}>
-            {stu.last_name}, {stu.first_name}
+            {stu.last_name ?? "—"}, {stu.first_name ?? "—"}
           </h1>
           <div className="flex flex-wrap gap-3 text-[10px]" style={{ color: "#999" }}>
             <span>Grade {stu.grade}</span>
