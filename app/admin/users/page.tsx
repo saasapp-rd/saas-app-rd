@@ -5,6 +5,7 @@ import { db } from "@/lib/supabase"
 import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
+import UserSearch, { SearchUser } from "@/components/admin/UserSearch"
 
 export const dynamic = "force-dynamic"
 
@@ -46,6 +47,32 @@ export default async function UsersPage() {
   const inactive = Object.fromEntries(counts.map(c => [c.role, c.inactive])) as Record<string, number>
   const grandTotal = counts.reduce((s, c) => s + c.total, 0)
 
+  // Slim user list for the search bar. Range bumped past PostgREST's 1000-row
+  // default so the search covers everyone, not just the first 1000 rows.
+  const { data: searchRows } = await db
+    .from("users")
+    .select("id, email, display_name, first_name, last_name, role, is_active")
+    .range(0, 9999)
+
+  const searchUsers: SearchUser[] = ((searchRows ?? []) as {
+    id:            string
+    email:         string | null
+    display_name:  string | null
+    first_name:    string | null
+    last_name:     string | null
+    role:          string
+    is_active:     boolean | null
+  }[]).map(u => {
+    const fullName = [u.first_name, u.last_name].filter(Boolean).join(" ")
+    return {
+      id:        u.id,
+      name:      u.display_name || fullName || u.email || "Unknown",
+      email:     u.email,
+      role:      u.role,
+      is_active: u.is_active,
+    }
+  })
+
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#fff" }}>
       <header className="px-5 py-3.5 flex items-center justify-between"
@@ -67,9 +94,12 @@ export default async function UsersPage() {
       </nav>
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-3">
-        <p className="text-[9px] font-bold tracking-[0.25em] uppercase"
+
+        <UserSearch users={searchUsers} />
+
+        <p className="text-[9px] font-bold tracking-[0.25em] uppercase mt-2"
            style={{ color: "#3D3D3D", opacity: 0.35 }}>
-          Select a group to view or add members
+          Or select a group to view or add members
         </p>
 
         {ROLE_META.map(({ role, label, desc, bg, color }) => {
@@ -99,6 +129,22 @@ export default async function UsersPage() {
             </Link>
           )
         })}
+
+        <Link href="/admin/users/all" style={{ textDecoration: "none" }}>
+          <div className="rounded-xl px-4 py-4 border flex items-center justify-between mt-2"
+               style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-bold" style={{ color: "#3D3D3D" }}>All Users</div>
+              <div className="text-[10px] mt-0.5" style={{ color: "#999" }}>
+                Combined list across every role
+              </div>
+            </div>
+            <div className="flex items-center gap-3 flex-shrink-0 ml-3">
+              <div className="text-2xl font-black" style={{ color: "#3D3D3D" }}>{grandTotal}</div>
+              <span style={{ color: "#BABABA" }}>&rarr;</span>
+            </div>
+          </div>
+        </Link>
       </main>
     </div>
   )
