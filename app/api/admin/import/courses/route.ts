@@ -32,6 +32,7 @@ interface ParsedRow {
   room:         string
   meetingTimes: string
   blockNumber:  number
+  isAdvisory:   boolean
 }
 
 export async function POST(req: NextRequest) {
@@ -73,13 +74,26 @@ export async function POST(req: NextRequest) {
     if (!name)    { errors.push(`Row ${n}: missing Description`); return }
     if (seen.has(classId)) { errors.push(`Row ${n}: duplicate Class ID "${classId}"`); return }
 
-    const m     = /\bB(\d+)\b/i.exec(meetingTimes)
-    const block = m ? parseInt(m[1], 10) : NaN
-    if (!Number.isFinite(block) || block < 1 || block > 8) {
-      warnings.push(
-        `Row ${n} (${classId}): could not parse block from "${meetingTimes}" — skipped`
-      )
-      return
+    // Advisory courses don't follow the B<N> meeting-times pattern. They're
+    // tagged by the Course column being "Advisory" (or "Advisory" in the
+    // Description). They go in our block 9 slot — the UI's advisory bucket.
+    const isAdvisory =
+      courseCode.trim().toLowerCase() === "advisory" ||
+      name.toLowerCase().includes("advisory")
+
+    let block: number
+    if (isAdvisory) {
+      block = 9
+    } else {
+      const m = /\bB(\d+)\b/i.exec(meetingTimes)
+      const parsed = m ? parseInt(m[1], 10) : NaN
+      if (!Number.isFinite(parsed) || parsed < 1 || parsed > 8) {
+        warnings.push(
+          `Row ${n} (${classId}): could not parse block from "${meetingTimes}" — skipped`
+        )
+        return
+      }
+      block = parsed
     }
 
     seen.add(classId)
@@ -88,6 +102,7 @@ export async function POST(req: NextRequest) {
       teacherVcId: teacherVcId || null,
       schoolLevel, gradeLevel, room, meetingTimes,
       blockNumber: block,
+      isAdvisory,
     })
   })
 
@@ -174,6 +189,7 @@ export async function POST(req: NextRequest) {
       course_code:   p.courseCode || null,
       name:          p.name,
       block_number:  p.blockNumber,
+      is_advisory:   p.isAdvisory,
       room:          p.room || null,
       teacher_id:    teacherId,
       school_level:  p.schoolLevel || null,
@@ -230,6 +246,7 @@ export async function POST(req: NextRequest) {
     processed:           parsed.length,
     inserted:            inserts.length,
     updated:             updates.length,
+    advisory:            parsed.filter(p => p.isAdvisory).length,
     unmatched_teachers:  [...unmatchedTeachers],
     teacher_role_added:  teacherRoleAdded,
     skipped:             rows.length - parsed.length,
