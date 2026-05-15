@@ -17,6 +17,9 @@ interface ImportResult {
   teacher_role_added?:  number
   advisory?:            number
   teachers_created?:    number
+  students_enrolled?:   number
+  students_not_found?:  number
+  courses_not_found?:   number
   warnings?:            string[]
   errors?:              string[]
   error?:               string
@@ -203,7 +206,7 @@ export default function CsvImportSection() {
 
       <p className="text-[9px] font-bold tracking-[0.25em] uppercase"
          style={{ color: "#3D3D3D", opacity: 0.35 }}>
-        Import order: Faculty &amp; Staff → Students → Parents → Course Schedule
+        Import order: Faculty &amp; Staff → Students → Parents → Course Schedule → Student Enrollments
       </p>
 
       {/* ── 1. Faculty & Staff ── */}
@@ -286,6 +289,27 @@ export default function CsvImportSection() {
         resultLabel={r =>
           r.processed
             ? `✓ ${r.processed} course${r.processed !== 1 ? "s" : ""} processed · ${r.inserted ?? 0} new · ${r.updated ?? 0} updated${(r.advisory ?? 0) > 0 ? ` · ${r.advisory} advisory` : ""}${(r.teachers_created ?? 0) > 0 ? ` · ${r.teachers_created} new teacher${r.teachers_created !== 1 ? "s" : ""} created (needs info)` : ""}${(r.teacher_role_added ?? 0) > 0 ? ` · teacher role added to ${r.teacher_role_added}` : ""}`
+            : "No records imported"
+        }
+      />
+
+      {/* ── 5. Student Enrollments ── */}
+      <ImportCard
+        title="Student Enrollments"
+        description="Class enrollments from Veracross — connects each student to their courses by Class ID"
+        endpoint="/api/admin/import/enrollments"
+        columns={["Person ID", "Class Enrollments"]}
+        optional={["Last Name", "Current Grade", "Advisor"]}
+        notes={[
+          "Students and Course Schedule must be imported first.",
+          "Class Enrollments is a comma-separated list of 'Class ID: Description' pairs — the importer reads each Class ID and matches against the courses table.",
+          "Re-uploading FULLY REPLACES each student's enrollments for the academic year — Veracross is the source of truth, dropped classes are removed.",
+          "Advisor column updates users.advisor_name on each student.",
+          "Unknown students or unknown Class IDs are listed in warnings; the rest of the import continues.",
+        ]}
+        resultLabel={r =>
+          r.processed
+            ? `✓ ${r.students_enrolled ?? 0} student${r.students_enrolled !== 1 ? "s" : ""} enrolled · ${r.enrollments ?? 0} enrollment${r.enrollments !== 1 ? "s" : ""}${(r.courses_not_found ?? 0) > 0 ? ` · ${r.courses_not_found} unknown course${r.courses_not_found !== 1 ? "s" : ""}` : ""}${(r.students_not_found ?? 0) > 0 ? ` · ${r.students_not_found} student${r.students_not_found !== 1 ? "s" : ""} not in system` : ""}`
             : "No records imported"
         }
       />
