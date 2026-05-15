@@ -12,13 +12,18 @@ import type { CourseRow, TeacherOption } from "@/components/admin/CourseRowActio
 export const dynamic = "force-dynamic"
 
 interface CourseRecord {
-  id:           string
-  name:         string
-  block_number: number | null
-  room:         string | null
-  is_advisory:  boolean | null
-  is_active:    boolean | null
-  teacher_id:   string | null
+  id:             string
+  name:           string
+  block_number:   number | null
+  room:           string | null
+  is_advisory:    boolean | null
+  is_active:      boolean | null
+  teacher_id:     string | null
+  class_id:       string | null
+  course_code:    string | null
+  school_level:   string | null
+  grade_level:    string | null
+  meeting_times:  string | null
 }
 
 export default async function CoursesPage() {
@@ -31,7 +36,7 @@ export default async function CoursesPage() {
   // range past PostgREST's 1000-row default.
   const { data: courseData, error: courseErr } = await db
     .from("courses")
-    .select("id, name, block_number, room, is_advisory, is_active, teacher_id")
+    .select("id, name, block_number, room, is_advisory, is_active, teacher_id, class_id, course_code, school_level, grade_level, meeting_times")
     .order("is_active",    { ascending: false })
     .order("block_number", { ascending: true, nullsFirst: true })
     .order("name",         { ascending: true  })
@@ -41,15 +46,16 @@ export default async function CoursesPage() {
 
   const courseRecords = (courseData ?? []) as CourseRecord[]
 
-  // Two parallel queries for users:
-  //   - All teachers/advisors to populate the Add Course / re-assign dropdowns.
-  //   - Just the display_names for users referenced by current courses (we
-  //     might assign a course to someone whose primary role isn't teacher).
+  // Parallel queries:
+  //   - Teachers/advisors to populate the Add Course / re-assign dropdowns.
+  //   - display_names for users referenced by current courses (we might
+  //     assign a course to someone whose primary role isn't teacher).
+  //   - All enrollments so we can show per-course counts in the view panel.
   const referencedTeacherIds = [...new Set(
     courseRecords.map(c => c.teacher_id).filter((id): id is string => !!id)
   )]
 
-  const [{ data: teachersRaw }, { data: referencedRaw }] = await Promise.all([
+  const [{ data: teachersRaw }, { data: referencedRaw }, { data: enrollmentsRaw }] = await Promise.all([
     db.from("users")
       .select("id, display_name")
       .in("role", ["teacher", "advisor"])
@@ -60,6 +66,10 @@ export default async function CoursesPage() {
           .select("id, display_name")
           .in("id", referencedTeacherIds)
       : Promise.resolve({ data: [] as { id: string; display_name: string | null }[] }),
+    db.from("student_enrollments")
+      .select("course_id")
+      .eq("academic_year", "2025-26")
+      .range(0, 9999),
   ])
 
   const teachers = (teachersRaw ?? []) as TeacherOption[]
@@ -68,14 +78,25 @@ export default async function CoursesPage() {
     nameById.set(u.id, u.display_name)
   }
 
+  const enrollmentCountByCourse = new Map<string, number>()
+  for (const e of (enrollmentsRaw ?? []) as { course_id: string }[]) {
+    enrollmentCountByCourse.set(e.course_id, (enrollmentCountByCourse.get(e.course_id) ?? 0) + 1)
+  }
+
   const courses: CourseRow[] = courseRecords.map(c => ({
-    id:           c.id,
-    name:         c.name,
-    block_number: c.block_number,
-    room:         c.room,
-    is_advisory:  c.is_advisory ?? false,
-    is_active:    c.is_active !== false,
-    teacher:      c.teacher_id ? { display_name: nameById.get(c.teacher_id) ?? null } : null,
+    id:               c.id,
+    name:             c.name,
+    block_number:     c.block_number,
+    room:             c.room,
+    is_advisory:      c.is_advisory ?? false,
+    is_active:        c.is_active !== false,
+    teacher:          c.teacher_id ? { display_name: nameById.get(c.teacher_id) ?? null } : null,
+    class_id:         c.class_id,
+    course_code:      c.course_code,
+    school_level:     c.school_level,
+    grade_level:      c.grade_level,
+    meeting_times:    c.meeting_times,
+    enrollment_count: enrollmentCountByCourse.get(c.id) ?? 0,
   }))
 
   const activeCount = courses.filter(c => c.is_active !== false).length

@@ -1,15 +1,22 @@
 "use client"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 
 export interface CourseRow {
-  id:           string
-  name:         string
-  block_number: number | null
-  room:         string | null
-  is_advisory:  boolean
-  is_active:    boolean
-  teacher:      { display_name: string | null } | null
+  id:               string
+  name:             string
+  block_number:     number | null
+  room:             string | null
+  is_advisory:      boolean
+  is_active:        boolean
+  teacher:          { display_name: string | null } | null
+  class_id:         string | null
+  course_code:      string | null
+  school_level:    string | null
+  grade_level:     string | null
+  meeting_times:   string | null
+  enrollment_count: number
 }
 
 export interface TeacherOption {
@@ -24,6 +31,8 @@ const BLOCK_LABEL: Record<number, string> = {
   9: "Adv",
 }
 
+type Mode = "none" | "view" | "edit"
+
 export default function CourseRowActions({
   course,
   teachers,
@@ -33,7 +42,7 @@ export default function CourseRowActions({
 }) {
   const router = useRouter()
 
-  const [open,           setOpen]           = useState(false)
+  const [mode,           setMode]           = useState<Mode>("none")
   const [nameVal,        setNameVal]        = useState(course.name)
   const [blockVal,       setBlockVal]       = useState<number | null>(course.block_number)
   const [roomVal,        setRoomVal]        = useState(course.room ?? "")
@@ -54,17 +63,29 @@ export default function CourseRowActions({
                     : course.block_number === 9 ? "Advisory"
                     :                             `Block ${course.block_number}`
 
-  function openPanel() {
-    setOpen(true)
-    setConfirmDelete(false)
-    setConfirmPurge(false)
-    setError("")
-    setNameVal(course.name)
-    setBlockVal(course.block_number)
-    setRoomVal(course.room ?? "")
-    setTeacherIdVal(
-      teachers.find(t => t.display_name === course.teacher?.display_name)?.id ?? ""
-    )
+  function toggleView() {
+    if (mode === "edit") return
+    setMode(mode === "view" ? "none" : "view")
+  }
+
+  function toggleEdit() {
+    if (mode === "edit") {
+      setMode("none")
+      setConfirmDelete(false)
+      setConfirmPurge(false)
+      setError("")
+    } else {
+      setMode("edit")
+      setConfirmDelete(false)
+      setConfirmPurge(false)
+      setError("")
+      setNameVal(course.name)
+      setBlockVal(course.block_number)
+      setRoomVal(course.room ?? "")
+      setTeacherIdVal(
+        teachers.find(t => t.display_name === course.teacher?.display_name)?.id ?? ""
+      )
+    }
   }
 
   async function reactivate() {
@@ -92,7 +113,7 @@ export default function CourseRowActions({
         teacher_id:   teacherIdVal || null,
       }),
     })
-    if (res.ok) { router.refresh(); setOpen(false) }
+    if (res.ok) { router.refresh(); setMode("none") }
     else { const d = await res.json(); setError(d.error ?? "Failed to update.") }
     setSaving(false)
   }
@@ -121,14 +142,14 @@ export default function CourseRowActions({
     setDeleting(false)
   }
 
-  const borderColor = open         ? "#A6192E"
-                    : needsReview  ? "#CE2033"
-                    : !isActive    ? "#FECACA"
-                    :                "#EAEAEA"
-  const bgColor     = open         ? "#FFF8F8"
-                    : needsReview  ? "#FFF0F0"
-                    : !isActive    ? "#FFF5F5"
-                    :                "#FAFAFA"
+  const borderColor = mode !== "none" ? "#A6192E"
+                    : needsReview     ? "#CE2033"
+                    : !isActive       ? "#FECACA"
+                    :                   "#EAEAEA"
+  const bgColor     = mode !== "none" ? "#FFF8F8"
+                    : needsReview     ? "#FFF0F0"
+                    : !isActive       ? "#FFF5F5"
+                    :                   "#FAFAFA"
   const blockBadge  = needsReview              ? { bg: "#FEE2E2", color: "#CE2033" }
                     : course.block_number === 9 ? { bg: "#EEF6FF", color: "#1E5FA6" }
                     :                             { bg: "#EAEAEA", color: "#3D3D3D" }
@@ -140,7 +161,9 @@ export default function CourseRowActions({
       {/* Main row */}
       <div className="px-4 py-2.5 flex items-center justify-between"
            style={{ background: bgColor }}>
-        <div className="min-w-0 flex-1">
+        <div onClick={toggleView}
+             className="min-w-0 flex-1"
+             style={{ cursor: mode === "edit" ? "default" : "pointer" }}>
           <div className="flex items-center gap-2">
             <span className="text-sm font-bold truncate"
                   style={{ color: isActive ? "#3D3D3D" : "#999" }}>
@@ -166,23 +189,60 @@ export default function CourseRowActions({
           <div className="text-[10px] mt-0.5" style={{ color: "#999" }}>
             {course.teacher?.display_name ?? "No teacher"}
             {course.room ? ` · ${course.room}` : ""}
+            {course.enrollment_count > 0 && ` · ${course.enrollment_count} student${course.enrollment_count === 1 ? "" : "s"}`}
           </div>
         </div>
 
-        <button
-          onClick={() => open ? setOpen(false) : openPanel()}
+        <button onClick={toggleEdit}
           className="text-[10px] font-bold px-2 py-1 rounded-lg flex-shrink-0 ml-3"
           style={{
-            background: open ? "#A6192E" : "#EAEAEA",
-            color:      open ? "#fff"    : "#3D3D3D",
+            background: mode === "edit" ? "#A6192E" : "#EAEAEA",
+            color:      mode === "edit" ? "#fff"    : "#3D3D3D",
             border: "none", cursor: "pointer",
           }}>
-          {open ? "✕" : "Edit"}
+          {mode === "edit" ? "✕" : "Edit"}
         </button>
       </div>
 
-      {/* Expanded panel */}
-      {open && (
+      {/* View panel */}
+      {mode === "view" && (
+        <div className="px-4 py-3 border-t"
+             style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
+          <dl className="grid gap-x-3 gap-y-1.5 text-xs"
+              style={{ gridTemplateColumns: "auto 1fr" }}>
+            <ViewField label="Name" value={course.name} />
+            <ViewField label="Block" value={blockLabel} />
+            {course.room && <ViewField label="Room" value={course.room} />}
+            <ViewField label="Teacher" value={course.teacher?.display_name ?? "—"} />
+            {course.course_code && <ViewField label="Course code" value={course.course_code} mono />}
+            {course.class_id && <ViewField label="Class ID" value={course.class_id} mono />}
+            {course.school_level && <ViewField label="School level" value={course.school_level} />}
+            {course.grade_level && <ViewField label="Grade level" value={course.grade_level} />}
+            {course.meeting_times && <ViewField label="Meeting times" value={course.meeting_times} mono />}
+            <ViewField label="Enrollments" value={`${course.enrollment_count} student${course.enrollment_count === 1 ? "" : "s"}`} />
+            <ViewField label="Status" value={
+              needsReview ? "Needs Review (no block assigned)"
+              : isActive  ? "Active"
+              :             "Deactivated"
+            } />
+          </dl>
+          <div className="mt-3 flex justify-end gap-2 flex-wrap">
+            <Link href={`/admin/courses/${course.id}/roster`}
+              className="text-[10px] font-bold px-3 py-1.5 rounded-lg"
+              style={{ background: "#EEF6FF", color: "#1E5FA6", textDecoration: "none" }}>
+              Manage Roster →
+            </Link>
+            <button onClick={toggleEdit}
+              className="text-[10px] font-bold px-3 py-1.5 rounded-lg"
+              style={{ background: "#A6192E", color: "#fff", border: "none", cursor: "pointer" }}>
+              Edit details
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Edit panel */}
+      {mode === "edit" && (
         <div className="px-4 py-3 border-t flex flex-col gap-4"
              style={{ background: "#fff", borderColor: "#EAEAEA" }}>
 
@@ -344,5 +404,25 @@ export default function CourseRowActions({
         </div>
       )}
     </div>
+  )
+}
+
+function ViewField({ label, value, mono }: {
+  label: string
+  value: string
+  mono?: boolean
+}) {
+  return (
+    <>
+      <dt style={{ color: "#999" }}>{label}</dt>
+      <dd style={{
+        color: "#3D3D3D",
+        fontFamily: mono ? "monospace" : undefined,
+        fontSize:   mono ? "11px" : undefined,
+        wordBreak:  mono ? "break-all" : undefined,
+      }}>
+        {value}
+      </dd>
+    </>
   )
 }
