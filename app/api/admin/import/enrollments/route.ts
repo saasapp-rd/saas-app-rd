@@ -31,6 +31,13 @@ interface ParsedRow {
   classIds:     string[]
 }
 
+// Bus-route enrollments come through the same Veracross feed as classes
+// (e.g. "BUS520-FAM", "BUSMAG-FPM", "BUSAA-FAM"). They aren't academic
+// courses and we don't want to clutter the warnings list with them.
+function isBusRoute(classId: string): boolean {
+  return /^BUS/i.test(classId) || /-(FAM|FPM)$/i.test(classId)
+}
+
 function parseClassEnrollments(raw: string): string[] {
   if (!raw) return []
   const out: string[] = []
@@ -42,7 +49,7 @@ function parseClassEnrollments(raw: string): string[] {
     if (!trimmed) continue
     const colon = trimmed.indexOf(":")
     const id = (colon > -1 ? trimmed.slice(0, colon) : trimmed).trim()
-    if (id) out.push(id)
+    if (id && !isBusRoute(id)) out.push(id)
   }
   return out
 }
