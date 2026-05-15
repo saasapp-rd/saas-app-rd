@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic"
 interface CourseRecord {
   id:           string
   name:         string
-  block_number: number
+  block_number: number | null
   room:         string | null
   is_advisory:  boolean | null
   is_active:    boolean | null
@@ -33,7 +33,7 @@ export default async function CoursesPage() {
     .from("courses")
     .select("id, name, block_number, room, is_advisory, is_active, teacher_id")
     .order("is_active",    { ascending: false })
-    .order("block_number", { ascending: true  })
+    .order("block_number", { ascending: true, nullsFirst: true })
     .order("name",         { ascending: true  })
     .range(0, 9999)
 

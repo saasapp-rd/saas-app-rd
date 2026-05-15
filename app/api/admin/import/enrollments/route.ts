@@ -133,13 +133,58 @@ export async function POST(req: NextRequest) {
     .select("*", { count: "exact", head: true })
     .not("class_id", "is", null)
 
-  const courseByClassId = new Map<string, { id: string; block: number }>()
+  const courseByClassId = new Map<string, { id: string; block: number | null }>()
   for (const c of courseRows ?? []) {
     if (c.class_id) {
       courseByClassId.set(String(c.class_id), {
         id:    c.id as string,
-        block: c.block_number as number,
+        block: (c.block_number ?? null) as number | null,
       })
+    }
+  }
+
+  // ── Create placeholder courses for class IDs not in the system ────
+  // Auto-add so admin doesn't have to manually create each one. Block is
+  // null on these (requires migration 026) — they show red on /admin/courses
+  // until admin assigns a block + teacher. Enrollments to placeholders are
+  // skipped here (block NOT NULL on student_enrollments); next re-import
+  // after admin fills them in will create the enrollments.
+  const missingByClassId = new Map<string, string>()  // class_id → description
+  for (const p of parsed) {
+    for (const c of p.classes) {
+      if (courseByClassId.has(c.classId)) continue
+      if (!missingByClassId.has(c.classId)) {
+        missingByClassId.set(c.classId, c.description || c.classId)
+      }
+    }
+  }
+
+  let coursesCreated = 0
+  if (missingByClassId.size > 0) {
+    const placeholders = [...missingByClassId.entries()].map(([class_id, name]) => ({
+      class_id,
+      name,
+      block_number: null,
+      is_active: true,
+    }))
+
+    const { data: created, error: createErr } = await db
+      .from("courses")
+      .insert(placeholders)
+      .select("id, class_id, block_number")
+
+    if (createErr) {
+      warnings.push(`Could not auto-create placeholder courses: ${createErr.message}`)
+    } else {
+      coursesCreated = created?.length ?? 0
+      for (const c of created ?? []) {
+        if (c.class_id) {
+          courseByClassId.set(String(c.class_id), {
+            id:    c.id as string,
+            block: c.block_number as number | null,
+          })
+        }
+      }
     }
   }
 
@@ -153,6 +198,10 @@ export async function POST(req: NextRequest) {
   // about to be inserted in that block.
   const blockUsageByStudent = new Map<string, Map<number, { classId: string; description: string }[]>>()
 
+  // Placeholder courses (block_number NULL) — couldn't enroll yet but
+  // surfaced so admin can fix on /admin/courses.
+  const placeholderEnrollmentsSkipped = new Set<string>()  // "studentId:classId"
+
   for (const p of parsed) {
     const studentId = studentByVcId.get(p.vcId)
     if (!studentId) {
@@ -165,9 +214,15 @@ export async function POST(req: NextRequest) {
     for (const c of p.classes) {
       const course = courseByClassId.get(c.classId)
       if (!course) {
+        // Shouldn't happen now — auto-create above. Keep as safety net.
         coursesNotFound.add(c.classId)
         const desc = c.description ? ` "${c.description}"` : ""
         warnings.push(`${label(p)} — course ${c.classId}${desc} not in system; enrollment skipped`)
+        continue
+      }
+      if (course.block === null) {
+        // Placeholder course — block not yet assigned. Skip enrollment.
+        placeholderEnrollmentsSkipped.add(`${studentId}:${c.classId}`)
         continue
       }
       // Dedup within this import (in case the CSV had duplicates).
@@ -229,23 +284,33 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Also queue an issue per (student, missing class) pair.
-  for (const p of parsed) {
-    const studentId = studentByVcId.get(p.vcId)
-    if (!studentId) continue
-    for (const c of p.classes) {
-      if (courseByClassId.has(c.classId)) continue
+  // One issue per placeholder course (deduped — same course referenced by
+  // many students). Records affected students in details so admin sees
+  // the impact at a glance.
+  if (missingByClassId.size > 0) {
+    const affectedByClassId = new Map<string, string[]>()
+    for (const p of parsed) {
+      for (const c of p.classes) {
+        if (!missingByClassId.has(c.classId)) continue
+        const list = affectedByClassId.get(c.classId) ?? []
+        list.push(`${p.vcId} ${p.lastName}`.trim())
+        affectedByClassId.set(c.classId, list)
+      }
+    }
+
+    for (const [classId, desc] of missingByClassId) {
+      const affected = affectedByClassId.get(classId) ?? []
+      const courseRef = courseByClassId.get(classId)
       issuesToInsert.push({
         source:   "enrollments_import",
-        kind:     "missing_course",
-        ref_type: "user",
-        ref_id:   studentId,
-        title:    `${label(p)} — course ${c.classId}${c.description ? ` "${c.description}"` : ""} not in system`,
+        kind:     "course_needs_review",
+        ref_type: "course",
+        ref_id:   courseRef?.id ?? null,
+        title:    `${classId} "${desc}" auto-created — needs block & teacher (${affected.length} student${affected.length === 1 ? "" : "s"} pending enrollment)`,
         details:  {
-          student_vc_id: p.vcId,
-          student_last_name: p.lastName,
-          class_id: c.classId,
-          description: c.description,
+          class_id: classId,
+          description: desc,
+          affected_students: affected,
         },
       })
     }
@@ -306,6 +371,8 @@ export async function POST(req: NextRequest) {
     enrollments:           inserted,
     students_not_found:    studentsNotFound.size,
     courses_not_found:     coursesNotFound.size,
+    courses_created:       coursesCreated,
+    placeholder_skipped:   placeholderEnrollmentsSkipped.size,
     overlays_found:        overlaysFound,
     // Diagnostics
     total_courses_in_db:   totalCoursesInDb ?? 0,

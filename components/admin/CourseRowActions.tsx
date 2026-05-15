@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 export interface CourseRow {
   id:           string
   name:         string
-  block_number: number
+  block_number: number | null
   room:         string | null
   is_advisory:  boolean
   is_active:    boolean
@@ -35,7 +35,7 @@ export default function CourseRowActions({
 
   const [open,           setOpen]           = useState(false)
   const [nameVal,        setNameVal]        = useState(course.name)
-  const [blockVal,       setBlockVal]       = useState(course.block_number)
+  const [blockVal,       setBlockVal]       = useState<number | null>(course.block_number)
   const [roomVal,        setRoomVal]        = useState(course.room ?? "")
   const [teacherIdVal,   setTeacherIdVal]   = useState(
     teachers.find(t => t.display_name === course.teacher?.display_name)?.id ?? ""
@@ -48,8 +48,11 @@ export default function CourseRowActions({
   const [deleting,       setDeleting]       = useState(false)
   const [error,          setError]          = useState("")
 
-  const isActive   = course.is_active !== false
-  const blockLabel = course.block_number === 9 ? "Advisory" : `Block ${course.block_number}`
+  const isActive    = course.is_active !== false
+  const needsReview = course.block_number === null
+  const blockLabel  = needsReview               ? "Needs Block"
+                    : course.block_number === 9 ? "Advisory"
+                    :                             `Block ${course.block_number}`
 
   function openPanel() {
     setOpen(true)
@@ -118,13 +121,25 @@ export default function CourseRowActions({
     setDeleting(false)
   }
 
+  const borderColor = open         ? "#A6192E"
+                    : needsReview  ? "#CE2033"
+                    : !isActive    ? "#FECACA"
+                    :                "#EAEAEA"
+  const bgColor     = open         ? "#FFF8F8"
+                    : needsReview  ? "#FFF0F0"
+                    : !isActive    ? "#FFF5F5"
+                    :                "#FAFAFA"
+  const blockBadge  = needsReview              ? { bg: "#FEE2E2", color: "#CE2033" }
+                    : course.block_number === 9 ? { bg: "#EEF6FF", color: "#1E5FA6" }
+                    :                             { bg: "#EAEAEA", color: "#3D3D3D" }
+
   return (
     <div className="rounded-xl border overflow-hidden"
-         style={{ borderColor: open ? "#A6192E" : isActive ? "#EAEAEA" : "#FECACA" }}>
+         style={{ borderColor }}>
 
       {/* Main row */}
       <div className="px-4 py-2.5 flex items-center justify-between"
-           style={{ background: open ? "#FFF8F8" : isActive ? "#FAFAFA" : "#FFF5F5" }}>
+           style={{ background: bgColor }}>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className="text-sm font-bold truncate"
@@ -132,12 +147,15 @@ export default function CourseRowActions({
               {course.name}
             </span>
             <span className="text-[9px] font-bold px-2 py-0.5 rounded-full flex-shrink-0"
-                  style={{
-                    background: course.block_number === 9 ? "#EEF6FF" : "#EAEAEA",
-                    color:      course.block_number === 9 ? "#1E5FA6" : "#3D3D3D",
-                  }}>
+                  style={{ background: blockBadge.bg, color: blockBadge.color }}>
               {blockLabel}
             </span>
+            {needsReview && (
+              <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase flex-shrink-0"
+                    style={{ background: "#FEE2E2", color: "#CE2033" }}>
+                Needs Review
+              </span>
+            )}
             {!isActive && (
               <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase flex-shrink-0"
                     style={{ background: "#FEE2E2", color: "#CE2033" }}>
