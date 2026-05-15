@@ -6,7 +6,7 @@ import { parseCSV, col } from "@/lib/csvParser"
 
 /**
  * Accepts the Veracross student-courses export (CSV/TSV):
- *   Person ID, Last Name, Current Grade, Class Enrollments, Advisor
+ *   Person ID, Last Name, Current Grade, Advisor, Class Enrollments
  *
  * Class Enrollments cell is a comma-separated list of
  *   "<Class ID>: <Description>" pairs, e.g.
@@ -18,17 +18,26 @@ import { parseCSV, col } from "@/lib/csvParser"
  *   - DELETE existing enrollments and INSERT the new set — Veracross
  *     is the source of truth, dropped classes are removed.
  *
- * Missing students and unknown Class IDs are surfaced as warnings and
- * skipped, never blocking the rest of the import. Requires courses
- * and students to be imported first.
+ * Warnings include:
+ *   - Unknown students (Person ID not in DB).
+ *   - Unknown courses (Class ID not in DB) — with student name and the
+ *     description from the CSV so admin can spot what's missing.
+ *   - Block overlays (student has 2+ enrollments in same block). The
+ *     overlapping enrollments are still inserted; flag is for review.
  */
 
 const ACADEMIC_YEAR = "2025-26"
 
+interface ClassRef {
+  classId:     string
+  description: string  // from the CSV, after the first colon
+}
+
 interface ParsedRow {
-  vcId:         string
-  advisorName:  string
-  classIds:     string[]
+  vcId:        string
+  lastName:    string
+  advisorName: string
+  classes:     ClassRef[]
 }
 
 // Bus-route enrollments come through the same Veracross feed as classes
@@ -38,18 +47,19 @@ function isBusRoute(classId: string): boolean {
   return /^BUS/i.test(classId) || /-(FAM|FPM)$/i.test(classId)
 }
 
-function parseClassEnrollments(raw: string): string[] {
+function parseClassEnrollments(raw: string): ClassRef[] {
   if (!raw) return []
-  const out: string[] = []
+  const out: ClassRef[] = []
   // Veracross emits "ID1: Desc1, ID2: Desc2". Descriptions can contain
   // colons (e.g. "Hannah Advisory:2029"), so the second split must use
   // indexOf — not split(":") which would over-fragment.
   for (const pair of raw.split(",")) {
     const trimmed = pair.trim()
     if (!trimmed) continue
-    const colon = trimmed.indexOf(":")
-    const id = (colon > -1 ? trimmed.slice(0, colon) : trimmed).trim()
-    if (id && !isBusRoute(id)) out.push(id)
+    const colon       = trimmed.indexOf(":")
+    const classId     = (colon > -1 ? trimmed.slice(0, colon)     : trimmed).trim()
+    const description = (colon > -1 ? trimmed.slice(colon + 1) : "").trim()
+    if (classId && !isBusRoute(classId)) out.push({ classId, description })
   }
   return out
 }
@@ -72,18 +82,25 @@ export async function POST(req: NextRequest) {
 
   rows.forEach((row, i) => {
     const n = i + 2
-    const vcId          = col(row, "person_id", "veracross_id", "id")
-    const advisorName   = col(row, "advisor")
+    const vcId           = col(row, "person_id", "veracross_id", "id")
+    const lastName       = col(row, "last_name", "lastname")
+    const advisorName    = col(row, "advisor")
     const enrollmentsCol = col(row, "class_enrollments", "classes", "enrollments", "courses")
 
     if (!vcId) { errors.push(`Row ${n}: missing Person ID`); return }
-    const classIds = parseClassEnrollments(enrollmentsCol)
-    byVcId.set(vcId, { vcId, advisorName, classIds })
+    const classes = parseClassEnrollments(enrollmentsCol)
+    byVcId.set(vcId, { vcId, lastName, advisorName, classes })
   })
 
   const parsed = [...byVcId.values()]
   if (!parsed.length)
     return NextResponse.json({ errors, processed: 0 }, { status: 400 })
+
+  // Render a student's label like "110790 Andrews" for warnings. Falls
+  // back to just the Person ID if the CSV had no Last Name.
+  function label(p: ParsedRow): string {
+    return p.lastName ? `${p.vcId} ${p.lastName}` : `Person ID ${p.vcId}`
+  }
 
   // ── Resolve students ──────────────────────────────────────────────
   const vcIds = parsed.map(p => p.vcId)
@@ -99,7 +116,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Resolve courses ───────────────────────────────────────────────
-  const allClassIds = [...new Set(parsed.flatMap(p => p.classIds))]
+  const allClassIds = [...new Set(parsed.flatMap(p => p.classes.map(c => c.classId)))]
   const { data: courseRows } = allClassIds.length > 0
     ? await db.from("courses")
         .select("id, class_id, block_number")
@@ -132,21 +149,25 @@ export async function POST(req: NextRequest) {
   const newEnrollments: { student_id: string; course_id: string; block_number: number; academic_year: string }[] = []
   const studentsNotFound = new Set<string>()
   const coursesNotFound  = new Set<string>()
+  // For overlay detection: studentId → block → list of class IDs that are
+  // about to be inserted in that block.
+  const blockUsageByStudent = new Map<string, Map<number, { classId: string; description: string }[]>>()
 
   for (const p of parsed) {
     const studentId = studentByVcId.get(p.vcId)
     if (!studentId) {
       studentsNotFound.add(p.vcId)
-      warnings.push(`Person ID ${p.vcId}: student not in system — skipped`)
+      warnings.push(`${label(p)} — student not in system; skipped`)
       continue
     }
     studentIdsToWipe.add(studentId)
 
-    for (const classId of p.classIds) {
-      const course = courseByClassId.get(classId)
+    for (const c of p.classes) {
+      const course = courseByClassId.get(c.classId)
       if (!course) {
-        coursesNotFound.add(classId)
-        warnings.push(`Person ID ${p.vcId}: course ${classId} not in system — enrollment skipped`)
+        coursesNotFound.add(c.classId)
+        const desc = c.description ? ` "${c.description}"` : ""
+        warnings.push(`${label(p)} — course ${c.classId}${desc} not in system; enrollment skipped`)
         continue
       }
       // Dedup within this import (in case the CSV had duplicates).
@@ -159,6 +180,32 @@ export async function POST(req: NextRequest) {
         block_number:  course.block,
         academic_year: ACADEMIC_YEAR,
       })
+
+      // Track block usage so we can flag overlays after the loop.
+      const blockMap = blockUsageByStudent.get(studentId) ?? new Map<number, { classId: string; description: string }[]>()
+      const list     = blockMap.get(course.block) ?? []
+      list.push({ classId: c.classId, description: c.description })
+      blockMap.set(course.block, list)
+      blockUsageByStudent.set(studentId, blockMap)
+    }
+  }
+
+  // ── Overlay warnings: any student with 2+ classes in the same block ─
+  let overlaysFound = 0
+  for (const p of parsed) {
+    const studentId = studentByVcId.get(p.vcId)
+    if (!studentId) continue
+    const blockMap = blockUsageByStudent.get(studentId)
+    if (!blockMap) continue
+    for (const [block, classes] of blockMap) {
+      if (classes.length > 1) {
+        overlaysFound++
+        const tags = classes
+          .map(c => c.description ? `${c.classId} "${c.description}"` : c.classId)
+          .join(", ")
+        const blockLabel = block === 9 ? "advisory block" : `block ${block}`
+        warnings.push(`${label(p)} — overlay in ${blockLabel}: ${tags} (enrollments kept; review manually)`)
+      }
     }
   }
 
@@ -202,6 +249,7 @@ export async function POST(req: NextRequest) {
     enrollments:           inserted,
     students_not_found:    studentsNotFound.size,
     courses_not_found:     coursesNotFound.size,
+    overlays_found:        overlaysFound,
     // Diagnostics
     total_courses_in_db:   totalCoursesInDb ?? 0,
     courses_with_class_id: coursesWithClassId ?? 0,

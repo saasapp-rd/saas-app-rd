@@ -20,6 +20,7 @@ interface ImportResult {
   students_enrolled?:   number
   students_not_found?:  number
   courses_not_found?:   number
+  overlays_found?:      number
   total_courses_in_db?: number
   courses_with_class_id?: number
   class_ids_requested?: number
@@ -315,6 +316,7 @@ export default function CsvImportSection() {
           if (!r.processed) return "No records imported"
           const base = `✓ ${r.students_enrolled ?? 0} student${r.students_enrolled !== 1 ? "s" : ""} enrolled · ${r.enrollments ?? 0} enrollment${r.enrollments !== 1 ? "s" : ""}`
           const issues =
+            ((r.overlays_found     ?? 0) > 0 ? ` · ${r.overlays_found} block overlay${r.overlays_found     !== 1 ? "s" : ""} flagged` : "") +
             ((r.courses_not_found  ?? 0) > 0 ? ` · ${r.courses_not_found} unknown course${r.courses_not_found  !== 1 ? "s" : ""}` : "") +
             ((r.students_not_found ?? 0) > 0 ? ` · ${r.students_not_found} student${r.students_not_found !== 1 ? "s" : ""} not in system` : "")
           const diag = (r.courses_not_found ?? 0) > 0
