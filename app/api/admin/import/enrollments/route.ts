@@ -99,6 +99,16 @@ export async function POST(req: NextRequest) {
         .in("class_id", allClassIds)
     : { data: [] as { id: string; class_id: string; block_number: number }[] }
 
+  // Diagnostics — helps catch "no courses in DB" vs. "courses present but
+  // class_id column NULL" without the user needing to dive into Supabase.
+  const { count: totalCoursesInDb } = await db
+    .from("courses")
+    .select("*", { count: "exact", head: true })
+  const { count: coursesWithClassId } = await db
+    .from("courses")
+    .select("*", { count: "exact", head: true })
+    .not("class_id", "is", null)
+
   const courseByClassId = new Map<string, { id: string; block: number }>()
   for (const c of courseRows ?? []) {
     if (c.class_id) {
@@ -180,12 +190,17 @@ export async function POST(req: NextRequest) {
   }
 
   return NextResponse.json({
-    processed:           parsed.length,
-    students_enrolled:   studentIdsToWipe.size,
-    enrollments:         inserted,
-    students_not_found:  studentsNotFound.size,
-    courses_not_found:   coursesNotFound.size,
-    warnings:            warnings.length ? warnings : undefined,
-    errors:              errors.length   ? errors   : undefined,
+    processed:             parsed.length,
+    students_enrolled:     studentIdsToWipe.size,
+    enrollments:           inserted,
+    students_not_found:    studentsNotFound.size,
+    courses_not_found:     coursesNotFound.size,
+    // Diagnostics
+    total_courses_in_db:   totalCoursesInDb ?? 0,
+    courses_with_class_id: coursesWithClassId ?? 0,
+    class_ids_requested:   allClassIds.length,
+    class_ids_matched:     courseByClassId.size,
+    warnings:              warnings.length ? warnings : undefined,
+    errors:                errors.length   ? errors   : undefined,
   })
 }
