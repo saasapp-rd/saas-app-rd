@@ -191,6 +191,13 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Overlay warnings: any student with 2+ classes in the same block ─
+  // Also collect rows for the data_issues queue (persisted, resolvable).
+  type IssueInsert = {
+    source: string; kind: string; ref_type: string | null; ref_id: string | null
+    title: string; details: Record<string, unknown>
+  }
+  const issuesToInsert: IssueInsert[] = []
+
   let overlaysFound = 0
   for (const p of parsed) {
     const studentId = studentByVcId.get(p.vcId)
@@ -205,7 +212,42 @@ export async function POST(req: NextRequest) {
           .join(", ")
         const blockLabel = block === 9 ? "advisory block" : `block ${block}`
         warnings.push(`${label(p)} — overlay in ${blockLabel}: ${tags} (enrollments kept; review manually)`)
+        issuesToInsert.push({
+          source:   "enrollments_import",
+          kind:     "block_overlay",
+          ref_type: "user",
+          ref_id:   studentId,
+          title:    `${label(p)} — overlay in ${blockLabel}`,
+          details:  {
+            student_vc_id: p.vcId,
+            student_last_name: p.lastName,
+            block,
+            classes,
+          },
+        })
       }
+    }
+  }
+
+  // Also queue an issue per (student, missing class) pair.
+  for (const p of parsed) {
+    const studentId = studentByVcId.get(p.vcId)
+    if (!studentId) continue
+    for (const c of p.classes) {
+      if (courseByClassId.has(c.classId)) continue
+      issuesToInsert.push({
+        source:   "enrollments_import",
+        kind:     "missing_course",
+        ref_type: "user",
+        ref_id:   studentId,
+        title:    `${label(p)} — course ${c.classId}${c.description ? ` "${c.description}"` : ""} not in system`,
+        details:  {
+          student_vc_id: p.vcId,
+          student_last_name: p.lastName,
+          class_id: c.classId,
+          description: c.description,
+        },
+      })
     }
   }
 
@@ -228,6 +270,21 @@ export async function POST(req: NextRequest) {
     if (error)
       return NextResponse.json({ error: `Insert failed: ${error.message}`, inserted, warnings }, { status: 500 })
     inserted += batch.length
+  }
+
+  // ── Persist data-quality issues for the Review Queue ─────────────
+  // Wipe prior OPEN issues from this source so re-uploads don't
+  // duplicate. Resolved/dismissed entries stay so admins don't have
+  // to dismiss the same thing twice.
+  await db.from("data_issues").delete()
+    .eq("source", "enrollments_import")
+    .eq("status", "open")
+
+  if (issuesToInsert.length > 0) {
+    // Chunked insert in case the run flagged thousands of issues.
+    for (let i = 0; i < issuesToInsert.length; i += 500) {
+      await db.from("data_issues").insert(issuesToInsert.slice(i, i + 500))
+    }
   }
 
   // ── Update advisor_name on each student ──────────────────────────

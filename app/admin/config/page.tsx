@@ -17,6 +17,7 @@ const MGMT_LINKS = [
   { href: "/admin/daily",            label: "Daily Report",            desc: "Today's attendance and missing student log",              icon: "📊" },
   { href: "/analytics",              label: "Analytics",               desc: "Patterns, trends, and attendance data",                   icon: "📈" },
   { href: "/admin/welfare-concerns", label: "Welfare Concerns",        desc: "View all submitted welfare concern reports",              icon: "⚠️" },
+  { href: "/admin/review-queue",     label: "Review Queue",            desc: "Data-quality issues from imports needing admin attention",icon: "📝" },
   // ── Batch & System ────────────────────────────────────────────
   { href: "/admin/import",           label: "CSV Import",              desc: "Upload Veracross faculty, students, and parents (annual)", icon: "📥" },
   { href: "/admin/settings",         label: "System Settings",         desc: "Academic year, school name, and configuration",           icon: "⚙️" },

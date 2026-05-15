@@ -41,6 +41,11 @@ export default async function AdminDashboard() {
     .eq("is_active", true)
     .order("last_name")
 
+  const { count: openIssuesCount } = await db
+    .from("data_issues")
+    .select("*", { count: "exact", head: true })
+    .eq("status", "open")
+
   const missing  = (openInc ?? []).filter((r: any) => {
     const s = Array.isArray(r.student) ? r.student[0] : r.student
     return s?.is_active !== false
@@ -80,6 +85,23 @@ export default async function AdminDashboard() {
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-3">
+
+        {(openIssuesCount ?? 0) > 0 && (
+          <Link href="/admin/review-queue" style={{ textDecoration: "none" }}>
+            <div className="rounded-xl px-4 py-3 flex items-center justify-between"
+                 style={{ background: "#FFFBEB", border: "1px solid #FDE68A" }}>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold" style={{ color: "#92400E" }}>
+                  {openIssuesCount} data {openIssuesCount === 1 ? "issue" : "issues"} in the review queue
+                </p>
+                <p className="text-[10px]" style={{ color: "#78350F" }}>
+                  Import warnings and overlay flags awaiting review
+                </p>
+              </div>
+              <span style={{ color: "#92400E" }}>&rarr;</span>
+            </div>
+          </Link>
+        )}
 
         {/* ── Live widget ── */}
         <div className="rounded-xl border overflow-hidden"
