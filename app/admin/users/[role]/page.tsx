@@ -41,6 +41,7 @@ interface User {
   veracross_id:   string | null
   dean_grades:    number[] | null
   job_title:      string | null
+  needs_info:     boolean | null
 }
 
 interface Student {
@@ -141,7 +142,7 @@ export default async function UserRolePage({
   // from unapplied migrations (e.g. phone, employee_id added later)
   const { data, error } = await db
     .from("users")
-    .select("id, email, display_name, first_name, last_name, phone, business_phone, role, roles, is_active, veracross_id, dean_grades, job_title")
+    .select("id, email, display_name, first_name, last_name, phone, business_phone, role, roles, is_active, veracross_id, dean_grades, job_title, needs_info")
     .eq("role", role)
     .order("display_name")
 

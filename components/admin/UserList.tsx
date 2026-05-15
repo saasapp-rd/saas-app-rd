@@ -16,6 +16,7 @@ export interface UserRow {
   veracross_id?:  string | null
   dean_grades?:   number[] | null
   job_title?:     string | null
+  needs_info?:    boolean | null
 }
 
 type SortField = "last_name" | "first_name" | "email"
@@ -209,6 +210,7 @@ export default function UserList({
                   veracrossId={u.veracross_id ?? null}
                   deanGrades={u.dean_grades ?? null}
                   jobTitle={u.job_title ?? null}
+                  needsInfo={u.needs_info ?? false}
                   myCourses={role === "teacher" ? (coursesByUser?.[u.id] ?? []) : undefined}
                   allCourses={role === "teacher" ? allCourses : undefined}
                   defaultOpen={isTarget}

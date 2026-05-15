@@ -26,16 +26,18 @@ interface UserRecord {
   needs_info:     boolean | null
 }
 
-export default async function AllUsersPage() {
+export default async function NeedsInfoPage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect("/login")
   if (!["admin", "super_admin"].includes(session.user.role)) redirect("/dashboard")
 
-  // Range bumped past PostgREST's 1000-row default.
   const { data } = await db
     .from("users")
     .select("id, email, display_name, first_name, last_name, phone, business_phone, role, roles, is_active, veracross_id, dean_grades, job_title, needs_info")
-    .range(0, 9999)
+    .eq("needs_info", true)
+    .eq("is_active", true)
+    .order("last_name")
+    .order("first_name")
 
   const users: UserRow[] = ((data ?? []) as UserRecord[]).map(u => {
     const fullName = [u.first_name, u.last_name].filter(Boolean).join(" ")
@@ -57,39 +59,46 @@ export default async function AllUsersPage() {
     }
   })
 
-  const active = users.filter(u => u.is_active !== false)
-
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#fff" }}>
-      <header className="px-5 py-3.5 flex items-center justify-between"
-              style={{ background: "#A6192E" }}>
+      <header className="px-5 py-3.5 flex items-center justify-between" style={{ background: "#A6192E" }}>
         <div>
           <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">
-            All Users
+            People Needing Info
           </div>
           <div className="text-white text-[10px] opacity-70">
-            {active.length} active · {users.length} total
+            {users.length} added from CSV imports
           </div>
         </div>
         <SignOutButton />
       </header>
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
-      <nav className="px-5 py-2 border-b flex items-center gap-4" style={{ borderColor: "#EAEAEA" }}>
+      <nav className="px-5 py-2 border-b flex items-center" style={{ borderColor: "#EAEAEA" }}>
         <Link href="/admin/users" className="text-xs font-bold"
               style={{ color: "#A6192E", textDecoration: "none" }}>
           &larr; Manage Users
         </Link>
       </nav>
-      <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
+
+      <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-4">
+
+        <div className="rounded-xl px-4 py-3 text-[10px]"
+             style={{ background: "#FFFBEB", border: "1px solid #FDE68A", color: "#78350F" }}>
+          These accounts were auto-created during course imports because they were
+          referenced as teachers but didn&apos;t exist in the system. Add their email
+          address (required for login) and other contact info. Saving an email clears
+          this flag automatically.
+        </div>
+
         {users.length === 0 ? (
-          <p className="text-xs text-center py-6" style={{ color: "#999" }}>
-            No users yet.
+          <p className="text-xs text-center py-8" style={{ color: "#999" }}>
+            All caught up — no accounts need info.
           </p>
         ) : (
           <UserList
             users={users}
             currentUserId={session.user.userId}
-            label="Users"
+            label="People"
             role=""
           />
         )}

@@ -166,7 +166,11 @@ export async function PATCH(req: NextRequest) {
     updates.display_name = display_name.trim()
     updates.name         = display_name.trim()
   }
-  if (email?.trim())       updates.email = email.trim().toLowerCase()
+  if (email?.trim()) {
+    updates.email      = email.trim().toLowerCase()
+    // Saving an email clears the auto-import "needs info" flag.
+    updates.needs_info = false
+  }
   if (phone !== undefined) updates.phone = phone ? phone.trim() || null : null
   if (body.business_phone !== undefined)
     updates.business_phone = body.business_phone

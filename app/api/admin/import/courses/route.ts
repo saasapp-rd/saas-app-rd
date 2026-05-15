@@ -162,23 +162,80 @@ export async function POST(req: NextRequest) {
     if (r.class_id) idByClassId.set(r.class_id as string, r.id as string)
   }
 
+  // ── Auto-create teachers we don't recognize ───────────────────────
+  // Collect unique unmatched teachers (deduped by Person ID or name),
+  // insert them as needs_info=true users, and add to the lookup maps so
+  // the course-row loop below resolves them like any other teacher.
+  const missing = new Map<string, { name: string; vcId: string | null }>()
+  for (const p of parsed) {
+    if (!p.teacherName) continue
+    if (lookupTeacher(p)) continue
+    const key = p.teacherVcId ? `vc:${p.teacherVcId}` : `nm:${p.teacherName.toLowerCase()}`
+    if (!missing.has(key)) {
+      missing.set(key, { name: p.teacherName, vcId: p.teacherVcId })
+    }
+  }
+
+  let teachersCreated = 0
+  if (missing.size > 0) {
+    const toInsert = [...missing.values()].map(u => {
+      const parts   = u.name.split(",").map(s => s.trim())
+      const last    = parts[0] || ""
+      const first   = parts[1] || ""
+      const display = first && last ? `${first} ${last}` : (last || first || u.name)
+      return {
+        role:         "teacher",
+        roles:        ["teacher"],
+        is_active:    true,
+        needs_info:   true,
+        first_name:   first || null,
+        last_name:    last  || null,
+        name:         display,
+        display_name: display,
+        veracross_id: u.vcId,
+      }
+    })
+
+    const { data: created, error: createErr } = await db
+      .from("users")
+      .insert(toInsert)
+      .select("id, veracross_id, last_name, first_name")
+
+    if (createErr) {
+      warnings.push(`Could not auto-create missing teachers: ${createErr.message}`)
+    } else {
+      teachersCreated = created?.length ?? 0
+      for (const u of created ?? []) {
+        const m: UserMatch = { id: u.id as string, roles: ["teacher"] }
+        if (u.veracross_id) matchByVcId.set(String(u.veracross_id), m)
+        if (u.last_name && u.first_name) {
+          matchByName.set(
+            `${String(u.last_name).toLowerCase()},${String(u.first_name).toLowerCase()}`,
+            m
+          )
+        }
+      }
+    }
+  }
+
   // ── Build inserts and updates ─────────────────────────────────────
   const inserts: object[] = []
   const updates: { id: string; rec: object }[] = []
   const unmatchedTeachers = new Set<string>()
-  // Users matched as a teacher but who don't yet have "teacher" in their
-  // roles array. We'll append it after the courses are written.
-  const needsTeacherRole = new Map<string, string[]>()  // userId → current roles
+  // Existing users matched as a teacher but who don't yet have "teacher"
+  // in their roles array. Appended after courses are written.
+  const needsTeacherRole = new Map<string, string[]>()
 
   for (const p of parsed) {
     const match     = lookupTeacher(p)
     const teacherId = match?.id ?? null
     if (!match && p.teacherName) {
+      // Rare — only when auto-create failed for this row's teacher.
       const label = p.teacherVcId
         ? `${p.teacherName} (Person ID ${p.teacherVcId})`
         : p.teacherName
       unmatchedTeachers.add(label)
-      warnings.push(`${p.classId}: teacher "${label}" not in system — course imported without teacher`)
+      warnings.push(`${p.classId}: teacher "${label}" could not be created — course imported without teacher`)
     }
     if (match && !match.roles.includes("teacher")) {
       needsTeacherRole.set(match.id, match.roles)
@@ -247,6 +304,7 @@ export async function POST(req: NextRequest) {
     inserted:            inserts.length,
     updated:             updates.length,
     advisory:            parsed.filter(p => p.isAdvisory).length,
+    teachers_created:    teachersCreated,
     unmatched_teachers:  [...unmatchedTeachers],
     teacher_role_added:  teacherRoleAdded,
     skipped:             rows.length - parsed.length,

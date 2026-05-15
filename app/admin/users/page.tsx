@@ -47,6 +47,12 @@ export default async function UsersPage() {
   const inactive = Object.fromEntries(counts.map(c => [c.role, c.inactive])) as Record<string, number>
   const grandTotal = counts.reduce((s, c) => s + c.total, 0)
 
+  const { count: needsInfoCount } = await db
+    .from("users")
+    .select("*", { count: "exact", head: true })
+    .eq("needs_info", true)
+    .eq("is_active", true)
+
   // Slim user list for the search bar. Range bumped past PostgREST's 1000-row
   // default so the search covers everyone, not just the first 1000 rows.
   const { data: searchRows } = await db
@@ -94,6 +100,23 @@ export default async function UsersPage() {
       </nav>
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-3">
+
+        {(needsInfoCount ?? 0) > 0 && (
+          <Link href="/admin/users/needs-info" style={{ textDecoration: "none" }}>
+            <div className="rounded-xl px-4 py-3 flex items-center justify-between"
+                 style={{ background: "#FFFBEB", border: "1px solid #FDE68A" }}>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold" style={{ color: "#92400E" }}>
+                  {needsInfoCount} {needsInfoCount === 1 ? "person was" : "people were"} added from CSV imports
+                </p>
+                <p className="text-[10px]" style={{ color: "#78350F" }}>
+                  Missing email and contact info — review and complete
+                </p>
+              </div>
+              <span style={{ color: "#92400E" }}>&rarr;</span>
+            </div>
+          </Link>
+        )}
 
         <UserSearch users={searchUsers} />
 

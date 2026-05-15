@@ -74,6 +74,7 @@ interface Props {
   veracrossId?:   string | null
   deanGrades?:    number[] | null
   jobTitle?:      string | null
+  needsInfo?:     boolean
   myCourses?:     Course[]
   allCourses?:    Course[]
   defaultOpen?:   boolean
@@ -84,7 +85,7 @@ type Mode = "none" | "view" | "edit"
 export default function UserRowActions({
   id, displayName, firstName, lastName, email, phone, businessPhone,
   role, roles: rolesProp, isActive, isSelf,
-  veracrossId, deanGrades, jobTitle,
+  veracrossId, deanGrades, jobTitle, needsInfo,
   myCourses, allCourses, defaultOpen,
 }: Props) {
   const router = useRouter()
@@ -294,6 +295,12 @@ export default function UserRowActions({
               <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase flex-shrink-0"
                     style={{ background: "#FEE2E2", color: "#CE2033" }}>
                 Inactive
+              </span>
+            )}
+            {needsInfo && (
+              <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase flex-shrink-0"
+                    style={{ background: "#FFFBEB", color: "#92400E", border: "1px solid #FDE68A" }}>
+                Needs Info
               </span>
             )}
           </div>
