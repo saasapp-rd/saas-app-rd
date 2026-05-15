@@ -76,17 +76,75 @@ export default async function UserRolePage({
 
   // Students are now stored in the users table with role = 'student'
   if (isStudent) {
-    const { data, error } = await db
-      .from("users")
-      .select("id, first_name, last_name, call_by, grade, veracross_id, phone, is_active, advisor_name")
-      .eq("role", "student")
-      .order("last_name")
-      .order("first_name")
+    // Three parallel queries: students, all enrollments (this year), all
+    // courses + teacher_id so we can hydrate enrollment details client-side.
+    // Bumped past PostgREST's 1000-row default — 800 students × 7 classes
+    // is well over a thousand rows.
+    const [studentsRes, enrollRes, courseRes] = await Promise.all([
+      db.from("users")
+        .select("id, first_name, last_name, call_by, grade, veracross_id, phone, is_active, advisor_name")
+        .eq("role", "student")
+        .order("last_name")
+        .order("first_name")
+        .range(0, 9999),
+      db.from("student_enrollments")
+        .select("student_id, course_id, block_number")
+        .eq("academic_year", "2025-26")
+        .range(0, 9999),
+      db.from("courses")
+        .select("id, name, room, is_advisory, teacher_id")
+        .range(0, 9999),
+    ])
 
-    if (error) console.error("[users/student] query error:", error.message)
+    if (studentsRes.error) console.error("[users/student] query error:", studentsRes.error.message)
 
-    const students = (data ?? []) as Student[]
+    const students = (studentsRes.data ?? []) as Student[]
     const active   = students.filter(s => s.is_active !== false)
+
+    // Hydrate teacher names for the courses students are in.
+    const teacherIds = [...new Set((courseRes.data ?? []).map(c => c.teacher_id).filter(Boolean) as string[])]
+    const { data: teacherRows } = teacherIds.length > 0
+      ? await db.from("users").select("id, display_name").in("id", teacherIds)
+      : { data: [] as { id: string; display_name: string | null }[] }
+    const teacherNameById = new Map<string, string>()
+    for (const t of teacherRows ?? []) {
+      if (t.display_name) teacherNameById.set(t.id as string, t.display_name)
+    }
+
+    interface CourseInfo {
+      name: string
+      room: string | null
+      isAdvisory: boolean
+      teacherName: string | null
+    }
+    const courseById = new Map<string, CourseInfo>()
+    for (const c of courseRes.data ?? []) {
+      courseById.set(c.id as string, {
+        name: c.name as string,
+        room: (c.room ?? null) as string | null,
+        isAdvisory: (c.is_advisory ?? false) as boolean,
+        teacherName: c.teacher_id ? teacherNameById.get(c.teacher_id as string) ?? null : null,
+      })
+    }
+
+    type EnrollmentRow = { block: number; courseName: string; room: string | null; teacherName: string | null; isAdvisory: boolean }
+    const enrollmentsByStudent: Record<string, EnrollmentRow[]> = {}
+    for (const e of enrollRes.data ?? []) {
+      const c = courseById.get(e.course_id as string)
+      if (!c) continue
+      const studentId = e.student_id as string
+      if (!enrollmentsByStudent[studentId]) enrollmentsByStudent[studentId] = []
+      enrollmentsByStudent[studentId].push({
+        block:       e.block_number as number,
+        courseName:  c.name,
+        room:        c.room,
+        teacherName: c.teacherName,
+        isAdvisory:  c.isAdvisory,
+      })
+    }
+    for (const list of Object.values(enrollmentsByStudent)) {
+      list.sort((a, b) => a.block - b.block)
+    }
 
     return (
       <div className="min-h-screen flex flex-col" style={{ background: "#fff" }}>
@@ -111,7 +169,7 @@ export default async function UserRolePage({
         </nav>
         <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
           <AddStudentForm />
-          <StudentList students={students} />
+          <StudentList students={students} enrollmentsByStudent={enrollmentsByStudent} />
         </main>
       </div>
     )

@@ -2,14 +2,22 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import type { StudentRow } from "./StudentList"
+import type { StudentRow, EnrollmentRow } from "./StudentList"
 
 const GRADES = [9, 10, 11, 12]
 
-export default function StudentRowActions({ s }: { s: StudentRow }) {
+type Mode = "none" | "view" | "edit"
+
+export default function StudentRowActions({
+  s,
+  enrollments = [],
+}: {
+  s:           StudentRow
+  enrollments?: EnrollmentRow[]
+}) {
   const router = useRouter()
 
-  const [open,          setOpen]          = useState(false)
+  const [mode,          setMode]          = useState<Mode>("none")
   const [lastNameVal,   setLastNameVal]   = useState(s.last_name   ?? "")
   const [firstNameVal,  setFirstNameVal]  = useState(s.first_name  ?? "")
   const [callByVal,     setCallByVal]     = useState(s.call_by     ?? "")
@@ -26,17 +34,28 @@ export default function StudentRowActions({ s }: { s: StudentRow }) {
   const displayName  = [s.last_name, s.first_name].filter(Boolean).join(", ") || "Unknown"
   const preferred    = s.call_by && s.call_by !== s.first_name ? ` (${s.call_by})` : ""
 
-  function openPanel() {
-    setOpen(true)
-    setConfirmDelete(false)
-    setError("")
-    // Reset fields to current values
-    setLastNameVal(s.last_name   ?? "")
-    setFirstNameVal(s.first_name ?? "")
-    setCallByVal(s.call_by       ?? "")
-    setGradeVal(s.grade)
-    setPhoneVal(s.phone          ?? "")
-    setVcIdVal(s.veracross_id    ?? "")
+  function toggleView() {
+    if (mode === "edit") return
+    setMode(mode === "view" ? "none" : "view")
+  }
+
+  function toggleEdit() {
+    if (mode === "edit") {
+      setMode("none")
+      setConfirmDelete(false)
+      setError("")
+    } else {
+      // Reset edit fields to current values when opening
+      setLastNameVal(s.last_name   ?? "")
+      setFirstNameVal(s.first_name ?? "")
+      setCallByVal(s.call_by       ?? "")
+      setGradeVal(s.grade)
+      setPhoneVal(s.phone          ?? "")
+      setVcIdVal(s.veracross_id    ?? "")
+      setConfirmDelete(false)
+      setError("")
+      setMode("edit")
+    }
   }
 
   async function saveDetails() {
@@ -55,7 +74,7 @@ export default function StudentRowActions({ s }: { s: StudentRow }) {
         veracross_id: vcIdVal.trim() || null,
       }),
     })
-    if (res.ok) { router.refresh(); setOpen(false) }
+    if (res.ok) { router.refresh(); setMode("none") }
     else { const d = await res.json(); setError(d.error ?? "Failed to update.") }
     setSaving(false)
   }
@@ -84,16 +103,23 @@ export default function StudentRowActions({ s }: { s: StudentRow }) {
     setDeleting(false)
   }
 
+  const borderColor = mode !== "none" ? "#A6192E"
+                    : !isActive       ? "#FECACA"
+                    :                   "#EAEAEA"
+  const bgColor     = mode !== "none" ? "#FFF8F8"
+                    : !isActive       ? "#FFF5F5"
+                    :                   "#FAFAFA"
+
   return (
-    <div className="rounded-xl border overflow-hidden"
-         style={{ borderColor: open ? "#A6192E" : isActive ? "#EAEAEA" : "#FECACA" }}>
+    <div className="rounded-xl border overflow-hidden" style={{ borderColor }}>
 
       {/* Main row */}
       <div className="px-3 py-2.5 flex items-center justify-between"
-           style={{ background: open ? "#FFF8F8" : isActive ? "#FAFAFA" : "#FFF5F5",
-                    opacity: isActive ? 1 : 0.6 }}>
+           style={{ background: bgColor, opacity: isActive ? 1 : 0.6 }}>
 
-        <div className="min-w-0 flex-1">
+        <div onClick={toggleView}
+             className="min-w-0 flex-1"
+             style={{ cursor: mode === "edit" ? "default" : "pointer" }}>
           <div className="flex items-center gap-1.5">
             <p className="text-sm font-semibold" style={{ color: "#3D3D3D" }}>
               {displayName}
@@ -116,23 +142,101 @@ export default function StudentRowActions({ s }: { s: StudentRow }) {
               <span> · <span style={{ fontFamily: "monospace" }}>ID {s.veracross_id}</span></span>
             )}
             {s.advisor_name && ` · ${s.advisor_name}`}
+            {enrollments.length > 0 && ` · ${enrollments.length} ${enrollments.length === 1 ? "class" : "classes"}`}
           </p>
         </div>
 
-        <button
-          onClick={() => open ? setOpen(false) : openPanel()}
+        <button onClick={toggleEdit}
           className="text-[10px] font-bold px-2 py-1 rounded-lg flex-shrink-0 ml-2"
           style={{
-            background: open ? "#A6192E" : "#EAEAEA",
-            color:      open ? "#fff"    : "#3D3D3D",
+            background: mode === "edit" ? "#A6192E" : "#EAEAEA",
+            color:      mode === "edit" ? "#fff"    : "#3D3D3D",
             border: "none", cursor: "pointer",
           }}>
-          {open ? "✕" : "Edit"}
+          {mode === "edit" ? "✕" : "Edit"}
         </button>
       </div>
 
-      {/* Expanded panel */}
-      {open && (
+      {/* View panel */}
+      {mode === "view" && (
+        <div className="px-4 py-3 border-t"
+             style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
+          <dl className="grid gap-x-3 gap-y-1.5 text-xs"
+              style={{ gridTemplateColumns: "auto 1fr" }}>
+            <ViewField label="Last / First"
+                       value={[s.last_name, s.first_name].filter(Boolean).join(" / ") || "—"} />
+            {s.call_by && s.call_by !== s.first_name && (
+              <ViewField label="Preferred" value={s.call_by} />
+            )}
+            <ViewField label="Grade" value={s.grade ? `Grade ${s.grade}` : "—"} />
+            {s.phone && <ViewField label="Phone" value={s.phone} />}
+            {s.advisor_name && <ViewField label="Advisor" value={s.advisor_name} />}
+            {s.veracross_id && (
+              <ViewField label="Veracross ID" value={s.veracross_id} mono />
+            )}
+            <ViewField label="Account ID" value={s.id} mono dim />
+            <ViewField label="Status" value={isActive ? "Active" : "Deactivated"} />
+          </dl>
+
+          {/* Course enrollments */}
+          <div className="mt-3">
+            <p className="text-[9px] font-bold uppercase tracking-wide mb-1.5"
+               style={{ color: "#3D3D3D", opacity: 0.5 }}>
+              Course Enrollments {enrollments.length > 0 ? `(${enrollments.length})` : ""}
+            </p>
+            {enrollments.length === 0 ? (
+              <p className="text-[10px]" style={{ color: "#999" }}>
+                No enrollments. Run the Student Enrollments import or assign manually.
+              </p>
+            ) : (
+              <div className="flex flex-col gap-1">
+                {enrollments.map((e, i) => (
+                  <div key={`${e.block}-${e.courseName}-${i}`}
+                       className="flex items-baseline gap-2 px-2 py-1 rounded"
+                       style={{ background: "#fff" }}>
+                    <span className="text-[10px] font-bold flex-shrink-0"
+                          style={{
+                            color: e.isAdvisory ? "#1E5FA6" : "#999",
+                            minWidth: "44px",
+                          }}>
+                      {e.isAdvisory ? "Adv" : `Blk ${e.block}`}
+                    </span>
+                    <span className="text-xs flex-1 truncate" style={{ color: "#3D3D3D" }}>
+                      {e.courseName}
+                    </span>
+                    {e.room && (
+                      <span className="text-[10px] flex-shrink-0" style={{ color: "#BABABA" }}>
+                        {e.room}
+                      </span>
+                    )}
+                    {e.teacherName && (
+                      <span className="text-[10px] flex-shrink-0" style={{ color: "#999" }}>
+                        {e.teacherName}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-3 flex justify-end gap-2">
+            <Link href={`/students/${s.id}`}
+              className="text-[10px] font-bold px-3 py-1.5 rounded-lg"
+              style={{ background: "#EEF6FF", color: "#1E5FA6", textDecoration: "none" }}>
+              Full Profile →
+            </Link>
+            <button onClick={toggleEdit}
+              className="text-[10px] font-bold px-3 py-1.5 rounded-lg"
+              style={{ background: "#A6192E", color: "#fff", border: "none", cursor: "pointer" }}>
+              Edit details
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Edit panel */}
+      {mode === "edit" && (
         <div className="px-4 py-3 border-t flex flex-col gap-4"
              style={{ background: "#fff", borderColor: "#EAEAEA" }}>
 
@@ -310,5 +414,26 @@ export default function StudentRowActions({ s }: { s: StudentRow }) {
         </div>
       )}
     </div>
+  )
+}
+
+function ViewField({ label, value, mono, dim }: {
+  label: string
+  value: string
+  mono?: boolean
+  dim?: boolean
+}) {
+  return (
+    <>
+      <dt style={{ color: "#999" }}>{label}</dt>
+      <dd style={{
+        color:      dim ? "#999" : "#3D3D3D",
+        fontFamily: mono ? "monospace" : undefined,
+        fontSize:   mono ? "11px" : undefined,
+        wordBreak:  mono ? "break-all" : undefined,
+      }}>
+        {value}
+      </dd>
+    </>
   )
 }

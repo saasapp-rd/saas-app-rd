@@ -14,6 +14,14 @@ export interface StudentRow {
   advisor_name:  string | null
 }
 
+export interface EnrollmentRow {
+  block:        number
+  courseName:   string
+  room:         string | null
+  teacherName:  string | null
+  isAdvisory:   boolean
+}
+
 type SortField = "last_name" | "first_name" | "grade"
 type SortDir   = "asc" | "desc"
 
@@ -40,7 +48,13 @@ function sortStudents(students: StudentRow[], field: SortField, dir: SortDir): S
   })
 }
 
-export default function StudentList({ students }: { students: StudentRow[] }) {
+export default function StudentList({
+  students,
+  enrollmentsByStudent,
+}: {
+  students:             StudentRow[]
+  enrollmentsByStudent?: Record<string, EnrollmentRow[]>
+}) {
   const [search,        setSearch]        = useState("")
   const [sortField,     setSortField]     = useState<SortField>("last_name")
   const [sortDir,       setSortDir]       = useState<SortDir>("asc")
@@ -240,7 +254,11 @@ export default function StudentList({ students }: { students: StudentRow[] }) {
       ) : (
         <div className="flex flex-col gap-1.5">
           {pageSlice.map(s => (
-            <StudentRowActions key={s.id} s={s} />
+            <StudentRowActions
+              key={s.id}
+              s={s}
+              enrollments={enrollmentsByStudent?.[s.id] ?? []}
+            />
           ))}
         </div>
       )}
