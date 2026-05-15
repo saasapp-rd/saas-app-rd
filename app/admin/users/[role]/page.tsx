@@ -92,7 +92,7 @@ export default async function UserRolePage({
         .eq("academic_year", "2025-26")
         .range(0, 9999),
       db.from("courses")
-        .select("id, name, room, is_advisory, teacher_id")
+        .select("id, name, block_number, room, is_advisory, teacher_id")
         .range(0, 9999),
     ])
 
@@ -113,6 +113,7 @@ export default async function UserRolePage({
 
     interface CourseInfo {
       name: string
+      block: number | null
       room: string | null
       isAdvisory: boolean
       teacherName: string | null
@@ -121,21 +122,24 @@ export default async function UserRolePage({
     for (const c of courseRes.data ?? []) {
       courseById.set(c.id as string, {
         name: c.name as string,
+        block: (c.block_number ?? null) as number | null,
         room: (c.room ?? null) as string | null,
         isAdvisory: (c.is_advisory ?? false) as boolean,
         teacherName: c.teacher_id ? teacherNameById.get(c.teacher_id as string) ?? null : null,
       })
     }
 
-    type EnrollmentRow = { block: number; courseName: string; room: string | null; teacherName: string | null; isAdvisory: boolean }
+    type EnrollmentRow = { block: number | null; courseName: string; room: string | null; teacherName: string | null; isAdvisory: boolean }
     const enrollmentsByStudent: Record<string, EnrollmentRow[]> = {}
     for (const e of enrollRes.data ?? []) {
       const c = courseById.get(e.course_id as string)
       if (!c) continue
       const studentId = e.student_id as string
       if (!enrollmentsByStudent[studentId]) enrollmentsByStudent[studentId] = []
+      // Course is the source of truth for block — enrollments.block_number
+      // is a cached copy that may not be synced for placeholder courses.
       enrollmentsByStudent[studentId].push({
-        block:       e.block_number as number,
+        block:       c.block,
         courseName:  c.name,
         room:        c.room,
         teacherName: c.teacherName,
@@ -143,7 +147,8 @@ export default async function UserRolePage({
       })
     }
     for (const list of Object.values(enrollmentsByStudent)) {
-      list.sort((a, b) => a.block - b.block)
+      // Null blocks (placeholder courses) sort to the bottom.
+      list.sort((a, b) => (a.block ?? 99) - (b.block ?? 99))
     }
 
     return (

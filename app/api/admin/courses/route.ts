@@ -56,6 +56,16 @@ export async function PATCH(req: NextRequest) {
 
   const { error } = await db.from("courses").update(updates).eq("id", id)
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Keep enrollments.block_number in sync. Placeholder courses are inserted
+  // with a null block on every related enrollment; once admin assigns a
+  // block here, propagate it down so teacher rosters and analytics see them.
+  if (updates.block_number !== undefined) {
+    await db.from("student_enrollments")
+      .update({ block_number: updates.block_number })
+      .eq("course_id", id)
+  }
+
   return NextResponse.json({ ok: true })
 }
 

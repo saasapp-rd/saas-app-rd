@@ -191,16 +191,17 @@ export async function POST(req: NextRequest) {
   // ── Build new enrollment set + collect mismatches ─────────────────
   const studentIdsToWipe = new Set<string>()
   const enrollmentKeys   = new Set<string>()
-  const newEnrollments: { student_id: string; course_id: string; block_number: number; academic_year: string }[] = []
+  const newEnrollments: { student_id: string; course_id: string; block_number: number | null; academic_year: string }[] = []
   const studentsNotFound = new Set<string>()
   const coursesNotFound  = new Set<string>()
   // For overlay detection: studentId → block → list of class IDs that are
   // about to be inserted in that block.
   const blockUsageByStudent = new Map<string, Map<number, { classId: string; description: string }[]>>()
 
-  // Placeholder courses (block_number NULL) — couldn't enroll yet but
-  // surfaced so admin can fix on /admin/courses.
-  const placeholderEnrollmentsSkipped = new Set<string>()  // "studentId:classId"
+  // Placeholder enrollments — inserted with block_number = null (course's
+  // block isn't set yet). When admin assigns the course block later, the
+  // PATCH endpoint syncs it down to these rows.
+  let placeholderEnrollments = 0
 
   for (const p of parsed) {
     const studentId = studentByVcId.get(p.vcId)
@@ -220,15 +221,11 @@ export async function POST(req: NextRequest) {
         warnings.push(`${label(p)} — course ${c.classId}${desc} not in system; enrollment skipped`)
         continue
       }
-      if (course.block === null) {
-        // Placeholder course — block not yet assigned. Skip enrollment.
-        placeholderEnrollmentsSkipped.add(`${studentId}:${c.classId}`)
-        continue
-      }
       // Dedup within this import (in case the CSV had duplicates).
       const key = `${studentId}:${course.id}`
       if (enrollmentKeys.has(key)) continue
       enrollmentKeys.add(key)
+      if (course.block === null) placeholderEnrollments++
       newEnrollments.push({
         student_id:    studentId,
         course_id:     course.id,
@@ -236,12 +233,16 @@ export async function POST(req: NextRequest) {
         academic_year: ACADEMIC_YEAR,
       })
 
-      // Track block usage so we can flag overlays after the loop.
-      const blockMap = blockUsageByStudent.get(studentId) ?? new Map<number, { classId: string; description: string }[]>()
-      const list     = blockMap.get(course.block) ?? []
-      list.push({ classId: c.classId, description: c.description })
-      blockMap.set(course.block, list)
-      blockUsageByStudent.set(studentId, blockMap)
+      // Track block usage so we can flag overlays after the loop. Only
+      // tracks courses with a known block — placeholders sit out until
+      // admin assigns blocks.
+      if (course.block !== null) {
+        const blockMap = blockUsageByStudent.get(studentId) ?? new Map<number, { classId: string; description: string }[]>()
+        const list     = blockMap.get(course.block) ?? []
+        list.push({ classId: c.classId, description: c.description })
+        blockMap.set(course.block, list)
+        blockUsageByStudent.set(studentId, blockMap)
+      }
     }
   }
 
@@ -372,7 +373,7 @@ export async function POST(req: NextRequest) {
     students_not_found:    studentsNotFound.size,
     courses_not_found:     coursesNotFound.size,
     courses_created:       coursesCreated,
-    placeholder_skipped:   placeholderEnrollmentsSkipped.size,
+    placeholder_enrollments: placeholderEnrollments,
     overlays_found:        overlaysFound,
     // Diagnostics
     total_courses_in_db:   totalCoursesInDb ?? 0,

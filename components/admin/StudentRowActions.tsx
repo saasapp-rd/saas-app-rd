@@ -236,10 +236,14 @@ export default function StudentRowActions({
                        style={{ background: "#fff" }}>
                     <span className="text-[10px] font-bold flex-shrink-0"
                           style={{
-                            color: e.isAdvisory ? "#1E5FA6" : "#999",
+                            color: e.block == null ? "#CE2033"
+                                 : e.isAdvisory    ? "#1E5FA6"
+                                 :                   "#999",
                             minWidth: "44px",
                           }}>
-                      {e.isAdvisory ? "Adv" : `Blk ${e.block}`}
+                      {e.block == null   ? "TBD"
+                       : e.isAdvisory    ? "Adv"
+                       :                   `Blk ${e.block}`}
                     </span>
                     <span className="text-xs flex-1 truncate" style={{ color: "#3D3D3D" }}>
                       {e.courseName}

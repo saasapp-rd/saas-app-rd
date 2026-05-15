@@ -15,7 +15,7 @@ export interface StudentRow {
 }
 
 export interface EnrollmentRow {
-  block:        number
+  block:        number | null   // null = placeholder course, block not assigned yet
   courseName:   string
   room:         string | null
   teacherName:  string | null
@@ -30,8 +30,13 @@ export interface ScheduleStatus {
 }
 
 export function analyzeSchedule(enrollments: EnrollmentRow[]): ScheduleStatus {
+  // Null-block enrollments (placeholder courses) don't count toward
+  // overlay / missing detection — we genuinely don't know what block
+  // they belong in until admin assigns one.
   const counts = new Map<number, number>()
-  for (const e of enrollments) counts.set(e.block, (counts.get(e.block) ?? 0) + 1)
+  for (const e of enrollments) {
+    if (e.block != null) counts.set(e.block, (counts.get(e.block) ?? 0) + 1)
+  }
   const missingBlocks   = [1,2,3,4,5,6,7,8].filter(b => !counts.has(b))
   const missingAdvisory = !counts.has(9)
   const overlays        = [...counts.entries()]

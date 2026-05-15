@@ -20,8 +20,8 @@ interface ImportResult {
   students_enrolled?:   number
   students_not_found?:  number
   courses_not_found?:   number
-  courses_created?:     number
-  placeholder_skipped?: number
+  courses_created?:        number
+  placeholder_enrollments?: number
   overlays_found?:      number
   total_courses_in_db?: number
   courses_with_class_id?: number
@@ -318,8 +318,8 @@ export default function CsvImportSection() {
           if (!r.processed) return "No records imported"
           const base = `✓ ${r.students_enrolled ?? 0} student${r.students_enrolled !== 1 ? "s" : ""} enrolled · ${r.enrollments ?? 0} enrollment${r.enrollments !== 1 ? "s" : ""}`
           const issues =
-            ((r.courses_created    ?? 0) > 0 ? ` · ${r.courses_created} placeholder course${r.courses_created !== 1 ? "s" : ""} created (needs review)` : "") +
-            ((r.placeholder_skipped ?? 0) > 0 ? ` · ${r.placeholder_skipped} enrollment${r.placeholder_skipped !== 1 ? "s" : ""} pending block assignment` : "") +
+            ((r.courses_created         ?? 0) > 0 ? ` · ${r.courses_created} placeholder course${r.courses_created !== 1 ? "s" : ""} created (needs review)` : "") +
+            ((r.placeholder_enrollments ?? 0) > 0 ? ` · ${r.placeholder_enrollments} enrollment${r.placeholder_enrollments !== 1 ? "s" : ""} attached to placeholders` : "") +
             ((r.overlays_found     ?? 0) > 0 ? ` · ${r.overlays_found} block overlay${r.overlays_found     !== 1 ? "s" : ""} flagged` : "") +
             ((r.courses_not_found  ?? 0) > 0 ? ` · ${r.courses_not_found} unknown course${r.courses_not_found  !== 1 ? "s" : ""}` : "") +
             ((r.students_not_found ?? 0) > 0 ? ` · ${r.students_not_found} student${r.students_not_found !== 1 ? "s" : ""} not in system` : "")
