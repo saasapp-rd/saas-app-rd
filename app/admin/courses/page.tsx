@@ -8,6 +8,7 @@ import Link from "next/link"
 import AddCourseForm from "@/components/admin/AddCourseForm"
 import CoursesList from "@/components/admin/CoursesList"
 import type { CourseRow, TeacherOption } from "@/components/admin/CourseRowActions"
+import { fetchAllPaginated } from "@/lib/dbHelpers"
 
 export const dynamic = "force-dynamic"
 
@@ -55,7 +56,7 @@ export default async function CoursesPage() {
     courseRecords.map(c => c.teacher_id).filter((id): id is string => !!id)
   )]
 
-  const [{ data: teachersRaw }, { data: referencedRaw }, { data: enrollmentsRaw }] = await Promise.all([
+  const [{ data: teachersRaw }, { data: referencedRaw }, enrollmentsRaw] = await Promise.all([
     db.from("users")
       .select("id, display_name")
       .in("role", ["teacher", "advisor"])
@@ -66,10 +67,13 @@ export default async function CoursesPage() {
           .select("id, display_name")
           .in("id", referencedTeacherIds)
       : Promise.resolve({ data: [] as { id: string; display_name: string | null }[] }),
-    db.from("student_enrollments")
-      .select("course_id")
-      .eq("academic_year", "2025-26")
-      .range(0, 9999),
+    // Paginate past Supabase's default 1000-row cap — a school with
+    // 1500+ enrollments was getting under-counted before.
+    fetchAllPaginated<{ course_id: string }>(() =>
+      db.from("student_enrollments")
+        .select("course_id")
+        .eq("academic_year", "2025-26")
+    ),
   ])
 
   const teachers = (teachersRaw ?? []) as TeacherOption[]
@@ -79,7 +83,7 @@ export default async function CoursesPage() {
   }
 
   const enrollmentCountByCourse = new Map<string, number>()
-  for (const e of (enrollmentsRaw ?? []) as { course_id: string }[]) {
+  for (const e of enrollmentsRaw) {
     enrollmentCountByCourse.set(e.course_id, (enrollmentCountByCourse.get(e.course_id) ?? 0) + 1)
   }
 

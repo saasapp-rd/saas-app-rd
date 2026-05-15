@@ -9,6 +9,7 @@ import AddUserForm from "@/components/admin/AddUserForm"
 import AddStudentForm from "@/components/admin/AddStudentForm"
 import StudentList from "@/components/admin/StudentList"
 import UserList from "@/components/admin/UserList"
+import { fetchAllPaginated } from "@/lib/dbHelpers"
 
 export const dynamic = "force-dynamic"
 
@@ -80,21 +81,24 @@ export default async function UserRolePage({
     // courses + teacher_id so we can hydrate enrollment details client-side.
     // Bumped past PostgREST's 1000-row default — 800 students × 7 classes
     // is well over a thousand rows.
-    const [studentsRes, enrollRes, courseRes] = await Promise.all([
+    const [studentsRes, enrollData, courseRes] = await Promise.all([
       db.from("users")
         .select("id, first_name, last_name, call_by, grade, veracross_id, phone, is_active, advisor_name")
         .eq("role", "student")
         .order("last_name")
         .order("first_name")
         .range(0, 9999),
-      db.from("student_enrollments")
-        .select("student_id, course_id, block_number")
-        .eq("academic_year", "2025-26")
-        .range(0, 9999),
+      // Paginate past Supabase's 1000-row cap — schools have 1500+ enrollments.
+      fetchAllPaginated<{ student_id: string; course_id: string; block_number: number | null }>(() =>
+        db.from("student_enrollments")
+          .select("student_id, course_id, block_number")
+          .eq("academic_year", "2025-26")
+      ),
       db.from("courses")
         .select("id, name, block_number, room, is_advisory, teacher_id")
         .range(0, 9999),
     ])
+    const enrollRes = { data: enrollData }
 
     if (studentsRes.error) console.error("[users/student] query error:", studentsRes.error.message)
 
