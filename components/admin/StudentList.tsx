@@ -22,6 +22,30 @@ export interface EnrollmentRow {
   isAdvisory:   boolean
 }
 
+export interface ScheduleStatus {
+  hasIssues:       boolean
+  missingBlocks:   number[]  // any of 1-8 with no enrollment
+  missingAdvisory: boolean   // no block 9 enrollment
+  overlays:        number[]  // blocks with > 1 enrollment
+}
+
+export function analyzeSchedule(enrollments: EnrollmentRow[]): ScheduleStatus {
+  const counts = new Map<number, number>()
+  for (const e of enrollments) counts.set(e.block, (counts.get(e.block) ?? 0) + 1)
+  const missingBlocks   = [1,2,3,4,5,6,7,8].filter(b => !counts.has(b))
+  const missingAdvisory = !counts.has(9)
+  const overlays        = [...counts.entries()]
+    .filter(([, c]) => c > 1)
+    .map(([b]) => b)
+    .sort((a, b) => a - b)
+  return {
+    hasIssues: missingBlocks.length > 0 || missingAdvisory || overlays.length > 0,
+    missingBlocks,
+    missingAdvisory,
+    overlays,
+  }
+}
+
 type SortField = "last_name" | "first_name" | "grade"
 type SortDir   = "asc" | "desc"
 
@@ -55,13 +79,14 @@ export default function StudentList({
   students:             StudentRow[]
   enrollmentsByStudent?: Record<string, EnrollmentRow[]>
 }) {
-  const [search,        setSearch]        = useState("")
-  const [sortField,     setSortField]     = useState<SortField>("last_name")
-  const [sortDir,       setSortDir]       = useState<SortDir>("asc")
-  const [gradeFilter,   setGradeFilter]   = useState<number[]>([])
-  const [advisorFilter, setAdvisorFilter] = useState<string[]>([])
-  const [page,          setPage]          = useState(0)
-  const [showInactive,  setShowInactive]  = useState(false)
+  const [search,             setSearch]             = useState("")
+  const [sortField,          setSortField]          = useState<SortField>("last_name")
+  const [sortDir,            setSortDir]            = useState<SortDir>("asc")
+  const [gradeFilter,        setGradeFilter]        = useState<number[]>([])
+  const [advisorFilter,      setAdvisorFilter]      = useState<string[]>([])
+  const [page,               setPage]               = useState(0)
+  const [showInactive,       setShowInactive]       = useState(false)
+  const [scheduleIssuesOnly, setScheduleIssuesOnly] = useState(false)
 
   const query = search.trim().toLowerCase()
 
@@ -93,8 +118,20 @@ export default function StudentList({
     if (advisorFilter.length > 0)
       base = base.filter(s => s.advisor_name != null && advisorFilter.includes(s.advisor_name))
 
+    if (scheduleIssuesOnly && enrollmentsByStudent) {
+      base = base.filter(s => analyzeSchedule(enrollmentsByStudent[s.id] ?? []).hasIssues)
+    }
+
     return sortStudents(base, sortField, sortDir)
-  }, [students, query, sortField, sortDir, gradeFilter, advisorFilter, showInactive])
+  }, [students, query, sortField, sortDir, gradeFilter, advisorFilter, showInactive, scheduleIssuesOnly, enrollmentsByStudent])
+
+  const scheduleIssuesCount = useMemo(() => {
+    if (!enrollmentsByStudent) return 0
+    return students.filter(s =>
+      s.is_active !== false &&
+      analyzeSchedule(enrollmentsByStudent[s.id] ?? []).hasIssues
+    ).length
+  }, [students, enrollmentsByStudent])
 
   const pageCount  = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const safePage   = Math.min(page, pageCount - 1)
@@ -224,11 +261,24 @@ export default function StudentList({
         </div>
       )}
 
+      {/* Schedule issues toggle (only when we have enrollment data) */}
+      {scheduleIssuesCount > 0 && (
+        <button type="button" onClick={() => setScheduleIssuesOnly(v => !v)}
+          className="self-start text-[10px] font-bold px-2.5 py-1 rounded-full"
+          style={{
+            background: scheduleIssuesOnly ? "#CE2033" : "#FEE2E2",
+            color:      scheduleIssuesOnly ? "#fff"    : "#CE2033",
+            border: "none", cursor: "pointer",
+          }}>
+          {scheduleIssuesOnly ? "✕ Showing schedule issues" : `⚠ ${scheduleIssuesCount} schedule issue${scheduleIssuesCount === 1 ? "" : "s"}`}
+        </button>
+      )}
+
       {/* Count + inactive toggle */}
       <div className="flex items-center justify-between">
         <p className="text-[9px] font-bold tracking-[0.25em] uppercase"
            style={{ color: "#3D3D3D", opacity: 0.35 }}>
-          {query || hasFilters
+          {query || hasFilters || scheduleIssuesOnly
             ? `${filtered.length} match${filtered.length !== 1 ? "es" : ""} · showing ${start}–${end}`
             : `${activeCount} active · ${students.length} total${pageCount > 1 ? ` · showing ${start}–${end}` : ""}`
           }

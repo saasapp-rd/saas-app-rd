@@ -3,6 +3,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import type { StudentRow, EnrollmentRow } from "./StudentList"
+import { analyzeSchedule } from "./StudentList"
 
 const GRADES = [9, 10, 11, 12]
 
@@ -33,6 +34,9 @@ export default function StudentRowActions({
   const isActive     = s.is_active !== false
   const displayName  = [s.last_name, s.first_name].filter(Boolean).join(", ") || "Unknown"
   const preferred    = s.call_by && s.call_by !== s.first_name ? ` (${s.call_by})` : ""
+  // Only flag schedule issues for active students — inactive students often
+  // have intentionally incomplete enrollments.
+  const scheduleStatus = isActive ? analyzeSchedule(enrollments) : { hasIssues: false, missingBlocks: [], missingAdvisory: false, overlays: [] }
 
   function toggleView() {
     if (mode === "edit") return
@@ -103,12 +107,14 @@ export default function StudentRowActions({
     setDeleting(false)
   }
 
-  const borderColor = mode !== "none" ? "#A6192E"
-                    : !isActive       ? "#FECACA"
-                    :                   "#EAEAEA"
-  const bgColor     = mode !== "none" ? "#FFF8F8"
-                    : !isActive       ? "#FFF5F5"
-                    :                   "#FAFAFA"
+  const borderColor = mode !== "none"             ? "#A6192E"
+                    : scheduleStatus.hasIssues    ? "#CE2033"
+                    : !isActive                   ? "#FECACA"
+                    :                               "#EAEAEA"
+  const bgColor     = mode !== "none"             ? "#FFF8F8"
+                    : scheduleStatus.hasIssues    ? "#FFF0F0"
+                    : !isActive                   ? "#FFF5F5"
+                    :                               "#FAFAFA"
 
   return (
     <div className="rounded-xl border overflow-hidden" style={{ borderColor }}>
@@ -133,6 +139,12 @@ export default function StudentRowActions({
               <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase flex-shrink-0"
                     style={{ background: "#FEE2E2", color: "#CE2033" }}>
                 Inactive
+              </span>
+            )}
+            {scheduleStatus.hasIssues && (
+              <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase flex-shrink-0"
+                    style={{ background: "#FEE2E2", color: "#CE2033" }}>
+                ⚠ Schedule
               </span>
             )}
           </div>
@@ -177,6 +189,34 @@ export default function StudentRowActions({
             <ViewField label="Account ID" value={s.id} mono dim />
             <ViewField label="Status" value={isActive ? "Active" : "Deactivated"} />
           </dl>
+
+          {/* Schedule issues callout */}
+          {scheduleStatus.hasIssues && (
+            <div className="mt-3 rounded-xl px-3 py-2"
+                 style={{ background: "#FFF0F0", border: "1px solid #FECACA" }}>
+              <p className="text-[9px] font-bold uppercase tracking-wide mb-1"
+                 style={{ color: "#CE2033" }}>
+                ⚠ Schedule Issues
+              </p>
+              {scheduleStatus.missingBlocks.length > 0 && (
+                <p className="text-[10px]" style={{ color: "#CE2033" }}>
+                  Missing block{scheduleStatus.missingBlocks.length === 1 ? "" : "s"}:{" "}
+                  {scheduleStatus.missingBlocks.join(", ")}
+                </p>
+              )}
+              {scheduleStatus.missingAdvisory && (
+                <p className="text-[10px]" style={{ color: "#CE2033" }}>
+                  No advisory enrollment
+                </p>
+              )}
+              {scheduleStatus.overlays.length > 0 && (
+                <p className="text-[10px]" style={{ color: "#CE2033" }}>
+                  Multiple classes in block{scheduleStatus.overlays.length === 1 ? "" : "s"}:{" "}
+                  {scheduleStatus.overlays.join(", ")}
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Course enrollments */}
           <div className="mt-3">
