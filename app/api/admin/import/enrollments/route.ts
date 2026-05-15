@@ -317,25 +317,43 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── Full-replace: wipe existing enrollments for these students ────
-  if (studentIdsToWipe.size > 0) {
-    const { error: delErr } = await db
-      .from("student_enrollments")
-      .delete()
-      .in("student_id", [...studentIdsToWipe])
-      .eq("academic_year", ACADEMIC_YEAR)
-    if (delErr)
-      return NextResponse.json({ error: `Could not clear existing enrollments: ${delErr.message}` }, { status: 500 })
-  }
-
-  // ── Insert new enrollments ───────────────────────────────────────
+  // ── Upsert new enrollments first (no data loss on failure) ───────
+  // Old approach was DELETE then INSERT — if INSERT failed we'd wipe
+  // existing enrollments and leave nothing in their place. Now we
+  // upsert on (student, course, year), so re-imports overwrite block
+  // changes but old data survives a failure. Only after a successful
+  // upsert do we delete enrollments not in the new set.
   let inserted = 0
   for (let i = 0; i < newEnrollments.length; i += 500) {
     const batch = newEnrollments.slice(i, i + 500)
-    const { error } = await db.from("student_enrollments").insert(batch)
+    const { error } = await db
+      .from("student_enrollments")
+      .upsert(batch, { onConflict: "student_id,course_id,academic_year" })
     if (error)
       return NextResponse.json({ error: `Insert failed: ${error.message}`, inserted, warnings }, { status: 500 })
     inserted += batch.length
+  }
+
+  // ── Delete enrollments for these students that aren't in new set ──
+  // Drops the classes a student isn't taking anymore. Runs after a
+  // successful upsert so a problem here doesn't lose new data.
+  if (studentIdsToWipe.size > 0) {
+    const targetPairs = new Set(newEnrollments.map(e => `${e.student_id}:${e.course_id}`))
+    const { data: existing } = await db
+      .from("student_enrollments")
+      .select("id, student_id, course_id")
+      .in("student_id", [...studentIdsToWipe])
+      .eq("academic_year", ACADEMIC_YEAR)
+
+    const obsoleteIds = ((existing ?? []) as { id: string; student_id: string; course_id: string }[])
+      .filter(r => !targetPairs.has(`${r.student_id}:${r.course_id}`))
+      .map(r => r.id)
+
+    if (obsoleteIds.length > 0) {
+      for (let i = 0; i < obsoleteIds.length; i += 500) {
+        await db.from("student_enrollments").delete().in("id", obsoleteIds.slice(i, i + 500))
+      }
+    }
   }
 
   // ── Persist data-quality issues for the Review Queue ─────────────

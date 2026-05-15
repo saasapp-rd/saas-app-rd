@@ -159,34 +159,19 @@ export default function CourseRowActions({
          style={{ borderColor }}>
 
       {/* Main row */}
-      <div className="px-3 py-2.5 flex items-center gap-3"
+      <div className="px-4 py-2.5 flex items-center justify-between"
            style={{ background: bgColor }}>
-
-        {/* Leading block chip — main visual anchor */}
-        <div className="flex-shrink-0 flex flex-col items-center justify-center rounded-lg"
-             style={{
-               background: blockBadge.bg,
-               color:      blockBadge.color,
-               width:      "44px",
-               height:     "44px",
-             }}>
-          <div className="text-[7px] font-bold uppercase opacity-60 tracking-wider leading-none">
-            {needsReview ? "—" : course.block_number === 9 ? "Adv" : "Block"}
-          </div>
-          <div className="text-base font-black leading-none mt-0.5">
-            {needsReview              ? "?"
-            : course.block_number === 9 ? "9"
-            :                             course.block_number}
-          </div>
-        </div>
-
         <div onClick={toggleView}
              className="min-w-0 flex-1"
              style={{ cursor: mode === "edit" ? "default" : "pointer" }}>
-          <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-baseline gap-1.5 flex-wrap">
             <span className="text-sm font-bold truncate"
                   style={{ color: isActive ? "#3D3D3D" : "#999" }}>
               {course.name}
+            </span>
+            <span className="text-[11px] font-semibold flex-shrink-0"
+                  style={{ color: blockBadge.color }}>
+              · {blockLabel}
             </span>
             {needsReview && (
               <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase flex-shrink-0"
@@ -209,7 +194,7 @@ export default function CourseRowActions({
         </div>
 
         <button onClick={toggleEdit}
-          className="text-[10px] font-bold px-2 py-1 rounded-lg flex-shrink-0"
+          className="text-[10px] font-bold px-2 py-1 rounded-lg flex-shrink-0 ml-3"
           style={{
             background: mode === "edit" ? "#A6192E" : "#EAEAEA",
             color:      mode === "edit" ? "#fff"    : "#3D3D3D",
