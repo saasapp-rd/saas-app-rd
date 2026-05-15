@@ -11,26 +11,73 @@ import type { CourseRow, TeacherOption } from "@/components/admin/CourseRowActio
 
 export const dynamic = "force-dynamic"
 
+interface CourseRecord {
+  id:           string
+  name:         string
+  block_number: number
+  room:         string | null
+  is_advisory:  boolean | null
+  is_active:    boolean | null
+  teacher_id:   string | null
+}
+
 export default async function CoursesPage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect("/login")
   if (!["admin", "super_admin"].includes(session.user.role)) redirect("/dashboard")
 
-  const [{ data: coursesRaw }, { data: teachersRaw }] = await Promise.all([
-    db.from("courses")
-      .select("id, name, block_number, room, is_advisory, is_active, teacher:teacher_id(display_name)")
-      .order("is_active", { ascending: false })
-      .order("block_number")
-      .order("name"),
+  // Pull courses without the embedded teacher join. The embed was silently
+  // dropping rows in some cases; this is more robust + lets us bump the
+  // range past PostgREST's 1000-row default.
+  const { data: courseData, error: courseErr } = await db
+    .from("courses")
+    .select("id, name, block_number, room, is_advisory, is_active, teacher_id")
+    .order("is_active",    { ascending: false })
+    .order("block_number", { ascending: true  })
+    .order("name",         { ascending: true  })
+    .range(0, 9999)
+
+  if (courseErr) console.error("[admin/courses] courses query error:", courseErr.message)
+
+  const courseRecords = (courseData ?? []) as CourseRecord[]
+
+  // Two parallel queries for users:
+  //   - All teachers/advisors to populate the Add Course / re-assign dropdowns.
+  //   - Just the display_names for users referenced by current courses (we
+  //     might assign a course to someone whose primary role isn't teacher).
+  const referencedTeacherIds = [...new Set(
+    courseRecords.map(c => c.teacher_id).filter((id): id is string => !!id)
+  )]
+
+  const [{ data: teachersRaw }, { data: referencedRaw }] = await Promise.all([
     db.from("users")
       .select("id, display_name")
       .in("role", ["teacher", "advisor"])
       .eq("is_active", true)
       .order("display_name"),
+    referencedTeacherIds.length > 0
+      ? db.from("users")
+          .select("id, display_name")
+          .in("id", referencedTeacherIds)
+      : Promise.resolve({ data: [] as { id: string; display_name: string | null }[] }),
   ])
 
-  const courses     = (coursesRaw  ?? []) as unknown as CourseRow[]
-  const teachers    = (teachersRaw ?? []) as TeacherOption[]
+  const teachers = (teachersRaw ?? []) as TeacherOption[]
+  const nameById = new Map<string, string | null>()
+  for (const u of (referencedRaw ?? []) as { id: string; display_name: string | null }[]) {
+    nameById.set(u.id, u.display_name)
+  }
+
+  const courses: CourseRow[] = courseRecords.map(c => ({
+    id:           c.id,
+    name:         c.name,
+    block_number: c.block_number,
+    room:         c.room,
+    is_advisory:  c.is_advisory ?? false,
+    is_active:    c.is_active !== false,
+    teacher:      c.teacher_id ? { display_name: nameById.get(c.teacher_id) ?? null } : null,
+  }))
+
   const activeCount = courses.filter(c => c.is_active !== false).length
 
   return (
@@ -52,6 +99,12 @@ export default async function CoursesPage() {
       </nav>
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
+        {courseErr && (
+          <div className="rounded-xl px-4 py-3 text-xs"
+               style={{ background: "#FFF0F0", border: "1px solid #FECACA", color: "#CE2033" }}>
+            Database error loading courses: {courseErr.message}
+          </div>
+        )}
         <AddCourseForm teachers={teachers} />
         <CoursesList courses={courses} teachers={teachers} />
       </main>
