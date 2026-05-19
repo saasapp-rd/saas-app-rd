@@ -74,8 +74,20 @@ export default function StudentSchedule({
   )
 
   function coursesForBlock(b: number): CourseOption[] {
+    // Include placeholders (block_number === null) so Options / Directed
+    // Study / other un-blocked courses can be slotted into the block
+    // the admin clicked. The enrollment row carries its own block_number,
+    // so the same placeholder course can serve different blocks for
+    // different students.
     return allCourses
-      .filter(c => c.blockNumber === b && !enrolledIds.has(c.courseId))
+      .filter(c => (c.blockNumber === b || c.blockNumber === null) && !enrolledIds.has(c.courseId))
+      .sort((a, b) => {
+        // Real-block matches first, placeholders last
+        const aPlaceholder = a.blockNumber === null ? 1 : 0
+        const bPlaceholder = b.blockNumber === null ? 1 : 0
+        if (aPlaceholder !== bPlaceholder) return aPlaceholder - bPlaceholder
+        return a.courseName.localeCompare(b.courseName)
+      })
   }
 
   // General picker — overlays + placeholder courses
@@ -108,27 +120,36 @@ export default function StudentSchedule({
     setDeleting(null)
   }
 
-  async function add(c: CourseOption) {
+  async function add(c: CourseOption, blockOverride?: number) {
     setAdding(c.courseId); setError("")
+    const body: Record<string, unknown> = {
+      student_id: studentId,
+      course_id:  c.courseId,
+    }
+    if (blockOverride !== undefined) body.block_number = blockOverride
+
     const res = await fetch("/api/admin/student-enrollments", {
       method:  "POST",
       headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ student_id: studentId, course_id: c.courseId }),
+      body:    JSON.stringify(body),
     })
-    if (res.ok && c.blockNumber !== null) {
-      setEnrollments(prev => [
-        ...prev,
-        {
-          courseId:    c.courseId,
-          blockNumber: c.blockNumber as number,
-          courseName:  c.courseName,
-          room:        c.room,
-          teacherId:   c.teacherId,
-          teacherName: c.teacherName,
-        },
-      ].sort((a, b) => a.blockNumber - b.blockNumber))
+    if (res.ok) {
+      const effectiveBlock = blockOverride ?? c.blockNumber
+      if (effectiveBlock !== null) {
+        setEnrollments(prev => [
+          ...prev,
+          {
+            courseId:    c.courseId,
+            blockNumber: effectiveBlock,
+            courseName:  c.courseName,
+            room:        c.room,
+            teacherId:   c.teacherId,
+            teacherName: c.teacherName,
+          },
+        ].sort((a, b) => a.blockNumber - b.blockNumber))
+      }
       setPickerForBlock(null)
-    } else if (!res.ok) {
+    } else {
       const d = await res.json().catch(() => ({}))
       setError(d.error ?? "Failed to add enrollment.")
     }
@@ -197,21 +218,32 @@ export default function StudentSchedule({
                     ) : (
                       <div className="flex flex-col gap-1 max-h-72 overflow-y-auto">
                         {blockCourses.map(c => {
-                          const isBusy = adding === c.courseId
+                          const isBusy      = adding === c.courseId
+                          const isPlaceholder = c.blockNumber === null
                           return (
-                            <button key={c.courseId} onClick={() => add(c)} disabled={isBusy}
+                            <button key={c.courseId} onClick={() => add(c, block)} disabled={isBusy}
                               className="flex items-center gap-2 px-3 py-2 rounded-lg text-left"
                               style={{
-                                background: "#FAFAFA", border: "1px solid #EAEAEA",
+                                background: isPlaceholder ? "#FFFBEB" : "#FAFAFA",
+                                border:     `1px solid ${isPlaceholder ? "#FDE68A" : "#EAEAEA"}`,
                                 cursor: "pointer", opacity: isBusy ? 0.5 : 1,
                               }}>
                               <div className="flex-1 min-w-0">
-                                <p className="text-xs font-semibold truncate" style={{ color: "#3D3D3D" }}>
-                                  {c.courseName}
-                                </p>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <p className="text-xs font-semibold truncate" style={{ color: "#3D3D3D" }}>
+                                    {c.courseName}
+                                  </p>
+                                  {isPlaceholder && (
+                                    <span className="text-[8px] font-bold px-1 py-0.5 rounded uppercase flex-shrink-0"
+                                          style={{ background: "#FDE68A", color: "#78350F" }}>
+                                      Options / Unblocked
+                                    </span>
+                                  )}
+                                </div>
                                 <p className="text-[10px] truncate" style={{ color: "#999" }}>
                                   {c.teacherName ?? "No teacher"}
                                   {c.room ? ` · ${c.room}` : ""}
+                                  {isPlaceholder && ` · will land in ${blockLabel(block).toLowerCase()}`}
                                 </p>
                               </div>
                               <span className="text-[10px] font-bold flex-shrink-0"

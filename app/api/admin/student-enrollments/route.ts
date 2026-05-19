@@ -11,11 +11,16 @@ export async function POST(req: NextRequest) {
   if (!session || !ALLOWED.includes(session.user.role))
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { student_id, course_id } = await req.json()
+  const body = await req.json()
+  const { student_id, course_id } = body
   if (!student_id || !course_id)
     return NextResponse.json({ error: "student_id and course_id required" }, { status: 400 })
 
-  // Pull the course's block so we can write the denormalized block_number.
+  // Pull the course's block as the default. Caller can override via
+  // block_number when attaching a placeholder/Options course to a
+  // specific block (the enrollment row carries its own block_number
+  // so the same placeholder course can land in different slots for
+  // different students).
   const { data: course, error: courseErr } = await db
     .from("courses")
     .select("block_number")
@@ -23,6 +28,11 @@ export async function POST(req: NextRequest) {
     .maybeSingle()
   if (courseErr) return NextResponse.json({ error: courseErr.message }, { status: 500 })
   if (!course)   return NextResponse.json({ error: "Course not found" }, { status: 404 })
+
+  let blockToUse: number | null = course.block_number as number | null
+  if (typeof body.block_number === "number" && body.block_number >= 1 && body.block_number <= 9) {
+    blockToUse = body.block_number
+  }
 
   // Upsert on the (student, course, year) unique key. Idempotent if the
   // student is already enrolled. Block overlays are explicitly allowed —
@@ -33,7 +43,7 @@ export async function POST(req: NextRequest) {
       {
         student_id,
         course_id,
-        block_number: course.block_number,
+        block_number: blockToUse,
         academic_year: ACADEMIC_YEAR,
       },
       { onConflict: "student_id,course_id,academic_year" }
