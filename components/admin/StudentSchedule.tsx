@@ -20,11 +20,17 @@ export interface CourseOption {
   teacherName: string | null
 }
 
+const ALL_BLOCKS = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+
 /** Short badge label: block 9 = "ADV", others = "B1"…"B8" */
 function blockBadge(n: number | null) {
   if (n === null)      return "?"
   if (n === 9)         return "ADV"
   return "B" + n
+}
+
+function blockLabel(n: number) {
+  return n === 9 ? "Advisory" : `Block ${n}`
 }
 
 export default function StudentSchedule({
@@ -38,27 +44,43 @@ export default function StudentSchedule({
   allCourses?:         CourseOption[]
   canEdit?:            boolean
 }) {
-  const [enrollments, setEnrollments] = useState(initialEnrollments)
-  const [deleting,    setDeleting]    = useState<string | null>(null)
-  const [adding,      setAdding]      = useState<string | null>(null)
-  const [pickerOpen,  setPickerOpen]  = useState(false)
-  const [search,      setSearch]      = useState("")
-  const [error,       setError]       = useState("")
+  const [enrollments,     setEnrollments]     = useState(initialEnrollments)
+  const [deleting,        setDeleting]        = useState<string | null>(null)
+  const [adding,          setAdding]          = useState<string | null>(null)
+  const [pickerForBlock,  setPickerForBlock]  = useState<number | null>(null)
+  const [generalOpen,     setGeneralOpen]     = useState(false)
+  const [generalSearch,   setGeneralSearch]   = useState("")
+  const [error,           setError]           = useState("")
 
-  // Count how many courses occupy each block — >1 is a conflict
-  const blockCount = new Map<number, number>()
-  for (const e of enrollments)
-    blockCount.set(e.blockNumber, (blockCount.get(e.blockNumber) ?? 0) + 1)
+  // Bucket enrollments by block
+  const rowsByBlock = useMemo(() => {
+    const m = new Map<number, Enrollment[]>()
+    for (const e of enrollments) {
+      const list = m.get(e.blockNumber) ?? []
+      list.push(e)
+      m.set(e.blockNumber, list)
+    }
+    return m
+  }, [enrollments])
 
-  const hasConflicts = [...blockCount.values()].some(c => c > 1)
+  const hasConflicts = useMemo(
+    () => [...rowsByBlock.values()].some(rs => rs.length > 1),
+    [rowsByBlock]
+  )
 
   const enrolledIds = useMemo(
     () => new Set(enrollments.map(e => e.courseId)),
     [enrollments]
   )
 
-  const availableCourses = useMemo(() => {
-    const q = search.trim().toLowerCase()
+  function coursesForBlock(b: number): CourseOption[] {
+    return allCourses
+      .filter(c => c.blockNumber === b && !enrolledIds.has(c.courseId))
+  }
+
+  // General picker — overlays + placeholder courses
+  const generalResults = useMemo(() => {
+    const q = generalSearch.trim().toLowerCase()
     return allCourses
       .filter(c => !enrolledIds.has(c.courseId))
       .filter(c => {
@@ -68,7 +90,7 @@ export default function StudentSchedule({
           || (c.room        ?? "").toLowerCase().includes(q)
       })
       .slice(0, 30)
-  }, [allCourses, enrolledIds, search])
+  }, [allCourses, enrolledIds, generalSearch])
 
   async function remove(courseId: string) {
     setDeleting(courseId); setError("")
@@ -105,6 +127,7 @@ export default function StudentSchedule({
           teacherName: c.teacherName,
         },
       ].sort((a, b) => a.blockNumber - b.blockNumber))
+      setPickerForBlock(null)
     } else if (!res.ok) {
       const d = await res.json().catch(() => ({}))
       setError(d.error ?? "Failed to add enrollment.")
@@ -126,14 +149,89 @@ export default function StudentSchedule({
         </div>
       )}
 
-      {enrollments.length === 0 ? (
-        <p className="text-xs text-center py-3" style={{ color: "#999" }}>
-          No schedule on file.{canEdit ? " Add a class below or import via CSV." : " Import a class schedule via CSV."}
-        </p>
-      ) : (
-        <div className="flex flex-col gap-1.5">
-          {enrollments.map(e => {
-            const conflict = (blockCount.get(e.blockNumber) ?? 0) > 1
+      {/* Schedule — fixed 9-block grid */}
+      <div className="flex flex-col gap-1.5">
+        {ALL_BLOCKS.flatMap(block => {
+          const rows = rowsByBlock.get(block) ?? []
+
+          if (rows.length === 0) {
+            const isPickerOpen = pickerForBlock === block
+            const blockCourses = coursesForBlock(block)
+            return [(
+              <div key={`empty-${block}`} className="rounded-xl border overflow-hidden"
+                   style={{ borderColor: "#EAEAEA" }}>
+                <div className="px-4 py-3 flex items-center gap-3"
+                     style={{ background: "#FAFAFA" }}>
+                  <span className="w-9 h-9 rounded-lg flex items-center justify-center text-[10px] font-black flex-shrink-0"
+                        style={{ background: "#EAEAEA", color: "#BABABA" }}>
+                    {blockBadge(block)}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold" style={{ color: "#999" }}>
+                      No class
+                    </p>
+                    <p className="text-[10px]" style={{ color: "#BABABA" }}>
+                      {blockLabel(block)}
+                    </p>
+                  </div>
+                  {canEdit && (
+                    <button onClick={() => setPickerForBlock(isPickerOpen ? null : block)}
+                            className="text-[10px] font-bold px-2.5 py-1 rounded-lg flex-shrink-0"
+                            style={{
+                              background: isPickerOpen ? "#A6192E" : "#EEF6FF",
+                              color:      isPickerOpen ? "#fff"    : "#1E5FA6",
+                              border: "none", cursor: "pointer",
+                            }}>
+                      {isPickerOpen ? "Cancel" : "+ Add class"}
+                    </button>
+                  )}
+                </div>
+
+                {isPickerOpen && (
+                  <div className="px-4 py-3 border-t"
+                       style={{ background: "#fff", borderColor: "#EAEAEA" }}>
+                    {blockCourses.length === 0 ? (
+                      <p className="text-xs py-2 text-center" style={{ color: "#999" }}>
+                        No active courses available for {blockLabel(block).toLowerCase()}.
+                      </p>
+                    ) : (
+                      <div className="flex flex-col gap-1 max-h-72 overflow-y-auto">
+                        {blockCourses.map(c => {
+                          const isBusy = adding === c.courseId
+                          return (
+                            <button key={c.courseId} onClick={() => add(c)} disabled={isBusy}
+                              className="flex items-center gap-2 px-3 py-2 rounded-lg text-left"
+                              style={{
+                                background: "#FAFAFA", border: "1px solid #EAEAEA",
+                                cursor: "pointer", opacity: isBusy ? 0.5 : 1,
+                              }}>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-semibold truncate" style={{ color: "#3D3D3D" }}>
+                                  {c.courseName}
+                                </p>
+                                <p className="text-[10px] truncate" style={{ color: "#999" }}>
+                                  {c.teacherName ?? "No teacher"}
+                                  {c.room ? ` · ${c.room}` : ""}
+                                </p>
+                              </div>
+                              <span className="text-[10px] font-bold flex-shrink-0"
+                                    style={{ color: "#1E5FA6" }}>
+                                {isBusy ? "…" : "+ Add"}
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )]
+          }
+
+          // Filled block — render each enrolled course
+          return rows.map(e => {
+            const conflict = rows.length > 1
             return (
               <div key={e.courseId}
                    className="rounded-xl px-4 py-3 border flex items-center gap-3"
@@ -141,7 +239,6 @@ export default function StudentSchedule({
                      background:  conflict ? "#FFF8F8" : "#FAFAFA",
                      borderColor: conflict ? "#FFCCCC" : "#EAEAEA",
                    }}>
-
                 <span className="w-9 h-9 rounded-lg flex items-center justify-center text-[10px] font-black flex-shrink-0"
                       style={{
                         background: conflict ? "#FFE0E0" : "#EAEAEA",
@@ -149,7 +246,6 @@ export default function StudentSchedule({
                       }}>
                   {blockBadge(e.blockNumber)}
                 </span>
-
                 <div className="flex-1 min-w-0">
                   <Link href={"/courses/" + e.courseId} style={{ textDecoration: "none" }}>
                     <p className="text-sm font-semibold truncate" style={{ color: "#A6192E" }}>
@@ -167,13 +263,11 @@ export default function StudentSchedule({
                     <p className="text-[10px]" style={{ color: "#BABABA" }}>No teacher assigned</p>
                   )}
                 </div>
-
                 {e.room && (
                   <span className="text-[9px] flex-shrink-0" style={{ color: "#BABABA" }}>
                     {e.room}
                   </span>
                 )}
-
                 {canEdit && (
                   <button onClick={() => remove(e.courseId)}
                           disabled={deleting === e.courseId}
@@ -188,50 +282,51 @@ export default function StudentSchedule({
                 )}
               </div>
             )
-          })}
-        </div>
-      )}
+          })
+        })}
+      </div>
 
-      {/* Add a class */}
+      {/* General add — for overlays + placeholder (no-block) courses */}
       {canEdit && (
         <div className="rounded-xl border mt-1 overflow-hidden"
              style={{ borderColor: "#EAEAEA" }}>
-          <button onClick={() => { setPickerOpen(o => !o); if (pickerOpen) setSearch("") }}
+          <button onClick={() => { setGeneralOpen(o => !o); if (generalOpen) setGeneralSearch("") }}
             className="w-full px-4 py-2.5 flex items-center justify-between"
-            style={{ background: pickerOpen ? "#FFF8F8" : "#FAFAFA", border: "none", cursor: "pointer" }}>
+            style={{ background: generalOpen ? "#FFF8F8" : "#FAFAFA", border: "none", cursor: "pointer" }}>
             <p className="text-[10px] font-bold uppercase tracking-wider"
-               style={{ color: pickerOpen ? "#A6192E" : "#3D3D3D", opacity: pickerOpen ? 1 : 0.5 }}>
-              + Add a class
+               style={{ color: generalOpen ? "#A6192E" : "#3D3D3D", opacity: generalOpen ? 1 : 0.5 }}>
+              + Add another class (overlay or unblocked)
             </p>
-            <span className="text-xs" style={{ color: pickerOpen ? "#A6192E" : "#BABABA" }}>
-              {pickerOpen ? "▲" : "▼"}
+            <span className="text-xs" style={{ color: generalOpen ? "#A6192E" : "#BABABA" }}>
+              {generalOpen ? "▲" : "▼"}
             </span>
           </button>
 
-          {pickerOpen && (
+          {generalOpen && (
             <div className="px-4 py-3 border-t flex flex-col gap-2"
                  style={{ borderColor: "#EAEAEA", background: "#fff" }}>
               <input
                 type="search"
                 placeholder="Search courses by name, teacher, or room…"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
+                value={generalSearch}
+                onChange={e => setGeneralSearch(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl text-sm border outline-none"
                 style={{ borderColor: "#EAEAEA", background: "#FAFAFA", color: "#3D3D3D" }}
                 autoFocus
               />
               <p className="text-[10px]" style={{ color: "#999" }}>
-                Overlays are allowed — pick any course, even if its block is already filled.
+                Use this to add a second class to a block already filled, or to
+                attach a placeholder course that hasn&apos;t been given a block yet.
               </p>
-              {availableCourses.length === 0 ? (
+              {generalResults.length === 0 ? (
                 <p className="text-xs text-center py-3" style={{ color: "#999" }}>
-                  {search ? `No matching courses.` : "All active courses already enrolled."}
+                  {generalSearch ? "No matching courses." : "All active courses already enrolled."}
                 </p>
               ) : (
                 <div className="flex flex-col gap-1 max-h-96 overflow-y-auto">
-                  {availableCourses.map(c => {
+                  {generalResults.map(c => {
                     const isBusy = adding === c.courseId
-                    const blockHasOverlap = c.blockNumber !== null && (blockCount.get(c.blockNumber) ?? 0) > 0
+                    const blockHasOverlap = c.blockNumber !== null && (rowsByBlock.get(c.blockNumber)?.length ?? 0) > 0
                     return (
                       <button key={c.courseId} onClick={() => add(c)} disabled={isBusy}
                         className="flex items-center gap-2 px-3 py-2 rounded-lg text-left"
