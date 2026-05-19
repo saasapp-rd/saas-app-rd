@@ -1,5 +1,5 @@
 "use client"
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import Link from "next/link"
 
 interface Enrollment {
@@ -51,6 +51,21 @@ export default function StudentSchedule({
   const [generalOpen,     setGeneralOpen]     = useState(false)
   const [generalSearch,   setGeneralSearch]   = useState("")
   const [error,           setError]           = useState("")
+
+  // Lock body scroll + Escape to close while the general modal is open.
+  useEffect(() => {
+    if (!generalOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = "hidden"
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setGeneralOpen(false)
+    }
+    window.addEventListener("keydown", onKey)
+    return () => {
+      document.body.style.overflow = prev
+      window.removeEventListener("keydown", onKey)
+    }
+  }, [generalOpen])
 
   // Bucket enrollments by block
   const rowsByBlock = useMemo(() => {
@@ -335,25 +350,46 @@ export default function StudentSchedule({
         })}
       </div>
 
-      {/* General add — for overlays + placeholder (no-block) courses */}
+      {/* General add trigger — overlays + placeholders */}
       {canEdit && (
-        <div className="rounded-xl border mt-1 overflow-hidden"
-             style={{ borderColor: "#EAEAEA" }}>
-          <button onClick={() => { setGeneralOpen(o => !o); if (generalOpen) setGeneralSearch("") }}
-            className="w-full px-4 py-2.5 flex items-center justify-between"
-            style={{ background: generalOpen ? "#FFF8F8" : "#FAFAFA", border: "none", cursor: "pointer" }}>
-            <p className="text-[10px] font-bold uppercase tracking-wider"
-               style={{ color: generalOpen ? "#A6192E" : "#3D3D3D", opacity: generalOpen ? 1 : 0.5 }}>
-              + Add another class (overlay or unblocked)
-            </p>
-            <span className="text-xs" style={{ color: generalOpen ? "#A6192E" : "#BABABA" }}>
-              {generalOpen ? "▲" : "▼"}
-            </span>
-          </button>
+        <button onClick={() => { setGeneralOpen(true); setGeneralSearch("") }}
+          className="rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider mt-1"
+          style={{
+            background: "#EEF6FF", color: "#1E5FA6",
+            border: "1px solid #BFD7F2", cursor: "pointer",
+          }}>
+          + Add another class (overlay or unblocked)
+        </button>
+      )}
 
-          {generalOpen && (
-            <div className="px-4 py-3 border-t flex flex-col gap-2"
-                 style={{ borderColor: "#EAEAEA", background: "#fff" }}>
+      {/* General add modal */}
+      {canEdit && generalOpen && (
+        <div
+          onClick={() => setGeneralOpen(false)}
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
+          style={{ background: "rgba(0,0,0,0.55)" }}>
+          <div
+            onClick={e => e.stopPropagation()}
+            className="bg-white w-full sm:max-w-md flex flex-col rounded-t-2xl sm:rounded-2xl"
+            style={{ maxHeight: "85vh", overscrollBehavior: "contain" }}>
+
+            <div className="px-4 py-3 flex items-center justify-between border-b"
+                 style={{ borderColor: "#EAEAEA" }}>
+              <div className="min-w-0">
+                <p className="text-sm font-bold" style={{ color: "#3D3D3D" }}>Add a class</p>
+                <p className="text-[10px]" style={{ color: "#999" }}>
+                  Overlay an existing block, or attach an Options / placeholder course
+                </p>
+              </div>
+              <button onClick={() => setGeneralOpen(false)}
+                className="text-sm font-bold w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{ background: "#EAEAEA", color: "#3D3D3D", border: "none", cursor: "pointer" }}
+                aria-label="Close">
+                ✕
+              </button>
+            </div>
+
+            <div className="px-4 py-3 border-b" style={{ borderColor: "#EAEAEA" }}>
               <input
                 type="search"
                 placeholder="Search courses by name, teacher, or room…"
@@ -363,23 +399,16 @@ export default function StudentSchedule({
                 style={{ borderColor: "#EAEAEA", background: "#FAFAFA", color: "#3D3D3D" }}
                 autoFocus
               />
-              <p className="text-[10px]" style={{ color: "#999" }}>
-                Use this to add a second class to a block already filled, or to
-                attach a placeholder course that hasn&apos;t been given a block yet.
-              </p>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-3 py-2"
+                 style={{ overscrollBehavior: "contain" }}>
               {generalResults.length === 0 ? (
-                <p className="text-xs text-center py-3" style={{ color: "#999" }}>
+                <p className="text-xs text-center py-6" style={{ color: "#999" }}>
                   {generalSearch ? "No matching courses." : "All active courses already enrolled."}
                 </p>
               ) : (
-                <>
-                  <p className="text-[10px] font-bold uppercase tracking-wider"
-                     style={{ color: "#999" }}>
-                    {generalResults.length} course{generalResults.length === 1 ? "" : "s"}
-                    {!generalSearch && " · scroll to browse"}
-                  </p>
-                  <div className="flex flex-col gap-1 overflow-y-auto rounded-lg"
-                       style={{ maxHeight: "60vh", border: "1px solid #EAEAEA" }}>
+                <div className="flex flex-col gap-1">
                   {generalResults.map(c => {
                     const isBusy = adding === c.courseId
                     const blockHasOverlap = c.blockNumber !== null && (rowsByBlock.get(c.blockNumber)?.length ?? 0) > 0
@@ -418,11 +447,22 @@ export default function StudentSchedule({
                       </button>
                     )
                   })}
-                  </div>
-                </>
+                </div>
               )}
             </div>
-          )}
+
+            <div className="px-4 py-2.5 border-t flex items-center justify-between"
+                 style={{ borderColor: "#EAEAEA", background: "#FAFAFA" }}>
+              <p className="text-[10px]" style={{ color: "#999" }}>
+                {generalResults.length} course{generalResults.length === 1 ? "" : "s"} · tap outside or Esc to close
+              </p>
+              <button onClick={() => setGeneralOpen(false)}
+                className="text-[10px] font-bold px-3 py-1.5 rounded-lg"
+                style={{ background: "#EAEAEA", color: "#3D3D3D", border: "none", cursor: "pointer" }}>
+                Done
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
