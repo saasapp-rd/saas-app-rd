@@ -25,31 +25,38 @@ export default async function CourseDetailPage({
     .from("courses")
     .select("id, name, course_code, block_number, room, academic_year, teacher_id")
     .eq("id", id)
-    .single()
+    .maybeSingle()
 
-  if (error || !course) notFound()
+  if (error) console.error("[courses/[id]] query error:", error.message)
+  if (!course) notFound()
 
   const { data: teacher } = course.teacher_id
-    ? await db.from("users").select("id, display_name, email").eq("id", course.teacher_id).single()
+    ? await db.from("users").select("id, display_name, email").eq("id", course.teacher_id).maybeSingle()
     : { data: null }
 
+  // Students live in users post-migration 011 — the legacy students table
+  // was dropped. Don't filter by role since a teacher of an unusual
+  // schedule might still appear in a roster.
   const { data: enrollData } = await db
     .from("student_enrollments")
     .select("student_id")
     .eq("course_id", id)
+    .range(0, 9999)
 
-  const studentIds = (enrollData ?? []).map(e => e.student_id as string)
+  const studentIds = [...new Set((enrollData ?? []).map(e => e.student_id as string))]
 
   const { data: students } = studentIds.length
     ? await db
-        .from("students")
+        .from("users")
         .select("id, first_name, last_name, grade, call_by")
         .in("id", studentIds)
         .order("last_name")
+        .order("first_name")
     : { data: [] }
 
   const roster = (students ?? []) as {
-    id: string; first_name: string; last_name: string; grade: number; call_by: string | null
+    id: string; first_name: string | null; last_name: string | null
+    grade: number | null; call_by: string | null
   }[]
 
   return (
@@ -136,9 +143,11 @@ export default async function CourseDetailPage({
                        style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
                     <div>
                       <p className="text-sm font-semibold" style={{ color: "#3D3D3D" }}>
-                        {s.last_name}, {s.call_by ?? s.first_name}
+                        {s.last_name ?? "?"}, {s.call_by ?? s.first_name ?? "?"}
                       </p>
-                      <p className="text-[10px]" style={{ color: "#999" }}>Grade {s.grade}</p>
+                      <p className="text-[10px]" style={{ color: "#999" }}>
+                        {s.grade ? `Grade ${s.grade}` : "No grade"}
+                      </p>
                     </div>
                     <span style={{ color: "#BABABA" }}>&rarr;</span>
                   </div>
