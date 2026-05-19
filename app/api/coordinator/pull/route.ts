@@ -24,23 +24,21 @@ export async function POST(req: NextRequest) {
     .from("incidents")
     .insert({
       student_id,
-      reported_by:    session.user.userId,
-      report_type:    "coordinator_pull",
-      initiated_by:   "coordinator_pull",
-      level:          incLevel,
-      status:         "open",
-      block_id:       blockId,
-      public_note:    reason?.trim() ?? null,
+      reported_by:  session.user.userId,
+      report_type:  "coordinator_pull",
+      initiated_by: "coordinator_pull",
+      level:        incLevel,
+      status:       "open",
+      block_id:     blockId,
     })
-    .select("id, level, student_id, student:student_id(first_name, last_name)")
+    .select("id, level, student_id, students(first_name, last_name)")
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const student = (data as any).student as { first_name: string; last_name: string } | null
+  const student = (data as any).students as { first_name: string; last_name: string } | null
   const name    = student ? student.last_name + ", " + student.first_name : "Unknown"
 
-  // Push to coordinators
   await sendPushToRole("coordinator", {
     title: "Coordinator Pull — " + name,
     body:  reason?.trim() ? reason.trim() : "Pulled by " + session.user.displayName,
