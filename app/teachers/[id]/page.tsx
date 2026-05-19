@@ -66,11 +66,11 @@ export default async function TeacherProfilePage({
       </header>
 
       <nav className="px-5 py-2 border-b flex items-center gap-4" style={{ borderColor: "#EAEAEA" }}>
-        <button onClick={() => history.back()}
-                className="text-xs font-bold"
-                style={{ color: "#A6192E", background: "none", border: "none", cursor: "pointer" }}>
+        <Link href="/admin/users/teacher"
+              className="text-xs font-bold"
+              style={{ color: "#A6192E", textDecoration: "none" }}>
           &larr; Back
-        </button>
+        </Link>
       </nav>
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
