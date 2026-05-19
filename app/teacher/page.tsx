@@ -7,10 +7,17 @@ import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 import StudentRoster from "@/components/teacher/StudentRoster"
-import WelfareConcernLink from "@/components/WelfareConcernLink"
 
 interface Student { id: string; first_name: string; last_name: string; grade: number }
-interface Course  { id: string; name: string; block_number: number; room: string | null }
+
+interface Course {
+  id:           string
+  name:         string
+  block_number: number
+  room:         string | null
+}
+
+function blockFull(n: number) { return n === 9 ? "Advisory" : "Block " + n }
 
 export default async function TeacherPage() {
   const session = await getServerSession(authOptions)
@@ -27,19 +34,19 @@ export default async function TeacherPage() {
   ])
 
   const activeBlockNum = period.type === "block" ? period.blockNumber : null
-  const courseIds      = (courses ?? []).map((c: Course) => c.id)
 
+  const courseIds = (courses ?? []).map(c => c.id)
   let studentsByCourse: Record<string, Student[]> = {}
 
   if (courseIds.length > 0) {
     const { data: enr } = await db
       .from("student_enrollments")
-      .select("course_id, student:student_id(id, first_name, last_name, grade, is_active)")
+      .select("course_id, students(id, first_name, last_name, grade)")
       .in("course_id", courseIds)
 
     for (const row of enr ?? []) {
-      const s = row.student as unknown as (Student & { is_active?: boolean | null }) | null
-      if (!s || s.is_active === false) continue
+      const s = row.students as unknown as Student | null
+      if (!s) continue
       if (!studentsByCourse[row.course_id]) studentsByCourse[row.course_id] = []
       studentsByCourse[row.course_id].push(s)
     }
@@ -48,35 +55,8 @@ export default async function TeacherPage() {
     }
   }
 
-  // Fetch today's incident statuses so teacher sees correct state on page load
-  const allStudentIds = Object.values(studentsByCourse).flat().map(s => s.id)
-  const initialStatuses: Record<string, "reported" | "with_me" | "found"> = {}
-
-  if (allStudentIds.length > 0) {
-    const today = new Date().toISOString().split("T")[0]
-    const { data: todayInc } = await db
-      .from("incidents")
-      .select("student_id, status, located_excused")
-      .in("student_id", allStudentIds)
-      .gte("reported_at", today + "T00:00:00+00:00")
-      .lte("reported_at", today + "T23:59:59+00:00")
-
-    for (const inc of todayInc ?? []) {
-      if (inc.status === "open") {
-        initialStatuses[inc.student_id] = "reported"
-      } else if (inc.status === "resolved" && inc.located_excused) {
-        initialStatuses[inc.student_id] = "with_me"
-      } else if (inc.status === "resolved") {
-        // Only set "found" if not already marked by the teacher as with_me
-        if (!initialStatuses[inc.student_id]) {
-          initialStatuses[inc.student_id] = "found"
-        }
-      }
-    }
-  }
-
   const periodLabel =
-    period.type === "block"     ? "Block " + period.blockNumber + " · " + period.periodStart + "–" + period.periodEnd :
+    period.type === "block"     ? `${blockFull(period.blockNumber)} · ${period.periodStart}–${period.periodEnd}` :
     period.type === "lunch"     ? "Lunch" :
     period.type === "community" ? "Community" :
                                   "Outside school hours"
@@ -93,18 +73,9 @@ export default async function TeacherPage() {
         <SignOutButton />
       </header>
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
-      <nav className="px-5 py-2 border-b flex items-center gap-4" style={{ borderColor: "#EAEAEA" }}>
-        <Link href="/dashboard" className="text-xs font-bold"
-              style={{ color: "#A6192E", textDecoration: "none" }}>
-          Dashboard
-        </Link>
-        <Link href="/missing" className="text-xs"
-              style={{ color: "#999", textDecoration: "none" }}>
-          Live View
-        </Link>
-        <Link href="/teacher/courses" className="text-xs"
-              style={{ color: "#999", textDecoration: "none" }}>
-          Courses
+      <nav className="px-5 py-2 border-b flex items-center" style={{ borderColor: "#EAEAEA" }}>
+        <Link href="/missing" className="text-xs font-bold" style={{ color: "#A6192E", textDecoration: "none" }}>
+          &larr; All Missing Students
         </Link>
       </nav>
 
@@ -132,13 +103,14 @@ export default async function TeacherPage() {
         {(courses ?? []).map((course: Course) => {
           const students = studentsByCourse[course.id] ?? []
           const isActive = course.block_number === activeBlockNum
+
           return (
             <div key={course.id}>
               <div className="flex items-center justify-between mb-2">
                 <div>
                   <p className="text-[9px] font-bold tracking-[0.25em] uppercase"
                      style={{ color: "#3D3D3D", opacity: 0.35 }}>
-                    Block {course.block_number}{course.room ? " · " + course.room : ""}
+                    {blockFull(course.block_number)}{course.room ? " · " + course.room : ""}
                   </p>
                   <p className="text-sm font-bold" style={{ color: "#3D3D3D" }}>{course.name}</p>
                 </div>
@@ -149,6 +121,7 @@ export default async function TeacherPage() {
                   </span>
                 )}
               </div>
+
               {students.length === 0 ? (
                 <p className="text-xs py-3 text-center" style={{ color: "#999" }}>
                   No students enrolled — add enrollments in Admin.
@@ -158,14 +131,11 @@ export default async function TeacherPage() {
                   students={students}
                   blockNumber={course.block_number}
                   courseId={course.id}
-                  initialStatuses={initialStatuses}
                 />
               )}
             </div>
           )
         })}
-
-        <WelfareConcernLink />
       </main>
     </div>
   )
