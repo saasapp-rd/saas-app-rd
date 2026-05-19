@@ -58,10 +58,13 @@ export default async function StudentProfilePage({
   if (!ALLOWED.includes(session.user.role)) redirect("/dashboard")
 
   const [stuResult, flagResult, incResult, enrollResult] = await Promise.all([
+    // Try the students table first (legacy), then fall back to users
+    // (post-migration-011 source of truth) so profiles still load for
+    // students that only exist in users.
     db.from("students")
       .select("id, first_name, last_name, grade, student_id, parent_email, parent_name")
       .eq("id", id)
-      .single(),
+      .maybeSingle(),
     db.from("student_concern_flags")
       .select("id, flag_level, public_note, flagged_at")
       .eq("student_id", id)
@@ -77,8 +80,36 @@ export default async function StudentProfilePage({
       .order("block_number"),
   ])
 
-  if (stuResult.error || !stuResult.data) notFound()
-  const stu       = stuResult.data
+  if (stuResult.error) console.error("[students/[id]] students lookup error:", stuResult.error.message)
+  let stu = stuResult.data as null | {
+    id: string; first_name: string | null; last_name: string | null
+    grade: number | null; student_id: string | null
+    parent_email: string | null; parent_name: string | null
+  }
+
+  // Fall back to the users table — students added post-migration 011 only
+  // exist there. Map veracross_id → student_id so downstream code is uniform.
+  if (!stu) {
+    const { data: userStu, error: userErr } = await db
+      .from("users")
+      .select("id, first_name, last_name, grade, veracross_id, parent_email, parent_name")
+      .eq("id", id)
+      .maybeSingle()
+    if (userErr) console.error("[students/[id]] users lookup error:", userErr.message)
+    if (userStu) {
+      stu = {
+        id:           userStu.id           as string,
+        first_name:   userStu.first_name   as string | null,
+        last_name:    userStu.last_name    as string | null,
+        grade:        userStu.grade        as number | null,
+        student_id:   userStu.veracross_id as string | null,
+        parent_email: userStu.parent_email as string | null,
+        parent_name:  userStu.parent_name  as string | null,
+      }
+    }
+  }
+
+  if (!stu) notFound()
   const flags     = (flagResult.data ?? []) as FlagRow[]
   const incidents = (incResult.data ?? []) as unknown as IncidentRow[]
 
@@ -172,7 +203,7 @@ export default async function StudentProfilePage({
           <div className="flex items-start justify-between mb-3">
             <div className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-black"
                  style={{ background: "#EAEAEA", color: "#888" }}>
-              {stu.last_name[0]}{stu.first_name[0]}
+              {(stu.last_name ?? "?")[0]}{(stu.first_name ?? "?")[0]}
             </div>
             {flags.length > 0 && (
               <span className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase"
