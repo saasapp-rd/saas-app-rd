@@ -7,7 +7,6 @@ import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 import LiveFeed from "@/components/LiveFeed"
 import PullButton from "@/components/coordinator/PullButton"
-import WelfareConcernLink from "@/components/WelfareConcernLink"
 
 const ALLOWED = ["coordinator","counselor","dean","admin","super_admin"]
 
@@ -17,7 +16,7 @@ interface Incident {
   status:      string
   reported_at: string
   block_id:    number | null
-  student:     { id: string; first_name: string; last_name: string; grade: number; is_active: boolean | null } | null
+  student:     { id: string; first_name: string; last_name: string; grade: number } | null
   reporter:    { display_name: string } | null
 }
 
@@ -28,12 +27,12 @@ export default async function CoordinatorPage() {
 
   const { data: incidents } = await db
     .from("incidents")
-    .select("id, level, status, reported_at, block_id, student:student_id(id, first_name, last_name, grade, is_active), reporter:reported_by(display_name)")
+    .select("id, level, status, reported_at, block_id, student:student_id(id, first_name, last_name, grade), reporter:reported_by(display_name)")
     .in("status", ["open","located"])
     .order("reported_at", { ascending: true })
 
-  const rows   = ((incidents ?? []) as unknown as Incident[]).filter(i => i.student?.is_active !== false)
-  const elev   = rows.filter(r => r.level === "elevated")
+  const rows    = (incidents ?? []) as unknown as Incident[]
+  const elev    = rows.filter(r => r.level === "elevated")
   const routine = rows.filter(r => r.level !== "elevated")
 
   function minsAgo(iso: string) {
@@ -49,11 +48,7 @@ export default async function CoordinatorPage() {
               style={{ background: "#A6192E" }}>
         <div>
           <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">Coordinator</div>
-          <div className="text-white text-[10px] opacity-70">
-            {rows.length === 0
-              ? "Queue clear"
-              : `${rows.length} active · ${elev.length} elevated`}
-          </div>
+          <div className="text-white text-[10px] opacity-70">{session.user.displayName}</div>
         </div>
         <div className="flex items-center gap-3">
           <LiveFeed />
@@ -62,23 +57,14 @@ export default async function CoordinatorPage() {
       </header>
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
       <nav className="px-5 py-2 border-b flex items-center gap-4" style={{ borderColor: "#EAEAEA" }}>
-        <Link href="/dashboard" className="text-xs font-bold"
+        <Link href="/missing" className="text-xs font-bold"
               style={{ color: "#A6192E", textDecoration: "none" }}>
-          Dashboard
+          &larr; Missing
         </Link>
-        <Link href="/missing" className="text-xs"
+        <Link href="/dean" className="text-xs"
               style={{ color: "#999", textDecoration: "none" }}>
-          Live View
+          Patterns
         </Link>
-        <Link href="/analytics" className="text-xs"
-              style={{ color: "#999", textDecoration: "none" }}>
-          Analytics
-        </Link>
-        {isCoord && (
-          <div className="ml-auto">
-            <PullButton />
-          </div>
-        )}
       </nav>
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
@@ -108,7 +94,7 @@ export default async function CoordinatorPage() {
         {rows.length === 0 && (
           <div className="rounded-xl px-4 py-8 text-center border" style={{ borderColor: "#EAEAEA" }}>
             <p className="text-sm font-bold mb-1" style={{ color: "#3D3D3D" }}>Queue clear</p>
-            <p className="text-xs mb-3" style={{ color: "#999" }}>No missing students right now.</p>
+            <p className="text-xs mb-3" style={{ color: "#999" }}>No active incidents right now.</p>
             {isCoord && <PullButton inline />}
           </div>
         )}
@@ -118,7 +104,7 @@ export default async function CoordinatorPage() {
           <div>
             <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
                style={{ color: "#CE2033" }}>
-              Elevated — {elev.length}
+              Elevated &mdash; {elev.length}
             </p>
             <div className="flex flex-col gap-1.5">
               {elev.map(r => (
@@ -154,7 +140,7 @@ export default async function CoordinatorPage() {
           <div>
             <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
                style={{ color: "#3D3D3D", opacity: 0.35 }}>
-              Routine — {routine.length}
+              Routine &mdash; {routine.length}
             </p>
             <div className="flex flex-col gap-1.5">
               {routine.map(r => (
@@ -184,8 +170,6 @@ export default async function CoordinatorPage() {
             </div>
           </div>
         )}
-
-        <WelfareConcernLink />
       </main>
     </div>
   )
