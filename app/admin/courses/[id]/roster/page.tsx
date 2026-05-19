@@ -5,6 +5,7 @@ import { db } from "@/lib/supabase"
 import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
+import CourseRoster, { RosterStudent } from "@/components/admin/CourseRoster"
 
 export const dynamic = "force-dynamic"
 
@@ -20,17 +21,6 @@ interface CourseRecord {
   course_code:  string | null
 }
 
-interface StudentRow {
-  id:           string
-  first_name:   string | null
-  last_name:    string | null
-  call_by:      string | null
-  grade:        number | null
-  veracross_id: string | null
-  is_active:    boolean | null
-  advisor_name: string | null
-}
-
 export default async function CourseRosterPage({
   params,
 }: {
@@ -42,24 +32,31 @@ export default async function CourseRosterPage({
 
   const { id } = await params
 
-  const { data: course } = await db
-    .from("courses")
-    .select("id, name, block_number, room, is_active, is_advisory, teacher_id, class_id, course_code")
-    .eq("id", id)
-    .maybeSingle()
+  // Course, enrollments, and the full active-student list (for the "Add
+  // student" picker) — fetched in parallel.
+  const [courseRes, enrollRes, allStudentsRes] = await Promise.all([
+    db.from("courses")
+      .select("id, name, block_number, room, is_active, is_advisory, teacher_id, class_id, course_code")
+      .eq("id", id)
+      .maybeSingle(),
+    db.from("student_enrollments")
+      .select("student_id")
+      .eq("course_id", id)
+      .eq("academic_year", "2025-26")
+      .range(0, 9999),
+    db.from("users")
+      .select("id, first_name, last_name, call_by, grade, veracross_id, is_active, advisor_name")
+      .eq("role", "student")
+      .eq("is_active", true)
+      .order("last_name")
+      .order("first_name")
+      .range(0, 9999),
+  ])
 
-  if (!course) notFound()
-  const c = course as CourseRecord
+  if (!courseRes.data) notFound()
+  const c = courseRes.data as CourseRecord
 
-  // Enrolled student IDs for this course
-  const { data: enrollRows } = await db
-    .from("student_enrollments")
-    .select("student_id")
-    .eq("course_id", id)
-    .eq("academic_year", "2025-26")
-    .range(0, 9999)
-
-  const studentIds = [...new Set((enrollRows ?? []).map(r => r.student_id as string))]
+  const studentIds = [...new Set((enrollRes.data ?? []).map(r => r.student_id as string))]
 
   const { data: studentRows } = studentIds.length > 0
     ? await db
@@ -68,10 +65,12 @@ export default async function CourseRosterPage({
         .in("id", studentIds)
         .order("last_name")
         .order("first_name")
-    : { data: [] as StudentRow[] }
+    : { data: [] as RosterStudent[] }
 
-  const students = (studentRows ?? []) as StudentRow[]
-  const active   = students.filter(s => s.is_active !== false)
+  const students    = (studentRows ?? []) as RosterStudent[]
+  const allStudents = (allStudentsRes.data ?? []) as RosterStudent[]
+  const active      = students.filter(s => s.is_active !== false)
+  const canEdit     = ["admin", "super_admin"].includes(session.user.role)
 
   // Teacher display
   const { data: teacherRow } = c.teacher_id
@@ -140,70 +139,12 @@ export default async function CourseRosterPage({
         </div>
 
         {/* Roster */}
-        <div>
-          <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
-             style={{ color: "#3D3D3D", opacity: 0.35 }}>
-            Enrolled — {students.length}
-          </p>
-
-          {students.length === 0 ? (
-            <p className="text-xs text-center py-8" style={{ color: "#999" }}>
-              No students enrolled yet. Run the Student Enrollments import
-              to populate this roster.
-            </p>
-          ) : (
-            <div className="flex flex-col gap-1.5">
-              {students.map(s => {
-                const name = [s.last_name, s.first_name].filter(Boolean).join(", ") || "Unknown"
-                const isActive = s.is_active !== false
-                return (
-                  <Link key={s.id} href={`/students/${s.id}`} style={{ textDecoration: "none" }}>
-                    <div className="rounded-xl border px-3 py-2 flex items-center justify-between"
-                         style={{
-                           background: isActive ? "#FAFAFA" : "#FFF5F5",
-                           borderColor: isActive ? "#EAEAEA" : "#FECACA",
-                           opacity: isActive ? 1 : 0.6,
-                         }}>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-sm font-semibold" style={{ color: "#3D3D3D" }}>
-                            {name}
-                          </span>
-                          {s.call_by && s.call_by !== s.first_name && (
-                            <span className="text-[10px]" style={{ color: "#999" }}>
-                              ({s.call_by})
-                            </span>
-                          )}
-                          {!isActive && (
-                            <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase"
-                                  style={{ background: "#FEE2E2", color: "#CE2033" }}>
-                              Inactive
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[10px]" style={{ color: "#999" }}>
-                          {s.grade ? `Gr ${s.grade}` : "No grade"}
-                          {s.veracross_id && (
-                            <span> · <span style={{ fontFamily: "monospace" }}>ID {s.veracross_id}</span></span>
-                          )}
-                          {s.advisor_name && ` · ${s.advisor_name}`}
-                        </div>
-                      </div>
-                      <span style={{ color: "#BABABA" }}>&rarr;</span>
-                    </div>
-                  </Link>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        <div className="rounded-xl px-4 py-3 text-[10px]"
-             style={{ background: "#FFFBEB", border: "1px solid #FDE68A", color: "#78350F" }}>
-          Roster is read-only for now — to add or remove students from a course,
-          re-import the Student Enrollments CSV from Veracross (Veracross stays
-          the source of truth, manual roster editing coming later).
-        </div>
+        <CourseRoster
+          courseId={c.id}
+          initialRoster={students}
+          allStudents={allStudents}
+          canEdit={canEdit}
+        />
       </main>
     </div>
   )

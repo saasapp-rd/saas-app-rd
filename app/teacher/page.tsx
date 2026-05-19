@@ -59,7 +59,7 @@ export default async function TeacherPage() {
   }
 
   const periodLabel =
-    period.type === "block"     ? `${blockFull(period.blockNumber)} · ${period.periodStart}–${period.periodEnd}` :
+    period.type === "block"     ? `${blockFull(period.blockNumber ?? 0)} · ${period.periodStart}–${period.periodEnd}` :
     period.type === "lunch"     ? "Lunch" :
     period.type === "community" ? "Community" :
                                   "Outside school hours"
