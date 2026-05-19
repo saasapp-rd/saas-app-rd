@@ -16,6 +16,15 @@ export async function POST(req: NextRequest) {
   if (!student_id)
     return NextResponse.json({ error: "student_id required" }, { status: 400 })
 
+  // Fetch student name up front — avoids a join on the insert select
+  const { data: stu } = await db
+    .from("students")
+    .select("first_name, last_name")
+    .eq("id", student_id)
+    .single()
+
+  const name = stu ? stu.last_name + ", " + stu.first_name : "Unknown"
+
   const period   = await getCurrentPeriod()
   const blockId  = period.type === "block" ? period.blockNumber : null
   const incLevel = level === "elevated" ? "elevated" : "routine"
@@ -31,13 +40,10 @@ export async function POST(req: NextRequest) {
       status:       "open",
       block_id:     blockId,
     })
-    .select("id, level, student_id, students(first_name, last_name)")
+    .select("id")
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-
-  const student = (data as any).students as { first_name: string; last_name: string } | null
-  const name    = student ? student.last_name + ", " + student.first_name : "Unknown"
 
   await sendPushToRole("coordinator", {
     title: "Coordinator Pull — " + name,
