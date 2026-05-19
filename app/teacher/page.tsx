@@ -17,7 +17,10 @@ interface Course {
   room:         string | null
 }
 
-function blockFull(n: number) { return n === 9 ? "Advisory" : "Block " + n }
+function blockFull(n: number | null | undefined): string {
+  if (n === 9) return "Advisory"
+  return n != null ? "Block " + n : "Block"
+}
 
 export default async function TeacherPage() {
   const session = await getServerSession(authOptions)
