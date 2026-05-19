@@ -57,12 +57,12 @@ export default async function StudentProfilePage({
   if (!session) redirect("/login")
   if (!ALLOWED.includes(session.user.role)) redirect("/dashboard")
 
+  // Students live in the users table post-migration 011 — the legacy
+  // students table doesn't exist on this instance. Map veracross_id →
+  // student_id so downstream rendering stays uniform.
   const [stuResult, flagResult, incResult, enrollResult] = await Promise.all([
-    // Try the students table first (legacy), then fall back to users
-    // (post-migration-011 source of truth) so profiles still load for
-    // students that only exist in users.
-    db.from("students")
-      .select("id, first_name, last_name, grade, student_id, parent_email, parent_name")
+    db.from("users")
+      .select("id, first_name, last_name, grade, veracross_id, parent_email, parent_name")
       .eq("id", id)
       .maybeSingle(),
     db.from("student_concern_flags")
@@ -80,36 +80,23 @@ export default async function StudentProfilePage({
       .order("block_number"),
   ])
 
-  if (stuResult.error) console.error("[students/[id]] students lookup error:", stuResult.error.message)
-  let stu = stuResult.data as null | {
+  if (stuResult.error) console.error("[students/[id]] users lookup error:", stuResult.error.message)
+  if (!stuResult.data) notFound()
+
+  const stuRaw = stuResult.data as {
     id: string; first_name: string | null; last_name: string | null
-    grade: number | null; student_id: string | null
+    grade: number | null; veracross_id: string | null
     parent_email: string | null; parent_name: string | null
   }
-
-  // Fall back to the users table — students added post-migration 011 only
-  // exist there. Map veracross_id → student_id so downstream code is uniform.
-  if (!stu) {
-    const { data: userStu, error: userErr } = await db
-      .from("users")
-      .select("id, first_name, last_name, grade, veracross_id, parent_email, parent_name")
-      .eq("id", id)
-      .maybeSingle()
-    if (userErr) console.error("[students/[id]] users lookup error:", userErr.message)
-    if (userStu) {
-      stu = {
-        id:           userStu.id           as string,
-        first_name:   userStu.first_name   as string | null,
-        last_name:    userStu.last_name    as string | null,
-        grade:        userStu.grade        as number | null,
-        student_id:   userStu.veracross_id as string | null,
-        parent_email: userStu.parent_email as string | null,
-        parent_name:  userStu.parent_name  as string | null,
-      }
-    }
+  const stu = {
+    id:           stuRaw.id,
+    first_name:   stuRaw.first_name,
+    last_name:    stuRaw.last_name,
+    grade:        stuRaw.grade,
+    student_id:   stuRaw.veracross_id,
+    parent_email: stuRaw.parent_email,
+    parent_name:  stuRaw.parent_name,
   }
-
-  if (!stu) notFound()
   const flags     = (flagResult.data ?? []) as FlagRow[]
   const incidents = (incResult.data ?? []) as unknown as IncidentRow[]
 
@@ -186,11 +173,11 @@ export default async function StudentProfilePage({
       </header>
 
       <nav className="px-5 py-2 border-b flex items-center gap-4" style={{ borderColor: "#EAEAEA" }}>
-        <button onClick={() => history.back()}
-                className="text-xs font-bold"
-                style={{ color: "#A6192E", background: "none", border: "none", cursor: "pointer" }}>
+        <Link href="/admin/users/student"
+              className="text-xs font-bold"
+              style={{ color: "#A6192E", textDecoration: "none" }}>
           &larr; Back
-        </button>
+        </Link>
         <Link href="/missing" className="text-xs" style={{ color: "#999", textDecoration: "none" }}>
           All Missing
         </Link>
