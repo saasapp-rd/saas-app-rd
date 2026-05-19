@@ -60,7 +60,7 @@ export default async function StudentProfilePage({
   // Students live in the users table post-migration 011 — the legacy
   // students table doesn't exist on this instance. Map veracross_id →
   // student_id so downstream rendering stays uniform.
-  const [stuResult, flagResult, incResult, enrollResult] = await Promise.all([
+  const [stuResult, flagResult, incResult, enrollResult, allCoursesResult] = await Promise.all([
     db.from("users")
       .select("id, first_name, last_name, grade, veracross_id, parent_email, parent_name")
       .eq("id", id)
@@ -78,6 +78,12 @@ export default async function StudentProfilePage({
       .select("course_id, block_number")
       .eq("student_id", id)
       .order("block_number"),
+    db.from("courses")
+      .select("id, name, block_number, room, teacher_id")
+      .eq("is_active", true)
+      .order("block_number")
+      .order("name")
+      .range(0, 9999),
   ])
 
   if (stuResult.error) console.error("[students/[id]] users lookup error:", stuResult.error.message)
@@ -100,48 +106,49 @@ export default async function StudentProfilePage({
   const flags     = (flagResult.data ?? []) as FlagRow[]
   const incidents = (incResult.data ?? []) as unknown as IncidentRow[]
 
-  // Build enrollment rows — separate queries to avoid join issues
-  const rawEnroll = enrollResult.data ?? []
-  let enrollments: {
-    courseId: string; blockNumber: number; courseName: string
+  // Build a course lookup (for both the student's enrollments and the
+  // "add a class" picker). All active courses come from allCoursesResult.
+  const allCoursesData = (allCoursesResult.data ?? []) as {
+    id: string; name: string; block_number: number | null; room: string | null; teacher_id: string | null
+  }[]
+  const teacherIds = [...new Set(allCoursesData.map(c => c.teacher_id).filter((t): t is string => !!t))]
+  const { data: teachers } = teacherIds.length
+    ? await db.from("users").select("id, display_name").in("id", teacherIds).range(0, 9999)
+    : { data: [] }
+  const teacherMap = new Map(((teachers ?? []) as { id: string; display_name: string | null }[])
+    .map(t => [t.id, t.display_name]))
+
+  type CourseOption = {
+    courseId: string; blockNumber: number | null; courseName: string
     room: string | null; teacherId: string | null; teacherName: string | null
-  }[] = []
-
-  if (rawEnroll.length > 0) {
-    const courseIds = rawEnroll.map(e => e.course_id as string)
-
-    const { data: courses } = await db
-      .from("courses")
-      .select("id, name, block_number, room, teacher_id")
-      .in("id", courseIds)
-
-    const teacherIds = [...new Set(
-      (courses ?? []).map(c => c.teacher_id).filter((t): t is string => !!t)
-    )]
-
-    const { data: teachers } = teacherIds.length
-      ? await db.from("users").select("id, display_name").in("id", teacherIds)
-      : { data: [] }
-
-    const teacherMap = new Map((teachers ?? []).map(t => [t.id as string, t.display_name as string]))
-    const courseMap  = new Map((courses  ?? []).map(c => [c.id as string, c]))
-
-    enrollments = rawEnroll
-      .map(e => {
-        const c = courseMap.get(e.course_id as string)
-        if (!c) return null
-        return {
-          courseId:    c.id           as string,
-          blockNumber: c.block_number as number,
-          courseName:  c.name         as string,
-          room:        c.room         as string | null,
-          teacherId:   c.teacher_id   as string | null,
-          teacherName: c.teacher_id ? (teacherMap.get(c.teacher_id as string) ?? null) : null,
-        }
-      })
-      .filter((e): e is NonNullable<typeof e> => e !== null)
-      .sort((a, b) => a.blockNumber - b.blockNumber)
   }
+  const allCourses: CourseOption[] = allCoursesData.map(c => ({
+    courseId:    c.id,
+    blockNumber: c.block_number,
+    courseName:  c.name,
+    room:        c.room,
+    teacherId:   c.teacher_id,
+    teacherName: c.teacher_id ? (teacherMap.get(c.teacher_id) ?? null) : null,
+  }))
+  const courseByIdForEnrollment = new Map(allCourses.map(c => [c.courseId, c]))
+
+  // Student's actual enrollments
+  const rawEnroll = enrollResult.data ?? []
+  const enrollments = rawEnroll
+    .map(e => courseByIdForEnrollment.get(e.course_id as string) ?? null)
+    .filter((c): c is CourseOption => c !== null)
+    .filter(c => c.blockNumber !== null)
+    .map(c => ({
+      courseId:    c.courseId,
+      blockNumber: c.blockNumber as number,
+      courseName:  c.courseName,
+      room:        c.room,
+      teacherId:   c.teacherId,
+      teacherName: c.teacherName,
+    }))
+    .sort((a, b) => a.blockNumber - b.blockNumber)
+
+  const canEdit = ["admin","super_admin","coordinator","counselor","dean"].includes(session.user.role)
 
   const canManageFlags = FLAG_ALLOWED.includes(session.user.role)
   const now            = Date.now()
@@ -237,7 +244,12 @@ export default async function StudentProfilePage({
              style={{ color: "#3D3D3D", opacity: 0.35 }}>
             Schedule &mdash; {enrollments.length} {enrollments.length === 1 ? "class" : "classes"}
           </p>
-          <StudentSchedule studentId={stu.id} initialEnrollments={enrollments} />
+          <StudentSchedule
+            studentId={stu.id}
+            initialEnrollments={enrollments}
+            allCourses={allCourses}
+            canEdit={canEdit}
+          />
         </div>
 
         {/* Concern flags */}
