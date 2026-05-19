@@ -90,7 +90,8 @@ export default function StudentSchedule({
       })
   }
 
-  // General picker — overlays + placeholder courses
+  // General picker — overlays + placeholder courses.
+  // No truncation: scroll handles whatever the search returns.
   const generalResults = useMemo(() => {
     const q = generalSearch.trim().toLowerCase()
     return allCourses
@@ -101,7 +102,16 @@ export default function StudentSchedule({
           || (c.teacherName ?? "").toLowerCase().includes(q)
           || (c.room        ?? "").toLowerCase().includes(q)
       })
-      .slice(0, 30)
+      .sort((a, b) => {
+        // Real-block matches first, placeholders last, then alphabetical
+        const aPh = a.blockNumber === null ? 1 : 0
+        const bPh = b.blockNumber === null ? 1 : 0
+        if (aPh !== bPh) return aPh - bPh
+        const aBlock = a.blockNumber ?? 99
+        const bBlock = b.blockNumber ?? 99
+        if (aBlock !== bBlock) return aBlock - bBlock
+        return a.courseName.localeCompare(b.courseName)
+      })
   }, [allCourses, enrolledIds, generalSearch])
 
   async function remove(courseId: string) {
@@ -209,14 +219,20 @@ export default function StudentSchedule({
                 </div>
 
                 {isPickerOpen && (
-                  <div className="px-4 py-3 border-t"
+                  <div className="px-4 py-3 border-t flex flex-col gap-2"
                        style={{ background: "#fff", borderColor: "#EAEAEA" }}>
                     {blockCourses.length === 0 ? (
                       <p className="text-xs py-2 text-center" style={{ color: "#999" }}>
                         No active courses available for {blockLabel(block).toLowerCase()}.
                       </p>
                     ) : (
-                      <div className="flex flex-col gap-1 max-h-72 overflow-y-auto">
+                      <>
+                        <p className="text-[10px] font-bold uppercase tracking-wider"
+                           style={{ color: "#999" }}>
+                          {blockCourses.length} option{blockCourses.length === 1 ? "" : "s"} · scroll to browse
+                        </p>
+                        <div className="flex flex-col gap-1 overflow-y-auto rounded-lg"
+                             style={{ maxHeight: "60vh", border: "1px solid #EAEAEA" }}>
                         {blockCourses.map(c => {
                           const isBusy      = adding === c.courseId
                           const isPlaceholder = c.blockNumber === null
@@ -253,7 +269,8 @@ export default function StudentSchedule({
                             </button>
                           )
                         })}
-                      </div>
+                        </div>
+                      </>
                     )}
                   </div>
                 )}
@@ -355,7 +372,14 @@ export default function StudentSchedule({
                   {generalSearch ? "No matching courses." : "All active courses already enrolled."}
                 </p>
               ) : (
-                <div className="flex flex-col gap-1 max-h-96 overflow-y-auto">
+                <>
+                  <p className="text-[10px] font-bold uppercase tracking-wider"
+                     style={{ color: "#999" }}>
+                    {generalResults.length} course{generalResults.length === 1 ? "" : "s"}
+                    {!generalSearch && " · scroll to browse"}
+                  </p>
+                  <div className="flex flex-col gap-1 overflow-y-auto rounded-lg"
+                       style={{ maxHeight: "60vh", border: "1px solid #EAEAEA" }}>
                   {generalResults.map(c => {
                     const isBusy = adding === c.courseId
                     const blockHasOverlap = c.blockNumber !== null && (rowsByBlock.get(c.blockNumber)?.length ?? 0) > 0
@@ -394,7 +418,8 @@ export default function StudentSchedule({
                       </button>
                     )
                   })}
-                </div>
+                  </div>
+                </>
               )}
             </div>
           )}
