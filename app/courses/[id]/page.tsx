@@ -9,6 +9,8 @@ export const dynamic = "force-dynamic"
 
 const ALLOWED = ["coordinator","counselor","dean","admin","super_admin","teacher","staff"]
 
+function blockFull(n: number) { return n === 9 ? "Advisory" : "Block " + n }
+
 export default async function CourseDetailPage({
   params,
 }: {
@@ -27,12 +29,10 @@ export default async function CourseDetailPage({
 
   if (error || !course) notFound()
 
-  // Teacher
   const { data: teacher } = course.teacher_id
     ? await db.from("users").select("id, display_name, email").eq("id", course.teacher_id).single()
     : { data: null }
 
-  // Enrolled students
   const { data: enrollData } = await db
     .from("student_enrollments")
     .select("student_id")
@@ -57,11 +57,9 @@ export default async function CourseDetailPage({
       <header className="px-5 py-3.5 flex items-center justify-between"
               style={{ background: "#A6192E" }}>
         <div>
-          <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">
-            Course Detail
-          </div>
+          <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">Course Detail</div>
           <div className="text-white text-[10px] opacity-70">
-            Block {course.block_number} &middot; {course.academic_year ?? ""}
+            {blockFull(course.block_number as number)} &middot; {course.academic_year ?? ""}
           </div>
         </div>
         <SignOutButton />
@@ -77,19 +75,23 @@ export default async function CourseDetailPage({
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
 
-        {/* Course info card */}
+        {/* Course info */}
         <div className="rounded-xl p-4 border" style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
-          <h1 className="text-lg font-black mb-1" style={{ color: "#3D3D3D" }}>
-            {course.name}
-          </h1>
-          <div className="flex flex-wrap gap-3 text-[10px] mb-3" style={{ color: "#999" }}>
+          <h1 className="text-lg font-black mb-1" style={{ color: "#3D3D3D" }}>{course.name}</h1>
+          <div className="flex flex-wrap gap-2 text-[10px] mb-3">
             <span className="font-bold px-2 py-0.5 rounded"
                   style={{ background: "#EAEAEA", color: "#3D3D3D" }}>
-              Block {course.block_number}
+              {blockFull(course.block_number as number)}
             </span>
-            {course.course_code && <span>{course.course_code}</span>}
-            {course.room        && <span>Room {course.room}</span>}
-            {course.academic_year && <span>{course.academic_year}</span>}
+            {course.course_code  && (
+              <span style={{ color: "#999" }}>{course.course_code}</span>
+            )}
+            {course.room         && (
+              <span style={{ color: "#999" }}>Room {course.room}</span>
+            )}
+            {course.academic_year && (
+              <span style={{ color: "#999" }}>{course.academic_year}</span>
+            )}
           </div>
 
           {/* Teacher */}
@@ -125,9 +127,7 @@ export default async function CourseDetailPage({
             Roster &mdash; {roster.length} {roster.length === 1 ? "student" : "students"}
           </p>
           {roster.length === 0 ? (
-            <p className="text-xs text-center py-6" style={{ color: "#999" }}>
-              No students enrolled.
-            </p>
+            <p className="text-xs text-center py-6" style={{ color: "#999" }}>No students enrolled.</p>
           ) : (
             <div className="flex flex-col gap-1.5">
               {roster.map(s => (
