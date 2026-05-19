@@ -5,8 +5,6 @@ import { db } from "@/lib/supabase"
 import SignOutButton from "@/components/SignOutButton"
 import Link from "next/link"
 import FlagManager from "@/components/counselor/FlagManager"
-import StudentSchedule from "@/components/admin/StudentSchedule"
-import type { EnrollmentRow, CourseOption } from "@/components/admin/StudentSchedule"
 
 const ALLOWED      = ["coordinator","counselor","dean","admin","super_admin","teacher","staff"]
 const FLAG_ALLOWED = ["counselor","dean","admin","super_admin"]
@@ -30,15 +28,15 @@ const STATUS_STYLE: Record<string, { bg: string; color: string; label: string }>
 }
 
 interface IncidentRow {
-  id:           string
-  level:        string
-  status:       string
-  report_type:  string
-  reported_at:  string
-  resolved_at:  string | null
-  block_id:     number | null
+  id:               string
+  level:            string
+  status:           string
+  report_type:      string
+  reported_at:      string
+  resolved_at:      string | null
+  block_id:         number | null
   located_location: string | null
-  reporter:     { display_name: string } | null
+  reporter:         { display_name: string } | null
 }
 
 interface FlagRow {
@@ -46,6 +44,15 @@ interface FlagRow {
   flag_level:  string
   public_note: string | null
   flagged_at:  string
+}
+
+interface EnrollRow {
+  courseId:    string
+  blockNumber: number
+  courseName:  string
+  room:        string | null
+  teacherId:   string | null
+  teacherName: string | null
 }
 
 export default async function StudentProfilePage({
@@ -58,13 +65,10 @@ export default async function StudentProfilePage({
   if (!session) redirect("/login")
   if (!ALLOWED.includes(session.user.role)) redirect("/dashboard")
 
-  const canEdit = ["admin", "super_admin"].includes(session.user.role)
-
-  const [stuResult, flagResult, incResult, enrollResult, courseResult] = await Promise.all([
-    db.from("users")
-      .select("id, first_name, last_name, grade, veracross_id, parent_email, parent_name, call_by")
+  const [stuResult, flagResult, incResult, enrollResult] = await Promise.all([
+    db.from("students")
+      .select("id, first_name, last_name, grade, student_id, parent_email, parent_name")
       .eq("id", id)
-      .eq("role", "student")
       .single(),
     db.from("student_concern_flags")
       .select("id, flag_level, public_note, flagged_at")
@@ -76,24 +80,55 @@ export default async function StudentProfilePage({
       .order("reported_at", { ascending: false })
       .limit(50),
     db.from("student_enrollments")
-      .select("id, course_id, block_number, course:course_id(id, name, room, is_advisory, teacher:teacher_id(display_name))")
+      .select("course_id, block_number")
       .eq("student_id", id)
       .order("block_number"),
-    canEdit
-      ? db.from("courses")
-          .select("id, name, block_number, room, is_advisory, teacher:teacher_id(display_name)")
-          .eq("is_active", true)
-          .order("block_number")
-          .order("name")
-      : Promise.resolve({ data: [], error: null }),
   ])
 
   if (stuResult.error || !stuResult.data) notFound()
-  const stu         = stuResult.data
-  const flags       = (flagResult.data ?? []) as FlagRow[]
-  const incidents   = (incResult.data ?? []) as unknown as IncidentRow[]
-  const enrollments = (enrollResult.data ?? []) as unknown as EnrollmentRow[]
-  const allCourses  = (courseResult.data  ?? []) as unknown as CourseOption[]
+  const stu       = stuResult.data
+  const flags     = (flagResult.data ?? []) as FlagRow[]
+  const incidents = (incResult.data ?? []) as unknown as IncidentRow[]
+
+  // Build enrollment rows with course + teacher info via separate queries
+  const rawEnroll = enrollResult.data ?? []
+  let enrollments: EnrollRow[] = []
+
+  if (rawEnroll.length > 0) {
+    const courseIds = rawEnroll.map(e => e.course_id as string)
+
+    const { data: courses } = await db
+      .from("courses")
+      .select("id, name, block_number, room, teacher_id")
+      .in("id", courseIds)
+
+    const teacherIds = [...new Set(
+      (courses ?? []).map(c => c.teacher_id).filter((t): t is string => !!t)
+    )]
+
+    const { data: teachers } = teacherIds.length
+      ? await db.from("users").select("id, display_name").in("id", teacherIds)
+      : { data: [] }
+
+    const teacherMap = new Map((teachers ?? []).map(t => [t.id as string, t.display_name as string]))
+    const courseMap  = new Map((courses  ?? []).map(c => [c.id as string, c]))
+
+    enrollments = rawEnroll
+      .map(e => {
+        const c = courseMap.get(e.course_id as string)
+        if (!c) return null
+        return {
+          courseId:    c.id    as string,
+          blockNumber: c.block_number as number,
+          courseName:  c.name  as string,
+          room:        c.room  as string | null,
+          teacherId:   c.teacher_id as string | null,
+          teacherName: c.teacher_id ? (teacherMap.get(c.teacher_id as string) ?? null) : null,
+        }
+      })
+      .filter((e): e is EnrollRow => e !== null)
+      .sort((a, b) => a.blockNumber - b.blockNumber)
+  }
 
   const canManageFlags = FLAG_ALLOWED.includes(session.user.role)
   const now            = Date.now()
@@ -118,19 +153,20 @@ export default async function StudentProfilePage({
         <div>
           <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">Student Profile</div>
           <div className="text-white text-[10px] opacity-70">
-            {stu.last_name ?? "—"}, {stu.first_name ?? "—"} &middot; Grade {stu.grade}
+            {stu.last_name}, {stu.first_name} &middot; Grade {stu.grade}
           </div>
         </div>
         <SignOutButton />
       </header>
 
       <nav className="px-5 py-2 border-b flex items-center gap-4" style={{ borderColor: "#EAEAEA" }}>
-        <Link href="/admin/users/student" className="text-xs font-bold"
-              style={{ color: "#A6192E", textDecoration: "none" }}>
+        <button onClick={() => history.back()}
+                className="text-xs font-bold"
+                style={{ color: "#A6192E", background: "none", border: "none", cursor: "pointer" }}>
           &larr; Back
-        </Link>
+        </button>
         <Link href="/missing" className="text-xs" style={{ color: "#999", textDecoration: "none" }}>
-          Live View
+          All Missing
         </Link>
       </nav>
 
@@ -141,7 +177,7 @@ export default async function StudentProfilePage({
           <div className="flex items-start justify-between mb-3">
             <div className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-black"
                  style={{ background: "#EAEAEA", color: "#888" }}>
-              {(stu.last_name ?? "?")[0]}{(stu.first_name ?? "?")[0]}
+              {stu.last_name[0]}{stu.first_name[0]}
             </div>
             {flags.length > 0 && (
               <span className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase"
@@ -154,27 +190,13 @@ export default async function StudentProfilePage({
             )}
           </div>
           <h1 className="text-lg font-black mb-0.5" style={{ color: "#3D3D3D" }}>
-            {stu.last_name ?? "—"}, {stu.first_name ?? "—"}
+            {stu.last_name}, {stu.first_name}
           </h1>
           <div className="flex flex-wrap gap-3 text-[10px]" style={{ color: "#999" }}>
             <span>Grade {stu.grade}</span>
-            {stu.veracross_id && <span>ID: {stu.veracross_id}</span>}
+            {stu.student_id && <span>ID: {stu.student_id}</span>}
             {stu.parent_email && <span>{stu.parent_email}</span>}
           </div>
-        </div>
-
-        {/* Schedule */}
-        <div>
-          <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
-             style={{ color: "#3D3D3D", opacity: 0.35 }}>
-            Schedule — {enrollments.length} block{enrollments.length !== 1 ? "s" : ""} enrolled
-          </p>
-          <StudentSchedule
-            studentId={stu.id}
-            enrollments={enrollments}
-            allCourses={allCourses}
-            canEdit={canEdit}
-          />
         </div>
 
         {/* Stats */}
@@ -196,13 +218,64 @@ export default async function StudentProfilePage({
           </div>
         </div>
 
-        {/* Concern flags — view + manage */}
+        {/* Schedule / Enrollments */}
+        <div>
+          <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
+             style={{ color: "#3D3D3D", opacity: 0.35 }}>
+            Schedule &mdash; {enrollments.length} {enrollments.length === 1 ? "class" : "classes"}
+          </p>
+          {enrollments.length === 0 ? (
+            <p className="text-xs text-center py-3" style={{ color: "#999" }}>
+              No schedule on file. Import a class schedule via CSV.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              {enrollments.map(e => (
+                <div key={e.courseId}
+                     className="rounded-xl px-4 py-3 border flex items-center gap-3"
+                     style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
+                  {/* Block badge */}
+                  <span className="w-8 h-8 rounded-lg flex items-center justify-center text-[11px] font-black flex-shrink-0"
+                        style={{ background: "#EAEAEA", color: "#3D3D3D" }}>
+                    B{e.blockNumber}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    {/* Course name — links to course detail */}
+                    <Link href={"/courses/" + e.courseId} style={{ textDecoration: "none" }}>
+                      <p className="text-sm font-semibold truncate"
+                         style={{ color: "#A6192E" }}>
+                        {e.courseName}
+                        <span className="ml-1 text-[9px]">&#x2197;</span>
+                      </p>
+                    </Link>
+                    {/* Teacher — links to teacher profile */}
+                    {e.teacherId ? (
+                      <Link href={"/teachers/" + e.teacherId} style={{ textDecoration: "none" }}>
+                        <p className="text-[10px]" style={{ color: "#999" }}>
+                          {e.teacherName ?? "Unknown teacher"} ›
+                        </p>
+                      </Link>
+                    ) : (
+                      <p className="text-[10px]" style={{ color: "#BABABA" }}>No teacher assigned</p>
+                    )}
+                  </div>
+                  {e.room && (
+                    <span className="text-[9px] flex-shrink-0" style={{ color: "#BABABA" }}>
+                      {e.room}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Concern flags */}
         <div>
           <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
              style={{ color: "#3D3D3D", opacity: 0.35 }}>
             Concern Flags {flags.length > 0 ? "— " + flags.length : ""}
           </p>
-
           {canManageFlags ? (
             <FlagManager studentId={stu.id} initialFlags={flags} />
           ) : (
@@ -237,20 +310,17 @@ export default async function StudentProfilePage({
         <div>
           <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
              style={{ color: "#3D3D3D", opacity: 0.35 }}>
-            History &mdash; {incidents.length}
+            Incident History &mdash; {incidents.length}
           </p>
-
           {incidents.length === 0 && (
-            <p className="text-xs text-center py-6" style={{ color: "#999" }}>No history on record.</p>
+            <p className="text-xs text-center py-6" style={{ color: "#999" }}>No incidents on record.</p>
           )}
-
           <div className="flex flex-col gap-1.5">
             {incidents.map(inc => {
               const lvl = LEVEL_STYLE[inc.level]  ?? LEVEL_STYLE["routine"]
               const sta = STATUS_STYLE[inc.status] ?? STATUS_STYLE["open"]
               return (
-                <Link key={inc.id} href={"/coordinator/" + inc.id}
-                      style={{ textDecoration: "none" }}>
+                <Link key={inc.id} href={"/coordinator/" + inc.id} style={{ textDecoration: "none" }}>
                   <div className="rounded-xl px-4 py-3 border flex items-center gap-3"
                        style={{
                          background:  inc.level === "elevated" ? "#FFF8F8" : "#FAFAFA",
@@ -267,7 +337,7 @@ export default async function StudentProfilePage({
                       <p className="text-[10px]" style={{ color: "#999" }}>
                         {fmtDate(inc.reported_at)}
                         {inc.block_id ? " · Block " + inc.block_id : ""}
-                        {inc.reporter ? " · " + inc.reporter.display_name : ""}
+                        {inc.reporter ? " · " + (inc.reporter as any).display_name : ""}
                         {inc.located_location ? " · " + inc.located_location : ""}
                       </p>
                     </div>
