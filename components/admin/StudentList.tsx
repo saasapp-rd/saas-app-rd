@@ -284,33 +284,39 @@ export default function StudentList({
         </div>
       )}
 
-      {/* Schedule issues / variant-OK status bar — clicking either chip
-          toggles its filter. Active filter shows as a banner-style
-          "✕ Showing …" indicator. */}
-      {(scheduleIssuesCount > 0 || variantOkCount > 0) && (
-        <div className="flex flex-wrap gap-1.5">
-          {scheduleIssuesCount > 0 && (
-            <button type="button" onClick={toggleScheduleIssues}
-              className="text-[10px] font-bold px-2.5 py-1 rounded-full"
-              style={{
-                background: scheduleIssuesOnly ? "#CE2033" : "#FEE2E2",
-                color:      scheduleIssuesOnly ? "#fff"    : "#CE2033",
-                border: "none", cursor: "pointer",
-              }}>
-              {scheduleIssuesOnly ? "✕ Showing schedule issues" : `⚠ ${scheduleIssuesCount} schedule issue${scheduleIssuesCount === 1 ? "" : "s"}`}
-            </button>
-          )}
-          {variantOkOnly && (
-            <button type="button" onClick={toggleVariantOk}
-              className="text-[10px] font-bold px-2.5 py-1 rounded-full"
-              style={{
-                background: "#A06000", color: "#fff",
-                border: "none", cursor: "pointer",
-              }}>
-              ✕ Showing Variant OK students
-            </button>
-          )}
-        </div>
+      {/* Schedule issues / variant-OK status:
+          - Idle: small red pill "⚠ N schedule issues"
+          - Active (either filter): full-width banner — wider visual
+            since the filter is the dominant frame of the list. */}
+      {scheduleIssuesOnly && (
+        <button type="button" onClick={toggleScheduleIssues}
+          className="w-full text-[10px] font-bold py-2 rounded-xl"
+          style={{
+            background: "#CE2033", color: "#fff",
+            border: "none", cursor: "pointer",
+          }}>
+          ✕ Showing schedule issues
+        </button>
+      )}
+      {variantOkOnly && (
+        <button type="button" onClick={toggleVariantOk}
+          className="w-full text-[10px] font-bold py-2 rounded-xl"
+          style={{
+            background: "#A06000", color: "#fff",
+            border: "none", cursor: "pointer",
+          }}>
+          ✕ Showing Variant OK students
+        </button>
+      )}
+      {!scheduleIssuesOnly && !variantOkOnly && scheduleIssuesCount > 0 && (
+        <button type="button" onClick={toggleScheduleIssues}
+          className="self-start text-[10px] font-bold px-2.5 py-1 rounded-full"
+          style={{
+            background: "#FEE2E2", color: "#CE2033",
+            border: "none", cursor: "pointer",
+          }}>
+          ⚠ {scheduleIssuesCount} schedule issue{scheduleIssuesCount === 1 ? "" : "s"}
+        </button>
       )}
 
       {/* Count + inactive / variant-ok toggles */}
@@ -323,15 +329,16 @@ export default function StudentList({
           }
         </p>
         <div className="flex items-center gap-1.5">
-          {variantOkCount > 0 && (
+          {/* Hide the variant-ok pill while its banner is active up top —
+              the banner already provides the dismiss affordance. */}
+          {variantOkCount > 0 && !variantOkOnly && (
             <button type="button" onClick={toggleVariantOk}
               className="text-[9px] font-bold px-2 py-0.5 rounded-full"
               style={{
-                background: variantOkOnly ? "#FFF1D6" : "#F4F4F4",
-                color:      variantOkOnly ? "#A06000" : "#999",
+                background: "#F4F4F4", color: "#999",
                 border: "none", cursor: "pointer",
               }}>
-              {variantOkOnly ? `Hide variant OK` : `+${variantOkCount} variant ok`}
+              +{variantOkCount} variant ok
             </button>
           )}
           {inactiveCount > 0 && (
