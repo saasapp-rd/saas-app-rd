@@ -1,3 +1,4 @@
+
 "use client"
 import { useState, useMemo } from "react"
 import Link from "next/link"
@@ -23,10 +24,9 @@ export interface CourseOption {
 
 const ALL_BLOCKS = [1, 2, 3, 4, 5, 6, 7, 8, 9]
 
-/** Short badge label: block 9 = "ADV", others = "B1"…"B8" */
 function blockBadge(n: number | null) {
-  if (n === null)      return "?"
-  if (n === 9)         return "ADV"
+  if (n === null) return "?"
+  if (n === 9)    return "ADV"
   return "B" + n
 }
 
@@ -45,15 +45,15 @@ export default function StudentSchedule({
   allCourses?:         CourseOption[]
   canEdit?:            boolean
 }) {
-  const [enrollments,     setEnrollments]     = useState(initialEnrollments)
-  const [deleting,        setDeleting]        = useState<string | null>(null)
-  const [adding,          setAdding]          = useState<string | null>(null)
-  const [pickerForBlock,  setPickerForBlock]  = useState<number | null>(null)
-  const [generalOpen,     setGeneralOpen]     = useState(false)
-  const [generalSearch,   setGeneralSearch]   = useState("")
-  const [error,           setError]           = useState("")
+  const [enrollments,    setEnrollments]    = useState(initialEnrollments)
+  const [deleting,       setDeleting]       = useState<string | null>(null)
+  const [adding,         setAdding]         = useState<string | null>(null)
+  const [pickerForBlock, setPickerForBlock] = useState<number | null>(null)
+  const [generalOpen,    setGeneralOpen]    = useState(false)
+  const [generalSearch,  setGeneralSearch]  = useState("")
+  const [error,          setError]          = useState("")
+  const [showOkOnly,     setShowOkOnly]     = useState(false)
 
-  // Bucket enrollments by block
   const rowsByBlock = useMemo(() => {
     const m = new Map<number, Enrollment[]>()
     for (const e of enrollments) {
@@ -69,30 +69,40 @@ export default function StudentSchedule({
     [rowsByBlock]
   )
 
+  // Schedule health summary
+  const health = useMemo(() => {
+    let ok = 0, conflicts = 0, empty = 0
+    for (const block of ALL_BLOCKS) {
+      const rows = rowsByBlock.get(block) ?? []
+      if (rows.length === 0)      empty++
+      else if (rows.length === 1) ok++
+      else                        conflicts++
+    }
+    return { ok, conflicts, empty }
+  }, [rowsByBlock])
+
   const enrolledIds = useMemo(
     () => new Set(enrollments.map(e => e.courseId)),
     [enrollments]
   )
 
+  // Which blocks to render — filter to OK-only when toggle is on
+  const visibleBlocks = useMemo(() => {
+    if (!showOkOnly) return ALL_BLOCKS
+    return ALL_BLOCKS.filter(b => (rowsByBlock.get(b)?.length ?? 0) === 1)
+  }, [showOkOnly, rowsByBlock])
+
   function coursesForBlock(b: number): CourseOption[] {
-    // Include placeholders (block_number === null) so Options / Directed
-    // Study / other un-blocked courses can be slotted into the block
-    // the admin clicked. The enrollment row carries its own block_number,
-    // so the same placeholder course can serve different blocks for
-    // different students.
     return allCourses
       .filter(c => (c.blockNumber === b || c.blockNumber === null) && !enrolledIds.has(c.courseId))
       .sort((a, b) => {
-        // Real-block matches first, placeholders last
-        const aPlaceholder = a.blockNumber === null ? 1 : 0
-        const bPlaceholder = b.blockNumber === null ? 1 : 0
-        if (aPlaceholder !== bPlaceholder) return aPlaceholder - bPlaceholder
+        const aP = a.blockNumber === null ? 1 : 0
+        const bP = b.blockNumber === null ? 1 : 0
+        if (aP !== bP) return aP - bP
         return a.courseName.localeCompare(b.courseName)
       })
   }
 
-  // General picker — overlays + placeholder courses.
-  // No truncation: scroll handles whatever the search returns.
   const generalResults = useMemo(() => {
     const q = generalSearch.trim().toLowerCase()
     return allCourses
@@ -104,7 +114,6 @@ export default function StudentSchedule({
           || (c.room        ?? "").toLowerCase().includes(q)
       })
       .sort((a, b) => {
-        // Real-block matches first, placeholders last, then alphabetical
         const aPh = a.blockNumber === null ? 1 : 0
         const bPh = b.blockNumber === null ? 1 : 0
         if (aPh !== bPh) return aPh - bPh
@@ -170,7 +179,48 @@ export default function StudentSchedule({
   return (
     <div className="flex flex-col gap-2">
 
-      {/* Conflict banner */}
+      {/* ── Schedule health bar — always visible ── */}
+      <div className="rounded-xl px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap"
+           style={{
+             background:   hasConflicts ? "#FFF8F8" : health.empty > 0 ? "#FAFAFA" : "#F0FDF4",
+             border: "1px solid " + (hasConflicts ? "#FFCCCC" : health.empty > 0 ? "#EAEAEA" : "#86EFAC"),
+           }}>
+        <div className="flex items-center gap-3 text-[10px] font-bold flex-wrap">
+          {/* OK count */}
+          <span style={{ color: "#166534" }}>
+            ✓ {health.ok} block{health.ok !== 1 ? "s" : ""} OK
+          </span>
+          {/* Conflict count — only when relevant */}
+          {health.conflicts > 0 && (
+            <span style={{ color: "#CE2033" }}>
+              ⚠ {health.conflicts} conflict{health.conflicts !== 1 ? "s" : ""}
+            </span>
+          )}
+          {/* Empty count — only when relevant */}
+          {health.empty > 0 && (
+            <span style={{ color: "#999" }}>
+              ○ {health.empty} empty
+            </span>
+          )}
+        </div>
+
+        {/* Toggle: always show, shows effect when there are non-OK blocks */}
+        {(health.conflicts > 0 || health.empty > 0) && (
+          <button
+            onClick={() => { setShowOkOnly(v => !v); setPickerForBlock(null) }}
+            className="text-[10px] font-bold px-2.5 py-1 rounded-lg flex-shrink-0"
+            style={{
+              background: showOkOnly ? "#166534"  : "#F0FDF4",
+              color:      showOkOnly ? "#fff"     : "#166534",
+              border:     "1px solid " + (showOkOnly ? "#166534" : "#86EFAC"),
+              cursor: "pointer",
+            }}>
+            {showOkOnly ? "Show all blocks" : "Show OK only"}
+          </button>
+        )}
+      </div>
+
+      {/* Conflict detail banner */}
       {hasConflicts && (
         <div className="rounded-xl px-4 py-2.5"
              style={{ background: "#FFF8E0", border: "1px solid #FDE68A" }}>
@@ -181,14 +231,15 @@ export default function StudentSchedule({
         </div>
       )}
 
-      {/* Schedule — fixed 9-block grid */}
+      {/* ── Block grid ── */}
       <div className="flex flex-col gap-1.5">
-        {ALL_BLOCKS.flatMap(block => {
+        {visibleBlocks.flatMap(block => {
           const rows = rowsByBlock.get(block) ?? []
 
           if (rows.length === 0) {
-            const isPickerOpen = pickerForBlock === block
-            const blockCourses = coursesForBlock(block)
+            // Empty block — skip in OK-only mode (already filtered by visibleBlocks)
+            const isPickerOpen  = pickerForBlock === block
+            const blockCourses  = coursesForBlock(block)
             return [(
               <div key={`empty-${block}`} className="rounded-xl border overflow-hidden"
                    style={{ borderColor: "#EAEAEA" }}>
@@ -199,12 +250,8 @@ export default function StudentSchedule({
                     {blockBadge(block)}
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold" style={{ color: "#999" }}>
-                      No class
-                    </p>
-                    <p className="text-[10px]" style={{ color: "#BABABA" }}>
-                      {blockLabel(block)}
-                    </p>
+                    <p className="text-sm font-semibold" style={{ color: "#999" }}>No class</p>
+                    <p className="text-[10px]" style={{ color: "#BABABA" }}>{blockLabel(block)}</p>
                   </div>
                   {canEdit && (
                     <button onClick={() => setPickerForBlock(isPickerOpen ? null : block)}
@@ -232,45 +279,44 @@ export default function StudentSchedule({
                            style={{ color: "#999" }}>
                           {blockCourses.length} option{blockCourses.length === 1 ? "" : "s"} · scroll to browse
                         </p>
-                        <ScrollList maxHeight={320}
-                                    className="flex flex-col gap-1 rounded-lg"
+                        <ScrollList maxHeight={320} className="flex flex-col gap-1 rounded-lg"
                                     style={{ border: "1px solid #EAEAEA" }}>
-                        {blockCourses.map(c => {
-                          const isBusy      = adding === c.courseId
-                          const isPlaceholder = c.blockNumber === null
-                          return (
-                            <button key={c.courseId} onClick={() => add(c, block)} disabled={isBusy}
-                              className="flex items-center gap-2 px-3 py-2 rounded-lg text-left"
-                              style={{
-                                background: isPlaceholder ? "#FFFBEB" : "#FAFAFA",
-                                border:     `1px solid ${isPlaceholder ? "#FDE68A" : "#EAEAEA"}`,
-                                cursor: "pointer", opacity: isBusy ? 0.5 : 1,
-                              }}>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <p className="text-xs font-semibold truncate" style={{ color: "#3D3D3D" }}>
-                                    {c.courseName}
+                          {blockCourses.map(c => {
+                            const isBusy        = adding === c.courseId
+                            const isPlaceholder = c.blockNumber === null
+                            return (
+                              <button key={c.courseId} onClick={() => add(c, block)} disabled={isBusy}
+                                className="flex items-center gap-2 px-3 py-2 rounded-lg text-left"
+                                style={{
+                                  background: isPlaceholder ? "#FFFBEB" : "#FAFAFA",
+                                  border:     `1px solid ${isPlaceholder ? "#FDE68A" : "#EAEAEA"}`,
+                                  cursor: "pointer", opacity: isBusy ? 0.5 : 1,
+                                }}>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <p className="text-xs font-semibold truncate" style={{ color: "#3D3D3D" }}>
+                                      {c.courseName}
+                                    </p>
+                                    {isPlaceholder && (
+                                      <span className="text-[8px] font-bold px-1 py-0.5 rounded uppercase flex-shrink-0"
+                                            style={{ background: "#FDE68A", color: "#78350F" }}>
+                                        Options / Unblocked
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-[10px] truncate" style={{ color: "#999" }}>
+                                    {c.teacherName ?? "No teacher"}
+                                    {c.room ? ` · ${c.room}` : ""}
+                                    {isPlaceholder && ` · will land in ${blockLabel(block).toLowerCase()}`}
                                   </p>
-                                  {isPlaceholder && (
-                                    <span className="text-[8px] font-bold px-1 py-0.5 rounded uppercase flex-shrink-0"
-                                          style={{ background: "#FDE68A", color: "#78350F" }}>
-                                      Options / Unblocked
-                                    </span>
-                                  )}
                                 </div>
-                                <p className="text-[10px] truncate" style={{ color: "#999" }}>
-                                  {c.teacherName ?? "No teacher"}
-                                  {c.room ? ` · ${c.room}` : ""}
-                                  {isPlaceholder && ` · will land in ${blockLabel(block).toLowerCase()}`}
-                                </p>
-                              </div>
-                              <span className="text-[10px] font-bold flex-shrink-0"
-                                    style={{ color: "#1E5FA6" }}>
-                                {isBusy ? "…" : "+ Add"}
-                              </span>
-                            </button>
-                          )
-                        })}
+                                <span className="text-[10px] font-bold flex-shrink-0"
+                                      style={{ color: "#1E5FA6" }}>
+                                  {isBusy ? "…" : "+ Add"}
+                                </span>
+                              </button>
+                            )
+                          })}
                         </ScrollList>
                       </>
                     )}
@@ -280,7 +326,6 @@ export default function StudentSchedule({
             )]
           }
 
-          // Filled block — render each enrolled course
           return rows.map(e => {
             const conflict = rows.length > 1
             return (
@@ -335,12 +380,17 @@ export default function StudentSchedule({
             )
           })
         })}
+
+        {showOkOnly && health.ok === 0 && (
+          <p className="text-xs text-center py-4" style={{ color: "#999" }}>
+            No conflict-free blocks yet.
+          </p>
+        )}
       </div>
 
-      {/* General add — for overlays + placeholder (no-block) courses */}
-      {canEdit && (
-        <div className="rounded-xl border mt-1 overflow-hidden"
-             style={{ borderColor: "#EAEAEA" }}>
+      {/* General add */}
+      {canEdit && !showOkOnly && (
+        <div className="rounded-xl border mt-1 overflow-hidden" style={{ borderColor: "#EAEAEA" }}>
           <button onClick={() => { setGeneralOpen(o => !o); if (generalOpen) setGeneralSearch("") }}
             className="w-full px-4 py-2.5 flex items-center justify-between"
             style={{ background: generalOpen ? "#FFF8F8" : "#FAFAFA", border: "none", cursor: "pointer" }}>
@@ -375,52 +425,49 @@ export default function StudentSchedule({
                 </p>
               ) : (
                 <>
-                  <p className="text-[10px] font-bold uppercase tracking-wider"
-                     style={{ color: "#999" }}>
+                  <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: "#999" }}>
                     {generalResults.length} course{generalResults.length === 1 ? "" : "s"}
                     {!generalSearch && " · scroll to browse"}
                   </p>
-                  <ScrollList maxHeight={400}
-                              className="flex flex-col gap-1 rounded-lg"
+                  <ScrollList maxHeight={400} className="flex flex-col gap-1 rounded-lg"
                               style={{ border: "1px solid #EAEAEA" }}>
-                  {generalResults.map(c => {
-                    const isBusy = adding === c.courseId
-                    const blockHasOverlap = c.blockNumber !== null && (rowsByBlock.get(c.blockNumber)?.length ?? 0) > 0
-                    return (
-                      <button key={c.courseId} onClick={() => add(c)} disabled={isBusy}
-                        className="flex items-center gap-2 px-3 py-2 rounded-lg text-left"
-                        style={{
-                          background: "#FAFAFA", border: "1px solid #EAEAEA",
-                          cursor: "pointer", opacity: isBusy ? 0.5 : 1,
-                        }}>
-                        <span className="w-8 h-8 rounded flex items-center justify-center text-[10px] font-black flex-shrink-0"
-                              style={{
-                                background: c.blockNumber === null ? "#FEE2E2"
-                                          : blockHasOverlap         ? "#FFE0E0"
-                                          :                           "#EAEAEA",
-                                color:      c.blockNumber === null ? "#CE2033"
-                                          : blockHasOverlap         ? "#CE2033"
-                                          :                           "#3D3D3D",
-                              }}>
-                          {blockBadge(c.blockNumber)}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold truncate" style={{ color: "#3D3D3D" }}>
-                            {c.courseName}
-                          </p>
-                          <p className="text-[10px] truncate" style={{ color: "#999" }}>
-                            {c.teacherName ?? "No teacher"}
-                            {c.room ? ` · ${c.room}` : ""}
-                            {blockHasOverlap ? " · ⚠ block overlap" : ""}
-                          </p>
-                        </div>
-                        <span className="text-[10px] font-bold flex-shrink-0"
-                              style={{ color: "#1E5FA6" }}>
-                          {isBusy ? "…" : "+ Add"}
-                        </span>
-                      </button>
-                    )
-                  })}
+                    {generalResults.map(c => {
+                      const isBusy         = adding === c.courseId
+                      const blockHasOverlap = c.blockNumber !== null && (rowsByBlock.get(c.blockNumber)?.length ?? 0) > 0
+                      return (
+                        <button key={c.courseId} onClick={() => add(c)} disabled={isBusy}
+                          className="flex items-center gap-2 px-3 py-2 rounded-lg text-left"
+                          style={{
+                            background: "#FAFAFA", border: "1px solid #EAEAEA",
+                            cursor: "pointer", opacity: isBusy ? 0.5 : 1,
+                          }}>
+                          <span className="w-8 h-8 rounded flex items-center justify-center text-[10px] font-black flex-shrink-0"
+                                style={{
+                                  background: c.blockNumber === null ? "#FEE2E2"
+                                            : blockHasOverlap         ? "#FFE0E0"
+                                            :                           "#EAEAEA",
+                                  color:      c.blockNumber === null ? "#CE2033"
+                                            : blockHasOverlap         ? "#CE2033"
+                                            :                           "#3D3D3D",
+                                }}>
+                            {blockBadge(c.blockNumber)}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold truncate" style={{ color: "#3D3D3D" }}>
+                              {c.courseName}
+                            </p>
+                            <p className="text-[10px] truncate" style={{ color: "#999" }}>
+                              {c.teacherName ?? "No teacher"}
+                              {c.room ? ` · ${c.room}` : ""}
+                              {blockHasOverlap ? " · ⚠ block overlap" : ""}
+                            </p>
+                          </div>
+                          <span className="text-[10px] font-bold flex-shrink-0" style={{ color: "#1E5FA6" }}>
+                            {isBusy ? "…" : "+ Add"}
+                          </span>
+                        </button>
+                      )
+                    })}
                   </ScrollList>
                 </>
               )}
