@@ -6,24 +6,29 @@ html, body {
   height: 100%;
 }
 
-/* Always-visible scrollbar for picker lists so the affordance is
-   obvious on macOS (which hides scrollbars by default). */
+/* Always-visible scrollbar for picker lists. macOS Chrome uses
+   overlay scrollbars by default; ::-webkit-scrollbar styles force
+   the classic (always-visible) gutter. */
 .picker-scroll {
   scrollbar-width: thin;
-  scrollbar-color: #BABABA #FAFAFA;
+  scrollbar-color: #888 #F0F0F0;
+  scrollbar-gutter: stable;
 }
 .picker-scroll::-webkit-scrollbar {
-  width: 10px;
+  -webkit-appearance: none !important;
+  width: 14px !important;
+  background: #F0F0F0 !important;
 }
 .picker-scroll::-webkit-scrollbar-track {
-  background: #FAFAFA;
-  border-radius: 8px;
+  background: #F0F0F0 !important;
+  border-radius: 0 8px 8px 0 !important;
 }
 .picker-scroll::-webkit-scrollbar-thumb {
-  background: #BABABA;
-  border-radius: 8px;
-  border: 2px solid #FAFAFA;
+  background: #888 !important;
+  border-radius: 7px !important;
+  border: 3px solid #F0F0F0 !important;
+  min-height: 40px !important;
 }
 .picker-scroll::-webkit-scrollbar-thumb:hover {
-  background: #888;
+  background: #555 !important;
 }
