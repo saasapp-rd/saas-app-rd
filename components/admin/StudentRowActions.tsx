@@ -186,15 +186,20 @@ export default function StudentRowActions({
           </p>
         </div>
 
-        <button onClick={toggleEdit}
-          className="text-[10px] font-bold px-2 py-1 rounded-lg flex-shrink-0 ml-2"
-          style={{
-            background: mode === "edit" ? "#A6192E" : "#EAEAEA",
-            color:      mode === "edit" ? "#fff"    : "#3D3D3D",
-            border: "none", cursor: "pointer",
-          }}>
-          {mode === "edit" ? "✕" : "Edit"}
-        </button>
+        {/* Close (✕) button — only visible in edit mode, so admin can
+            bail out without saving. View/none modes keep the row clean;
+            entry into edit happens via the "Edit details" button in the
+            view panel below. */}
+        {mode === "edit" && (
+          <button onClick={toggleEdit}
+            className="text-[10px] font-bold px-2 py-1 rounded-lg flex-shrink-0 ml-2"
+            style={{
+              background: "#A6192E", color: "#fff",
+              border: "none", cursor: "pointer",
+            }}>
+            ✕
+          </button>
+        )}
       </div>
 
       {/* View panel */}
@@ -310,16 +315,19 @@ export default function StudentRowActions({
           </div>
 
           <div className="mt-3 flex justify-end gap-2">
-            <Link href={`/students/${s.id}`}
-              className="text-[10px] font-bold px-3 py-1.5 rounded-lg"
-              style={{ background: "#EEF6FF", color: "#1E5FA6", textDecoration: "none" }}>
-              Full Profile →
-            </Link>
             <button onClick={toggleEdit}
-              className="text-[10px] font-bold px-3 py-1.5 rounded-lg"
-              style={{ background: "#A6192E", color: "#fff", border: "none", cursor: "pointer" }}>
+              className="text-[10px] font-semibold px-3 py-1.5 rounded-lg"
+              style={{
+                background: "#EAEAEA", color: "#3D3D3D",
+                border: "none", cursor: "pointer",
+              }}>
               Edit details
             </button>
+            <Link href={`/students/${s.id}`}
+              className="text-[10px] font-bold px-3 py-1.5 rounded-lg"
+              style={{ background: "#A6192E", color: "#fff", textDecoration: "none" }}>
+              Edit Schedule →
+            </Link>
           </div>
         </div>
       )}
