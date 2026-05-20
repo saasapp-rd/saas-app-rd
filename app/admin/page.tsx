@@ -31,6 +31,7 @@ export default async function AdminDashboard() {
     .from("incidents")
     .select("id, level, reported_at, student:student_id(id, first_name, last_name, grade, is_active)")
     .eq("status", "open")
+    .neq("report_type", "welfare_concern")
     .order("level",       { ascending: false })
     .order("reported_at", { ascending: true  })
 

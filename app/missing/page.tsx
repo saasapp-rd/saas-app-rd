@@ -42,6 +42,7 @@ export default async function MissingPage() {
     .from("incidents")
     .select("id, level, status, report_type, reported_at, block_id, located_location, student:student_id(id, first_name, last_name, grade, is_active), reporter:reported_by(display_name)")
     .in("status", ["open","located"])
+    .neq("report_type", "welfare_concern")
     .order("level",       { ascending: false })  // elevated first
     .order("reported_at", { ascending: true  })   // then oldest first
 

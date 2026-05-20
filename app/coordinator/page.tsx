@@ -29,6 +29,7 @@ export default async function CoordinatorPage() {
     .from("incidents")
     .select("id, level, status, reported_at, block_id, student:student_id(id, first_name, last_name, grade), reporter:reported_by(display_name)")
     .in("status", ["open","located"])
+    .neq("report_type", "welfare_concern")
     .order("reported_at", { ascending: true })
 
   const rows    = (incidents ?? []) as unknown as Incident[]
