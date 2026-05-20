@@ -44,6 +44,7 @@ export default function CourseRowActions({
 
   const [mode,           setMode]           = useState<Mode>("none")
   const [nameVal,        setNameVal]        = useState(course.name)
+  const [classIdVal,     setClassIdVal]     = useState(course.class_id ?? "")
   const [blockVal,       setBlockVal]       = useState<number | null>(course.block_number)
   const [roomVal,        setRoomVal]        = useState(course.room ?? "")
   const [teacherIdVal,   setTeacherIdVal]   = useState(
@@ -80,6 +81,7 @@ export default function CourseRowActions({
       setConfirmPurge(false)
       setError("")
       setNameVal(course.name)
+      setClassIdVal(course.class_id ?? "")
       setBlockVal(course.block_number)
       setRoomVal(course.room ?? "")
       setTeacherIdVal(
@@ -108,6 +110,7 @@ export default function CourseRowActions({
       body:    JSON.stringify({
         id:           course.id,
         name:         nameVal.trim(),
+        class_id:     classIdVal.trim() || null,
         block_number: blockVal,
         room:         roomVal.trim() || null,
         teacher_id:   teacherIdVal || null,
@@ -272,6 +275,12 @@ export default function CourseRowActions({
                 placeholder="Course name"
                 className="w-full px-3 py-2 rounded-xl text-sm border outline-none"
                 style={{ borderColor: "#EAEAEA", color: "#3D3D3D", background: "#FAFAFA" }} />
+
+              <input value={classIdVal} onChange={e => setClassIdVal(e.target.value)}
+                placeholder="Class ID (e.g. ACAL2001-11)"
+                className="w-full px-3 py-2 rounded-xl text-sm border outline-none"
+                style={{ borderColor: "#EAEAEA", color: "#3D3D3D", background: "#FAFAFA",
+                         fontFamily: "monospace" }} />
 
               <div>
                 <p className="text-[9px] font-bold uppercase tracking-wide mb-1.5"

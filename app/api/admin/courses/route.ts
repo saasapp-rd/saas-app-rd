@@ -24,14 +24,27 @@ export async function POST(req: NextRequest) {
   if (!session || !ADMIN.includes(session.user.role))
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const { name, teacher_id, block_number, room } = await req.json()
+  const { name, class_id, teacher_id, block_number, room } = await req.json()
   if (!name || !block_number)
     return NextResponse.json({ error: "name and block_number required" }, { status: 400 })
 
+  const cleanClassId = typeof class_id === "string" ? class_id.trim() : null
   const { data, error } = await db.from("courses")
-    .insert({ name, teacher_id: teacher_id || null, block_number: Number(block_number), room: room || null })
+    .insert({
+      name,
+      class_id:     cleanClassId || null,
+      teacher_id:   teacher_id || null,
+      block_number: Number(block_number),
+      room:         room || null,
+    })
     .select().single()
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    // Surface the partial unique index conflict with a friendlier message.
+    const msg = /class_id/i.test(error.message)
+      ? `Class ID "${cleanClassId}" is already used by another course.`
+      : error.message
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
   return NextResponse.json(data, { status: 201 })
 }
 
@@ -49,13 +62,19 @@ export async function PATCH(req: NextRequest) {
   if (body.block_number != null)       updates.block_number = Number(body.block_number)
   if (body.room !== undefined)         updates.room         = body.room ? body.room.trim() : null
   if ("teacher_id" in body)            updates.teacher_id   = body.teacher_id ?? null
+  if ("class_id" in body)              updates.class_id     = body.class_id ? String(body.class_id).trim() || null : null
   if (typeof body.is_active === "boolean") updates.is_active = body.is_active
 
   if (Object.keys(updates).length === 0)
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 })
 
   const { error } = await db.from("courses").update(updates).eq("id", id)
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  if (error) {
+    const msg = /class_id/i.test(error.message)
+      ? `Class ID "${updates.class_id}" is already used by another course.`
+      : error.message
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
 
   // Keep enrollments.block_number in sync. Placeholder courses are inserted
   // with a null block on every related enrollment; once admin assigns a

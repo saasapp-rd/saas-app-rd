@@ -7,6 +7,7 @@ interface Teacher { id: string; display_name: string | null }
 export default function AddCourseForm({ teachers }: { teachers: Teacher[] }) {
   const router = useRouter()
   const [name,      setName]      = useState("")
+  const [classId,   setClassId]   = useState("")
   const [teacherId, setTeacherId] = useState("")
   const [block,     setBlock]     = useState("")
   const [room,      setRoom]      = useState("")
@@ -21,13 +22,14 @@ export default function AddCourseForm({ teachers }: { teachers: Teacher[] }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         name,
+        class_id:     classId.trim() || null,
         teacher_id:   teacherId || null,
         block_number: Number(block),
         room:         room || null,
       }),
     })
     if (res.ok) {
-      setName(""); setTeacherId(""); setBlock(""); setRoom("")
+      setName(""); setClassId(""); setTeacherId(""); setBlock(""); setRoom("")
       setStatus("Course added.")
       router.refresh()
     } else {
@@ -47,6 +49,10 @@ export default function AddCourseForm({ teachers }: { teachers: Teacher[] }) {
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
         <input value={name} onChange={e => setName(e.target.value)} placeholder="Course name (e.g. AP Biology)" required
           className="px-3 py-2 rounded-lg text-sm border outline-none" style={inputStyle} />
+        <input value={classId} onChange={e => setClassId(e.target.value)}
+          placeholder="Class ID (optional — e.g. ACAL2001-11)"
+          className="px-3 py-2 rounded-lg text-sm border outline-none"
+          style={{ ...inputStyle, fontFamily: "monospace" }} />
         <div className="grid grid-cols-2 gap-2">
           <select value={teacherId} onChange={e => setTeacherId(e.target.value)}
             className="px-3 py-2 rounded-lg text-sm border outline-none" style={inputStyle}>

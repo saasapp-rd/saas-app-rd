@@ -23,7 +23,7 @@ export default async function CourseDetailPage({
 
   const { data: course, error } = await db
     .from("courses")
-    .select("id, name, course_code, block_number, room, academic_year, teacher_id")
+    .select("id, name, course_code, class_id, block_number, room, academic_year, teacher_id")
     .eq("id", id)
     .maybeSingle()
 
@@ -92,6 +92,9 @@ export default async function CourseDetailPage({
             </span>
             {course.course_code  && (
               <span style={{ color: "#999" }}>{course.course_code}</span>
+            )}
+            {course.class_id && (
+              <span style={{ color: "#999", fontFamily: "monospace" }}>ID {course.class_id}</span>
             )}
             {course.room         && (
               <span style={{ color: "#999" }}>Room {course.room}</span>
