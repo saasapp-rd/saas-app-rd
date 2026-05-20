@@ -21,18 +21,6 @@ const FLAG_STYLE: Record<string, { bg: string; color: string }> = {
   emergency: { bg: "#FFE0E0", color: "#7B0000" },
 }
 
-const LEVEL_STYLE: Record<string, { bg: string; color: string }> = {
-  routine:   { bg: "#EAEAEA",  color: "#3D3D3D" },
-  elevated:  { bg: "#FFF0F0",  color: "#A6192E" },
-  emergency: { bg: "#FFE0E0",  color: "#7B0000" },
-}
-
-const STATUS_STYLE: Record<string, { bg: string; color: string; label: string }> = {
-  open:     { bg: "#FFF8E0", color: "#8B6200", label: "Open"     },
-  resolved: { bg: "#F0FDF4", color: "#166534", label: "Resolved" },
-  located:  { bg: "#EEF6FF", color: "#1E5FA6", label: "Located"  },
-}
-
 interface IncidentRow {
   id:               string
   level:            string
@@ -181,13 +169,6 @@ export default async function StudentProfilePage({
   const thirtyDays     = incidents.filter(i => (now - new Date(i.reported_at).getTime()) < 30 * 86400000)
   const elevCount      = incidents.filter(i => i.level === "elevated").length
 
-  function duration(inc: IncidentRow): string {
-    if (!inc.resolved_at) return "—"
-    const ms = new Date(inc.resolved_at).getTime() - new Date(inc.reported_at).getTime()
-    const m  = Math.round(ms / 60000)
-    return m < 1 ? "<1m" : m + "m"
-  }
-
   function fmtDate(iso: string): string {
     return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" })
   }
@@ -307,50 +288,32 @@ export default async function StudentProfilePage({
           )}
         </div>
 
-        {/* Incident history — anchor target for "See Missing Data" links */}
-        <div id="incidents" style={{ scrollMarginTop: 80 }}>
+        {/* Missing-data summary — full detail + delete lives on the
+            dedicated /students/[id]/incidents drill-down page. */}
+        <div>
           <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
              style={{ color: "#3D3D3D", opacity: 0.35 }}>
-            Incident History &mdash; {incidents.length}
+            Missing Student Data
           </p>
-          {incidents.length === 0 && (
-            <p className="text-xs text-center py-6" style={{ color: "#999" }}>No incidents on record.</p>
-          )}
-          <div className="flex flex-col gap-1.5">
-            {incidents.map(inc => {
-              const lvl = LEVEL_STYLE[inc.level]  ?? LEVEL_STYLE["routine"]
-              const sta = STATUS_STYLE[inc.status] ?? STATUS_STYLE["open"]
-              return (
-                <Link key={inc.id} href={"/coordinator/" + inc.id} style={{ textDecoration: "none" }}>
-                  <div className="rounded-xl px-4 py-3 border flex items-center gap-3"
-                       style={{
-                         background:  inc.level === "elevated" ? "#FFF8F8" : "#FAFAFA",
-                         borderColor: inc.level === "elevated" ? "#FFCCCC" : "#EAEAEA",
-                         borderLeft:  "3px solid " + (inc.level === "elevated" ? "#CE2033" : "#F0C040"),
-                       }}>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 mb-0.5">
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase"
-                              style={{ background: lvl.bg, color: lvl.color }}>{inc.level}</span>
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase"
-                              style={{ background: sta.bg, color: sta.color }}>{sta.label}</span>
-                      </div>
-                      <p className="text-[10px]" style={{ color: "#999" }}>
-                        {fmtDate(inc.reported_at)}
-                        {inc.block_id ? " · Block " + inc.block_id : ""}
-                        {inc.reporter ? " · " + (inc.reporter as any).display_name : ""}
-                        {inc.located_location ? " · " + inc.located_location : ""}
-                      </p>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-[10px] font-bold" style={{ color: "#999" }}>{duration(inc)}</p>
-                      <p className="text-[9px]" style={{ color: "#BABABA" }}>&rarr;</p>
-                    </div>
-                  </div>
-                </Link>
-              )
-            })}
-          </div>
+          <Link href={`/students/${stu.id}/incidents`}
+                style={{ textDecoration: "none", display: "block" }}>
+            <div className="rounded-xl px-4 py-3 border flex items-center justify-between"
+                 style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
+              <div>
+                <p className="text-sm font-bold" style={{ color: "#3D3D3D" }}>
+                  {incidents.length} {incidents.length === 1 ? "incident" : "incidents"} on record
+                </p>
+                <p className="text-[10px]" style={{ color: "#999" }}>
+                  {incidents.length === 0
+                    ? "Clean attendance record."
+                    : `${thirtyDays.length} in the last 30 days · ${elevCount} elevated`}
+                </p>
+              </div>
+              <span style={{ color: "#A6192E", fontSize: "11px", fontWeight: "bold" }}>
+                Open drill-down →
+              </span>
+            </div>
+          </Link>
         </div>
       </main>
     </div>

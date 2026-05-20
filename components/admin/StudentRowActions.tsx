@@ -332,8 +332,8 @@ export default function StudentRowActions({
             )}
           </div>
 
-          <div className="mt-3 flex justify-end gap-2 flex-wrap">
-            <Link href={`/students/${s.id}#incidents`}
+<div className="mt-3 flex justify-end gap-2 flex-wrap">
+            <Link href={`/students/${s.id}/incidents`}
               className="text-[10px] font-semibold px-3 py-1.5 rounded-lg"
               style={{
                 background: "#EAEAEA", color: "#3D3D3D",
@@ -349,7 +349,7 @@ export default function StudentRowActions({
               }}>
               Edit Student Info
             </button>
-            <Link href={`/students/${s.id}#schedule`}
+            <Link href={`/students/${s.id}`}
               className="text-[10px] font-bold px-3 py-1.5 rounded-lg"
               style={{ background: "#A6192E", color: "#fff", textDecoration: "none" }}>
               Edit Schedule →
