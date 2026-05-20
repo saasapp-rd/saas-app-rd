@@ -16,7 +16,6 @@ export async function POST(req: NextRequest) {
   if (!student_id)
     return NextResponse.json({ error: "student_id required" }, { status: 400 })
 
-  // Fetch student name up front — avoids a join on the insert select
   const { data: stu } = await db
     .from("students")
     .select("first_name, last_name")
@@ -34,7 +33,7 @@ export async function POST(req: NextRequest) {
     .insert({
       student_id,
       reported_by:  session.user.userId,
-      report_type:  "coordinator_pull",
+      report_type:  "absent_from_start",
       initiated_by: "coordinator_pull",
       level:        incLevel,
       status:       "open",
