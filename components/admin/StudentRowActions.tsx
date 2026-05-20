@@ -217,12 +217,6 @@ export default function StudentRowActions({
             )}
             <ViewField label="Grade" value={s.grade ? `Grade ${s.grade}` : "—"} />
             {s.phone && <ViewField label="Phone" value={s.phone} />}
-            {s.advisor_name && <ViewField label="Advisor" value={s.advisor_name} />}
-            {s.veracross_id && (
-              <ViewField label="Veracross ID" value={s.veracross_id} mono />
-            )}
-            <ViewField label="Account ID" value={s.id} mono dim />
-            <ViewField label="Status" value={isActive ? "Active" : "Deactivated"} />
           </dl>
 
           {/* Schedule issues callout */}
