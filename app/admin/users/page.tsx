@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/supabase"
+import { fetchAllPaginated } from "@/lib/dbHelpers"
 import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
@@ -50,14 +51,12 @@ export default async function UsersPage() {
     .eq("needs_info", true)
     .eq("is_active", true)
 
-  // Slim user list for the search bar. Range bumped past PostgREST's 1000-row
-  // default so the search covers everyone, not just the first 1000 rows.
-  const { data: searchRows } = await db
-    .from("users")
-    .select("id, email, display_name, first_name, last_name, role, is_active")
-    .range(0, 9999)
-
-  const searchUsers: SearchUser[] = ((searchRows ?? []) as {
+  // Slim user list for the search bar. Has to paginate — PostgREST
+  // caps any single response at 1000 rows (db-max-rows), so a plain
+  // \`.range(0, 9999)\` would silently miss every user past row 1000.
+  // We've got more than 1000 accounts once you count parents + students
+  // + staff.
+  type SearchRow = {
     id:            string
     email:         string | null
     display_name:  string | null
@@ -65,7 +64,14 @@ export default async function UsersPage() {
     last_name:     string | null
     role:          string
     is_active:     boolean | null
-  }[]).map(u => {
+  }
+  const searchRows = await fetchAllPaginated<SearchRow>(() =>
+    db.from("users")
+      .select("id, email, display_name, first_name, last_name, role, is_active")
+      .order("last_name", { ascending: true })
+  )
+
+  const searchUsers: SearchUser[] = searchRows.map(u => {
     const fullName = [u.first_name, u.last_name].filter(Boolean).join(" ")
     return {
       id:        u.id,
