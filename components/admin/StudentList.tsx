@@ -60,7 +60,7 @@ export default function StudentList({
   const [gradeFilter,        setGradeFilter]        = useState<number[]>([])
   const [advisorFilter,      setAdvisorFilter]      = useState<string[]>([])
   const [page,               setPage]               = useState(0)
-  const [showInactive,       setShowInactive]       = useState(false)
+  const [inactiveOnly,       setInactiveOnly]       = useState(false)
   const [scheduleIssuesOnly, setScheduleIssuesOnly] = useState(false)
   const [variantOkOnly,      setVariantOkOnly]      = useState(false)
 
@@ -77,7 +77,11 @@ export default function StudentList({
   }, [students])
 
   const filtered = useMemo(() => {
-    const base0 = showInactive ? students : students.filter(s => s.is_active !== false)
+    // inactiveOnly shows ONLY inactive students (similar UX to schedule-
+    // issues / variant-OK filters). Default view excludes inactive.
+    const base0 = inactiveOnly
+      ? students.filter(s => s.is_active === false)
+      : students.filter(s => s.is_active !== false)
     let base = query
       ? base0.filter(s =>
           (s.last_name     ?? "").toLowerCase().includes(query) ||
@@ -113,7 +117,7 @@ export default function StudentList({
     }
 
     return sortStudents(base, sortField, sortDir)
-  }, [students, query, sortField, sortDir, gradeFilter, advisorFilter, showInactive, scheduleIssuesOnly, variantOkOnly, enrollmentsByStudent])
+  }, [students, query, sortField, sortDir, gradeFilter, advisorFilter, inactiveOnly, scheduleIssuesOnly, variantOkOnly, enrollmentsByStudent])
 
   // Count only unacknowledged issues — acknowledged variants are
   // intentionally weird and shouldn't pad the warning total.
@@ -136,13 +140,13 @@ export default function StudentList({
     ).length
   }, [students, enrollmentsByStudent])
 
-  // Toggle helpers — turning one filter on turns the other off, since
-  // the two are mutually exclusive (a student is either unacknowledged
-  // or acknowledged, never both).
+  // Toggle helpers — schedule-issues / variant-OK / inactive are
+  // mutually exclusive filters. Turning one on flips the others off
+  // so the list state stays coherent.
   function toggleScheduleIssues() {
     setScheduleIssuesOnly(v => {
       const next = !v
-      if (next) setVariantOkOnly(false)
+      if (next) { setVariantOkOnly(false); setInactiveOnly(false) }
       return next
     })
     setPage(0)
@@ -150,7 +154,15 @@ export default function StudentList({
   function toggleVariantOk() {
     setVariantOkOnly(v => {
       const next = !v
-      if (next) setScheduleIssuesOnly(false)
+      if (next) { setScheduleIssuesOnly(false); setInactiveOnly(false) }
+      return next
+    })
+    setPage(0)
+  }
+  function toggleInactive() {
+    setInactiveOnly(v => {
+      const next = !v
+      if (next) { setScheduleIssuesOnly(false); setVariantOkOnly(false) }
       return next
     })
     setPage(0)
@@ -308,7 +320,17 @@ export default function StudentList({
           ✕ Showing Variant OK students
         </button>
       )}
-      {!scheduleIssuesOnly && !variantOkOnly && scheduleIssuesCount > 0 && (
+      {inactiveOnly && (
+        <button type="button" onClick={toggleInactive}
+          className="w-full text-[10px] font-bold py-2 rounded-xl"
+          style={{
+            background: "#3D3D3D", color: "#fff",
+            border: "none", cursor: "pointer",
+          }}>
+          ✕ Showing Inactive students
+        </button>
+      )}
+      {!scheduleIssuesOnly && !variantOkOnly && !inactiveOnly && scheduleIssuesCount > 0 && (
         <button type="button" onClick={toggleScheduleIssues}
           className="self-start text-[10px] font-bold px-2.5 py-1 rounded-full"
           style={{
@@ -323,14 +345,14 @@ export default function StudentList({
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <p className="text-[9px] font-bold tracking-[0.25em] uppercase"
            style={{ color: "#3D3D3D", opacity: 0.35 }}>
-          {query || hasFilters || scheduleIssuesOnly || variantOkOnly
+          {query || hasFilters || scheduleIssuesOnly || variantOkOnly || inactiveOnly
             ? `${filtered.length} match${filtered.length !== 1 ? "es" : ""} · showing ${start}–${end}`
             : `${activeCount} active · ${students.length} total${pageCount > 1 ? ` · showing ${start}–${end}` : ""}`
           }
         </p>
         <div className="flex items-center gap-1.5">
-          {/* Hide the variant-ok pill while its banner is active up top —
-              the banner already provides the dismiss affordance. */}
+          {/* Each pill hides while its own banner is active up top —
+              the banner is the dismiss affordance. */}
           {variantOkCount > 0 && !variantOkOnly && (
             <button type="button" onClick={toggleVariantOk}
               className="text-[9px] font-bold px-2 py-0.5 rounded-full"
@@ -341,15 +363,14 @@ export default function StudentList({
               +{variantOkCount} variant ok
             </button>
           )}
-          {inactiveCount > 0 && (
-            <button type="button" onClick={() => setShowInactive(v => !v)}
+          {inactiveCount > 0 && !inactiveOnly && (
+            <button type="button" onClick={toggleInactive}
               className="text-[9px] font-bold px-2 py-0.5 rounded-full"
               style={{
-                background: showInactive ? "#FEE2E2" : "#F4F4F4",
-                color:      showInactive ? "#CE2033" : "#999",
+                background: "#F4F4F4", color: "#999",
                 border: "none", cursor: "pointer",
               }}>
-              {showInactive ? `Hide inactive` : `+${inactiveCount} inactive`}
+              +{inactiveCount} inactive
             </button>
           )}
         </div>
