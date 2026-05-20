@@ -1,6 +1,5 @@
 "use client"
 import { useState, useMemo, useEffect } from "react"
-import { createPortal } from "react-dom"
 import Link from "next/link"
 
 export interface RosterStudent {
@@ -40,9 +39,6 @@ export default function CourseRoster({
   // is open. Belt-and-suspenders: position:fixed on body, overflow:hidden
   // on html — covers every browser quirk including iOS Safari. Preserves
   // and restores the scroll position on close.
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true) }, [])
-
   useEffect(() => {
     if (!pickerOpen) return
     const scrollY = window.scrollY
@@ -217,9 +213,8 @@ export default function CourseRoster({
         </button>
       )}
 
-      {/* Add-student modal — portal'd to body so the overlay sits above
-          everything and the background is fully scroll-locked. */}
-      {mounted && canEdit && pickerOpen && createPortal(
+      {/* Add-student modal */}
+      {canEdit && pickerOpen && (
         <div
           onClick={() => setPickerOpen(false)}
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
@@ -322,8 +317,7 @@ export default function CourseRoster({
             </div>
 
           </div>
-        </div>,
-        document.body
+        </div>
       )}
 
       {error && (

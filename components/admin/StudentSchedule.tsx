@@ -1,6 +1,5 @@
 "use client"
 import { useState, useMemo, useEffect } from "react"
-import { createPortal } from "react-dom"
 import Link from "next/link"
 
 interface Enrollment {
@@ -57,9 +56,6 @@ export default function StudentSchedule({
   // picker is open. position:fixed alone misses cases where the
   // scrollable element is <html> instead of <body>; locking both
   // covers every browser quirk. Preserves scroll position on close.
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => { setMounted(true) }, [])
-
   const anyModalOpen = generalOpen || pickerForBlock !== null
   useEffect(() => {
     if (!anyModalOpen) return
@@ -334,9 +330,8 @@ export default function StudentSchedule({
         </button>
       )}
 
-      {/* General add modal — portaled to document.body so parent CSS
-          (transforms, flex, etc.) can't trap the fixed positioning. */}
-      {mounted && canEdit && generalOpen && createPortal(
+      {/* General add modal */}
+      {canEdit && generalOpen && (
         <div
           onClick={() => setGeneralOpen(false)}
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
@@ -436,12 +431,11 @@ export default function StudentSchedule({
               </button>
             </div>
           </div>
-        </div>,
-        document.body
+        </div>
       )}
 
-      {/* Per-block add modal — also portaled to document.body */}
-      {mounted && canEdit && pickerForBlock !== null && createPortal(
+      {/* Per-block add modal */}
+      {canEdit && pickerForBlock !== null && (
         <div
           onClick={() => setPickerForBlock(null)}
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
@@ -535,8 +529,7 @@ export default function StudentSchedule({
               </button>
             </div>
           </div>
-        </div>,
-        document.body
+        </div>
       )}
 
       {error && (
