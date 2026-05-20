@@ -1,6 +1,7 @@
 "use client"
 import { useState, useMemo } from "react"
 import Link from "next/link"
+import ScrollList from "./ScrollList"
 
 interface Enrollment {
   courseId:    string
@@ -231,8 +232,9 @@ export default function StudentSchedule({
                            style={{ color: "#999" }}>
                           {blockCourses.length} option{blockCourses.length === 1 ? "" : "s"} · scroll to browse
                         </p>
-                        <div className="picker-scroll flex flex-col gap-1 overflow-y-scroll rounded-lg"
-                             style={{ maxHeight: "320px", border: "1px solid #EAEAEA", overscrollBehavior: "contain" }}>
+                        <ScrollList maxHeight={320}
+                                    className="flex flex-col gap-1 rounded-lg"
+                                    style={{ border: "1px solid #EAEAEA" }}>
                         {blockCourses.map(c => {
                           const isBusy      = adding === c.courseId
                           const isPlaceholder = c.blockNumber === null
@@ -269,7 +271,7 @@ export default function StudentSchedule({
                             </button>
                           )
                         })}
-                        </div>
+                        </ScrollList>
                       </>
                     )}
                   </div>
@@ -378,8 +380,9 @@ export default function StudentSchedule({
                     {generalResults.length} course{generalResults.length === 1 ? "" : "s"}
                     {!generalSearch && " · scroll to browse"}
                   </p>
-                  <div className="picker-scroll flex flex-col gap-1 overflow-y-scroll rounded-lg"
-                       style={{ maxHeight: "400px", border: "1px solid #EAEAEA", overscrollBehavior: "contain" }}>
+                  <ScrollList maxHeight={400}
+                              className="flex flex-col gap-1 rounded-lg"
+                              style={{ border: "1px solid #EAEAEA" }}>
                   {generalResults.map(c => {
                     const isBusy = adding === c.courseId
                     const blockHasOverlap = c.blockNumber !== null && (rowsByBlock.get(c.blockNumber)?.length ?? 0) > 0
@@ -418,7 +421,7 @@ export default function StudentSchedule({
                       </button>
                     )
                   })}
-                  </div>
+                  </ScrollList>
                 </>
               )}
             </div>

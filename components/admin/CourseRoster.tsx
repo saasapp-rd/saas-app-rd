@@ -1,6 +1,7 @@
 "use client"
 import { useState, useMemo } from "react"
 import Link from "next/link"
+import ScrollList from "./ScrollList"
 
 export interface RosterStudent {
   id:           string
@@ -199,8 +200,9 @@ export default function CourseRoster({
                     {availableStudents.length} student{availableStudents.length === 1 ? "" : "s"}
                     {!search && " · scroll to browse"}
                   </p>
-                  <div className="picker-scroll flex flex-col gap-1 overflow-y-scroll rounded-lg"
-                       style={{ maxHeight: "400px", border: "1px solid #EAEAEA", overscrollBehavior: "contain" }}>
+                  <ScrollList maxHeight={400}
+                              className="flex flex-col gap-1 rounded-lg"
+                              style={{ border: "1px solid #EAEAEA" }}>
                     {availableStudents.map(s => {
                       const isBusy = busy === s.id
                       const name = [s.last_name, s.first_name].filter(Boolean).join(", ") || "Unknown"
@@ -235,7 +237,7 @@ export default function CourseRoster({
                         </button>
                       )
                     })}
-                  </div>
+                  </ScrollList>
                 </>
               )}
             </div>
