@@ -62,6 +62,7 @@ export default function StudentList({
   const [page,               setPage]               = useState(0)
   const [showInactive,       setShowInactive]       = useState(false)
   const [scheduleIssuesOnly, setScheduleIssuesOnly] = useState(false)
+  const [variantOkOnly,      setVariantOkOnly]      = useState(false)
 
   const query = search.trim().toLowerCase()
 
@@ -93,12 +94,26 @@ export default function StudentList({
     if (advisorFilter.length > 0)
       base = base.filter(s => s.advisor_name != null && advisorFilter.includes(s.advisor_name))
 
+    // Schedule-issues filter excludes acknowledged ("variant OK") students
+    // — those have a separate toggle below the inactive count.
     if (scheduleIssuesOnly && enrollmentsByStudent) {
-      base = base.filter(s => analyzeSchedule(enrollmentsByStudent[s.id] ?? []).hasIssues)
+      base = base.filter(s =>
+        !s.schedule_acknowledged &&
+        analyzeSchedule(enrollmentsByStudent[s.id] ?? []).hasIssues
+      )
+    }
+
+    // Variant-OK filter: students whose schedule HAS issues but admin has
+    // marked them as known-OK. Mutually exclusive with scheduleIssuesOnly.
+    if (variantOkOnly && enrollmentsByStudent) {
+      base = base.filter(s =>
+        !!s.schedule_acknowledged &&
+        analyzeSchedule(enrollmentsByStudent[s.id] ?? []).hasIssues
+      )
     }
 
     return sortStudents(base, sortField, sortDir)
-  }, [students, query, sortField, sortDir, gradeFilter, advisorFilter, showInactive, scheduleIssuesOnly, enrollmentsByStudent])
+  }, [students, query, sortField, sortDir, gradeFilter, advisorFilter, showInactive, scheduleIssuesOnly, variantOkOnly, enrollmentsByStudent])
 
   // Count only unacknowledged issues — acknowledged variants are
   // intentionally weird and shouldn't pad the warning total.
@@ -110,6 +125,36 @@ export default function StudentList({
       analyzeSchedule(enrollmentsByStudent[s.id] ?? []).hasIssues
     ).length
   }, [students, enrollmentsByStudent])
+
+  // Variant-OK = student has schedule issues AND admin has acknowledged.
+  const variantOkCount = useMemo(() => {
+    if (!enrollmentsByStudent) return 0
+    return students.filter(s =>
+      s.is_active !== false &&
+      !!s.schedule_acknowledged &&
+      analyzeSchedule(enrollmentsByStudent[s.id] ?? []).hasIssues
+    ).length
+  }, [students, enrollmentsByStudent])
+
+  // Toggle helpers — turning one filter on turns the other off, since
+  // the two are mutually exclusive (a student is either unacknowledged
+  // or acknowledged, never both).
+  function toggleScheduleIssues() {
+    setScheduleIssuesOnly(v => {
+      const next = !v
+      if (next) setVariantOkOnly(false)
+      return next
+    })
+    setPage(0)
+  }
+  function toggleVariantOk() {
+    setVariantOkOnly(v => {
+      const next = !v
+      if (next) setScheduleIssuesOnly(false)
+      return next
+    })
+    setPage(0)
+  }
 
   const pageCount  = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const safePage   = Math.min(page, pageCount - 1)
@@ -239,39 +284,68 @@ export default function StudentList({
         </div>
       )}
 
-      {/* Schedule issues toggle (only when we have enrollment data) */}
-      {scheduleIssuesCount > 0 && (
-        <button type="button" onClick={() => setScheduleIssuesOnly(v => !v)}
-          className="self-start text-[10px] font-bold px-2.5 py-1 rounded-full"
-          style={{
-            background: scheduleIssuesOnly ? "#CE2033" : "#FEE2E2",
-            color:      scheduleIssuesOnly ? "#fff"    : "#CE2033",
-            border: "none", cursor: "pointer",
-          }}>
-          {scheduleIssuesOnly ? "✕ Showing schedule issues" : `⚠ ${scheduleIssuesCount} schedule issue${scheduleIssuesCount === 1 ? "" : "s"}`}
-        </button>
+      {/* Schedule issues / variant-OK status bar — clicking either chip
+          toggles its filter. Active filter shows as a banner-style
+          "✕ Showing …" indicator. */}
+      {(scheduleIssuesCount > 0 || variantOkCount > 0) && (
+        <div className="flex flex-wrap gap-1.5">
+          {scheduleIssuesCount > 0 && (
+            <button type="button" onClick={toggleScheduleIssues}
+              className="text-[10px] font-bold px-2.5 py-1 rounded-full"
+              style={{
+                background: scheduleIssuesOnly ? "#CE2033" : "#FEE2E2",
+                color:      scheduleIssuesOnly ? "#fff"    : "#CE2033",
+                border: "none", cursor: "pointer",
+              }}>
+              {scheduleIssuesOnly ? "✕ Showing schedule issues" : `⚠ ${scheduleIssuesCount} schedule issue${scheduleIssuesCount === 1 ? "" : "s"}`}
+            </button>
+          )}
+          {variantOkOnly && (
+            <button type="button" onClick={toggleVariantOk}
+              className="text-[10px] font-bold px-2.5 py-1 rounded-full"
+              style={{
+                background: "#A06000", color: "#fff",
+                border: "none", cursor: "pointer",
+              }}>
+              ✕ Showing Variant OK students
+            </button>
+          )}
+        </div>
       )}
 
-      {/* Count + inactive toggle */}
-      <div className="flex items-center justify-between">
+      {/* Count + inactive / variant-ok toggles */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <p className="text-[9px] font-bold tracking-[0.25em] uppercase"
            style={{ color: "#3D3D3D", opacity: 0.35 }}>
-          {query || hasFilters || scheduleIssuesOnly
+          {query || hasFilters || scheduleIssuesOnly || variantOkOnly
             ? `${filtered.length} match${filtered.length !== 1 ? "es" : ""} · showing ${start}–${end}`
             : `${activeCount} active · ${students.length} total${pageCount > 1 ? ` · showing ${start}–${end}` : ""}`
           }
         </p>
-        {inactiveCount > 0 && (
-          <button type="button" onClick={() => setShowInactive(v => !v)}
-            className="text-[9px] font-bold px-2 py-0.5 rounded-full"
-            style={{
-              background: showInactive ? "#FEE2E2" : "#F4F4F4",
-              color:      showInactive ? "#CE2033" : "#999",
-              border: "none", cursor: "pointer",
-            }}>
-            {showInactive ? `Hide inactive` : `+${inactiveCount} inactive`}
-          </button>
-        )}
+        <div className="flex items-center gap-1.5">
+          {variantOkCount > 0 && (
+            <button type="button" onClick={toggleVariantOk}
+              className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+              style={{
+                background: variantOkOnly ? "#FFF1D6" : "#F4F4F4",
+                color:      variantOkOnly ? "#A06000" : "#999",
+                border: "none", cursor: "pointer",
+              }}>
+              {variantOkOnly ? `Hide variant OK` : `+${variantOkCount} variant ok`}
+            </button>
+          )}
+          {inactiveCount > 0 && (
+            <button type="button" onClick={() => setShowInactive(v => !v)}
+              className="text-[9px] font-bold px-2 py-0.5 rounded-full"
+              style={{
+                background: showInactive ? "#FEE2E2" : "#F4F4F4",
+                color:      showInactive ? "#CE2033" : "#999",
+                border: "none", cursor: "pointer",
+              }}>
+              {showInactive ? `Hide inactive` : `+${inactiveCount} inactive`}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* List */}
