@@ -35,16 +35,13 @@ export default async function UsersPage() {
   // truncating the student count once total user rows passed 1000.
   const counts = await Promise.all(
     ROLE_META.map(async ({ role }) => {
-      const [{ count: totalCount }, { count: inactiveCount }] = await Promise.all([
-        db.from("users").select("*", { count: "exact", head: true }).eq("role", role),
-        db.from("users").select("*", { count: "exact", head: true }).eq("role", role).eq("is_active", false),
-      ])
-      return { role, total: totalCount ?? 0, inactive: inactiveCount ?? 0 }
+      const { count: totalCount } = await db
+        .from("users").select("*", { count: "exact", head: true }).eq("role", role)
+      return { role, total: totalCount ?? 0 }
     })
   )
 
-  const total    = Object.fromEntries(counts.map(c => [c.role, c.total]))    as Record<string, number>
-  const inactive = Object.fromEntries(counts.map(c => [c.role, c.inactive])) as Record<string, number>
+  const total      = Object.fromEntries(counts.map(c => [c.role, c.total])) as Record<string, number>
   const grandTotal = counts.reduce((s, c) => s + c.total, 0)
 
   const { count: needsInfoCount } = await db
@@ -126,23 +123,14 @@ export default async function UsersPage() {
         </p>
 
         {ROLE_META.map(({ role, label, desc, bg, color }) => {
-          const count       = total[role]    ?? 0
-          const inactiveNum = inactive[role] ?? 0
+          const count = total[role] ?? 0
           return (
             <Link key={role} href={"/admin/users/" + role} style={{ textDecoration: "none" }}>
               <div className="rounded-xl px-4 py-4 border flex items-center justify-between"
                    style={{ background: bg, borderColor: "#EAEAEA" }}>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-bold" style={{ color }}>{label}</div>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <div className="text-[10px]" style={{ color: "#999" }}>{desc}</div>
-                    {inactiveNum > 0 && (
-                      <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full"
-                            style={{ background: "#FEE2E2", color: "#CE2033" }}>
-                        {inactiveNum} inactive
-                      </span>
-                    )}
-                  </div>
+                  <div className="text-[10px] mt-0.5" style={{ color: "#999" }}>{desc}</div>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0 ml-3">
                   <div className="text-2xl font-black" style={{ color }}>{count}</div>
