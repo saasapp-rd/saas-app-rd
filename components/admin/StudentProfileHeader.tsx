@@ -116,11 +116,27 @@ export default function StudentProfileHeader({
           </a>
         )}
 
-        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px]" style={{ color: "#999" }}>
-          <span>Grade {student.grade ?? "—"}</span>
-          {student.veracross_id && <span>ID: {student.veracross_id}</span>}
-          {student.parent_email && <span>{student.parent_email}</span>}
-        </div>
+        {(() => {
+          const items: React.ReactNode[] = []
+          items.push(<span key="g">Grade {student.grade ?? "—"}</span>)
+          if (student.veracross_id) items.push(<span key="id">ID: {student.veracross_id}</span>)
+          if (student.parent_email) items.push(<span key="em">{student.parent_email}</span>)
+          return (
+            <div className="flex flex-wrap items-center text-[10px]" style={{ color: "#999" }}>
+              {items.map((node, i) => (
+                <span key={`wrap-${i}`} className="flex items-center">
+                  {i > 0 && (
+                    <span aria-hidden="true"
+                          style={{ margin: "0 8px", color: "#CACACA" }}>
+                      |
+                    </span>
+                  )}
+                  {node}
+                </span>
+              ))}
+            </div>
+          )
+        })()}
 
         {hasScheduleIssues && canAckSchedule && (
           <button onClick={toggleAck} disabled={acking}
