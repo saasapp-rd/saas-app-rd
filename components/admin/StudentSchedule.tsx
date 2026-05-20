@@ -441,107 +441,103 @@ export default function StudentSchedule({
       )}
 
       {/* Per-block add modal — also portaled to document.body */}
-      {mounted && canEdit && pickerForBlock !== null && (() => {
-        const block = pickerForBlock
-        const blockCourses = coursesForBlock(block)
-        return createPortal(
+      {mounted && canEdit && pickerForBlock !== null && createPortal(
+        <div
+          onClick={() => setPickerForBlock(null)}
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
+          style={{ background: "rgba(0,0,0,0.55)" }}>
           <div
-            onClick={() => setPickerForBlock(null)}
-            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
-            style={{ background: "rgba(0,0,0,0.55)" }}>
-            <div
-              onClick={e => e.stopPropagation()}
-              className="bg-white w-full sm:max-w-md flex flex-col rounded-t-2xl sm:rounded-2xl"
-              style={{ maxHeight: "85vh", overscrollBehavior: "contain" }}>
+            onClick={e => e.stopPropagation()}
+            className="bg-white w-full sm:max-w-md flex flex-col rounded-t-2xl sm:rounded-2xl"
+            style={{ maxHeight: "85vh", overscrollBehavior: "contain" }}>
 
-              <div className="px-4 py-3 flex items-center justify-between border-b"
-                   style={{ borderColor: "#EAEAEA" }}>
-                <div className="min-w-0 flex items-center gap-2">
-                  <span className="w-9 h-9 rounded-lg flex items-center justify-center text-[10px] font-black flex-shrink-0"
-                        style={{ background: "#EAEAEA", color: "#3D3D3D" }}>
-                    {blockBadge(block)}
-                  </span>
-                  <div>
-                    <p className="text-sm font-bold" style={{ color: "#3D3D3D" }}>
-                      Add to {blockLabel(block)}
-                    </p>
-                    <p className="text-[10px]" style={{ color: "#999" }}>
-                      {blockCourses.length} option{blockCourses.length === 1 ? "" : "s"}
-                    </p>
-                  </div>
-                </div>
-                <button onClick={() => setPickerForBlock(null)}
-                  className="text-sm font-bold w-8 h-8 rounded-lg flex items-center justify-center"
-                  style={{ background: "#EAEAEA", color: "#3D3D3D", border: "none", cursor: "pointer" }}
-                  aria-label="Close">
-                  ✕
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto px-3 py-2"
-                   style={{ overscrollBehavior: "contain" }}>
-                {blockCourses.length === 0 ? (
-                  <p className="text-xs text-center py-6" style={{ color: "#999" }}>
-                    No active courses available for {blockLabel(block).toLowerCase()}.
+            <div className="px-4 py-3 flex items-center justify-between border-b"
+                 style={{ borderColor: "#EAEAEA" }}>
+              <div className="min-w-0 flex items-center gap-2">
+                <span className="w-9 h-9 rounded-lg flex items-center justify-center text-[10px] font-black flex-shrink-0"
+                      style={{ background: "#EAEAEA", color: "#3D3D3D" }}>
+                  {blockBadge(pickerForBlock)}
+                </span>
+                <div>
+                  <p className="text-sm font-bold" style={{ color: "#3D3D3D" }}>
+                    Add to {blockLabel(pickerForBlock)}
                   </p>
-                ) : (
-                  <div className="flex flex-col gap-1">
-                    {blockCourses.map(c => {
-                      const isBusy        = adding === c.courseId
-                      const isPlaceholder = c.blockNumber === null
-                      return (
-                        <button key={c.courseId} onClick={() => add(c, block)} disabled={isBusy}
-                          className="flex items-center gap-2 px-3 py-2 rounded-lg text-left"
-                          style={{
-                            background: isPlaceholder ? "#FFFBEB" : "#FAFAFA",
-                            border:     `1px solid ${isPlaceholder ? "#FDE68A" : "#EAEAEA"}`,
-                            cursor: "pointer", opacity: isBusy ? 0.5 : 1,
-                          }}>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <p className="text-xs font-semibold truncate" style={{ color: "#3D3D3D" }}>
-                                {c.courseName}
-                              </p>
-                              {isPlaceholder && (
-                                <span className="text-[8px] font-bold px-1 py-0.5 rounded uppercase flex-shrink-0"
-                                      style={{ background: "#FDE68A", color: "#78350F" }}>
-                                  Options / Unblocked
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-[10px] truncate" style={{ color: "#999" }}>
-                              {c.teacherName ?? "No teacher"}
-                              {c.room ? ` · ${c.room}` : ""}
-                              {isPlaceholder && ` · will land in ${blockLabel(block).toLowerCase()}`}
-                            </p>
-                          </div>
-                          <span className="text-[10px] font-bold flex-shrink-0"
-                                style={{ color: "#1E5FA6" }}>
-                            {isBusy ? "…" : "+ Add"}
-                          </span>
-                        </button>
-                      )
-                    })}
-                  </div>
-                )}
+                  <p className="text-[10px]" style={{ color: "#999" }}>
+                    {coursesForBlock(pickerForBlock).length} option{coursesForBlock(pickerForBlock).length === 1 ? "" : "s"}
+                  </p>
+                </div>
               </div>
-
-              <div className="px-4 py-2.5 border-t flex items-center justify-between"
-                   style={{ borderColor: "#EAEAEA", background: "#FAFAFA" }}>
-                <p className="text-[10px]" style={{ color: "#999" }}>
-                  Tap outside or press Esc to close
-                </p>
-                <button onClick={() => setPickerForBlock(null)}
-                  className="text-[10px] font-bold px-3 py-1.5 rounded-lg"
-                  style={{ background: "#EAEAEA", color: "#3D3D3D", border: "none", cursor: "pointer" }}>
-                  Done
-                </button>
-              </div>
+              <button onClick={() => setPickerForBlock(null)}
+                className="text-sm font-bold w-8 h-8 rounded-lg flex items-center justify-center"
+                style={{ background: "#EAEAEA", color: "#3D3D3D", border: "none", cursor: "pointer" }}
+                aria-label="Close">
+                ✕
+              </button>
             </div>
-          </div>,
-          document.body
-        )
-      })()}
+
+            <div className="flex-1 overflow-y-auto px-3 py-2"
+                 style={{ overscrollBehavior: "contain" }}>
+              {coursesForBlock(pickerForBlock).length === 0 ? (
+                <p className="text-xs text-center py-6" style={{ color: "#999" }}>
+                  No active courses available for {blockLabel(pickerForBlock).toLowerCase()}.
+                </p>
+              ) : (
+                <div className="flex flex-col gap-1">
+                  {coursesForBlock(pickerForBlock).map(c => {
+                    const isBusy        = adding === c.courseId
+                    const isPlaceholder = c.blockNumber === null
+                    return (
+                      <button key={c.courseId} onClick={() => add(c, pickerForBlock!)} disabled={isBusy}
+                        className="flex items-center gap-2 px-3 py-2 rounded-lg text-left"
+                        style={{
+                          background: isPlaceholder ? "#FFFBEB" : "#FAFAFA",
+                          border:     `1px solid ${isPlaceholder ? "#FDE68A" : "#EAEAEA"}`,
+                          cursor: "pointer", opacity: isBusy ? 0.5 : 1,
+                        }}>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="text-xs font-semibold truncate" style={{ color: "#3D3D3D" }}>
+                              {c.courseName}
+                            </p>
+                            {isPlaceholder && (
+                              <span className="text-[8px] font-bold px-1 py-0.5 rounded uppercase flex-shrink-0"
+                                    style={{ background: "#FDE68A", color: "#78350F" }}>
+                                Options / Unblocked
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] truncate" style={{ color: "#999" }}>
+                            {c.teacherName ?? "No teacher"}
+                            {c.room ? ` · ${c.room}` : ""}
+                            {isPlaceholder && ` · will land in ${blockLabel(pickerForBlock!).toLowerCase()}`}
+                          </p>
+                        </div>
+                        <span className="text-[10px] font-bold flex-shrink-0"
+                              style={{ color: "#1E5FA6" }}>
+                          {isBusy ? "…" : "+ Add"}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            <div className="px-4 py-2.5 border-t flex items-center justify-between"
+                 style={{ borderColor: "#EAEAEA", background: "#FAFAFA" }}>
+              <p className="text-[10px]" style={{ color: "#999" }}>
+                Tap outside or press Esc to close
+              </p>
+              <button onClick={() => setPickerForBlock(null)}
+                className="text-[10px] font-bold px-3 py-1.5 rounded-lg"
+                style={{ background: "#EAEAEA", color: "#3D3D3D", border: "none", cursor: "pointer" }}>
+                Done
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {error && (
         <p className="text-[10px] font-semibold text-center" style={{ color: "#CE2033" }}>{error}</p>
