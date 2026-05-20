@@ -339,16 +339,18 @@ export default function UserRowActions({
               </span>
             )}
           </div>
-          <button
-            onClick={toggleEdit}
-            className="text-[10px] font-bold px-2 py-1 rounded-lg"
-            style={{
-              background: mode === "edit" ? "#A6192E" : "#EAEAEA",
-              color:      mode === "edit" ? "#fff"    : "#3D3D3D",
-              border: "none", cursor: "pointer",
-            }}>
-            {mode === "edit" ? "✕" : "Edit"}
-          </button>
+          {/* Close (✕) only while editing — entry to edit is via the
+              "Edit details" button in the view panel below. */}
+          {mode === "edit" && (
+            <button onClick={toggleEdit}
+              className="text-[10px] font-bold px-2 py-1 rounded-lg"
+              style={{
+                background: "#A6192E", color: "#fff",
+                border: "none", cursor: "pointer",
+              }}>
+              ✕
+            </button>
+          )}
         </div>
       </div>
 
@@ -356,19 +358,15 @@ export default function UserRowActions({
       {mode === "view" && (
         <div className="px-4 py-3 border-t"
              style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
+          {/* View panel shows only fields NOT already visible in the row
+              header (display name, email, role badge are repeated there).
+              Deeper details — phone, job title, dean-grade scope,
+              Veracross ID — surface here. */}
           <dl className="grid gap-x-3 gap-y-1.5 text-xs"
               style={{ gridTemplateColumns: "auto 1fr" }}>
-            <ViewField label="Display name" value={displayName} />
-            {(firstName || lastName) && (
-              <ViewField label="First / Last"
-                         value={[firstName, lastName].filter(Boolean).join(" / ")} />
-            )}
-            <ViewField label="Email" value={email} />
             {phone && <ViewField label={businessPhone ? "Mobile phone" : "Phone"} value={phone} />}
             {businessPhone && <ViewField label="Business phone" value={businessPhone} />}
             {jobTitle && <ViewField label="Job title" value={jobTitle} />}
-            <ViewField label={`Role${savedRoles.length > 1 ? "s" : ""}`}
-                       value={savedRoles.map(r => r === "admin" ? "Administrator" : r === "super_admin" ? "Super Admin" : r[0].toUpperCase() + r.slice(1)).join(", ")} />
             {isDean && (
               <ViewField label="Grade levels"
                          value={(deanGrades && deanGrades.length > 0) ? deanGrades.join(", ") : "—"} />
@@ -379,13 +377,14 @@ export default function UserRowActions({
             {veracrossId && (
               <ViewField label="Veracross ID" value={veracrossId} mono />
             )}
-            <ViewField label="Account ID" value={id} mono dim />
-            <ViewField label="Status" value={isActive ? "Active" : "Deactivated"} />
           </dl>
           <div className="mt-3 flex justify-end">
             <button onClick={toggleEdit}
-              className="text-[10px] font-bold px-3 py-1.5 rounded-lg"
-              style={{ background: "#A6192E", color: "#fff", border: "none", cursor: "pointer" }}>
+              className="text-[10px] font-semibold px-3 py-1.5 rounded-lg"
+              style={{
+                background: "#EAEAEA", color: "#3D3D3D",
+                border: "none", cursor: "pointer",
+              }}>
               Edit details
             </button>
           </div>
