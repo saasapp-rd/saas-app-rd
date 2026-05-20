@@ -68,10 +68,12 @@ export default async function CoursesPage() {
           .in("id", referencedTeacherIds)
       : Promise.resolve({ data: [] as { id: string; display_name: string | null }[] }),
     // Paginate past Supabase's default 1000-row cap — a school with
-    // 1500+ enrollments was getting under-counted before.
-    fetchAllPaginated<{ course_id: string }>(() =>
+    // 1500+ enrollments was getting under-counted before. Pull
+    // student_id too so we can render a roster preview in each
+    // course's view panel.
+    fetchAllPaginated<{ course_id: string; student_id: string }>(() =>
       db.from("student_enrollments")
-        .select("course_id")
+        .select("course_id, student_id")
         .eq("academic_year", "2025-26")
     ),
   ])
@@ -82,26 +84,56 @@ export default async function CoursesPage() {
     nameById.set(u.id, u.display_name)
   }
 
-  const enrollmentCountByCourse = new Map<string, number>()
+  const studentIdsByCourse = new Map<string, string[]>()
+  const allStudentIds      = new Set<string>()
   for (const e of enrollmentsRaw) {
-    enrollmentCountByCourse.set(e.course_id, (enrollmentCountByCourse.get(e.course_id) ?? 0) + 1)
+    const list = studentIdsByCourse.get(e.course_id) ?? []
+    list.push(e.student_id)
+    studentIdsByCourse.set(e.course_id, list)
+    allStudentIds.add(e.student_id)
   }
 
-  const courses: CourseRow[] = courseRecords.map(c => ({
-    id:               c.id,
-    name:             c.name,
-    block_number:     c.block_number,
-    room:             c.room,
-    is_advisory:      c.is_advisory ?? false,
-    is_active:        c.is_active !== false,
-    teacher:          c.teacher_id ? { display_name: nameById.get(c.teacher_id) ?? null } : null,
-    class_id:         c.class_id,
-    course_code:      c.course_code,
-    school_level:     c.school_level,
-    grade_level:      c.grade_level,
-    meeting_times:    c.meeting_times,
-    enrollment_count: enrollmentCountByCourse.get(c.id) ?? 0,
-  }))
+  // Look up display info for every enrolled student in one shot —
+  // hydrating per-course in the loop would be N round-trips.
+  type StudentInfo = { id: string; first_name: string | null; last_name: string | null; grade: number | null }
+  const studentById = new Map<string, StudentInfo>()
+  if (allStudentIds.size > 0) {
+    const ids = [...allStudentIds]
+    for (let i = 0; i < ids.length; i += 500) {
+      const { data: rows } = await db
+        .from("users")
+        .select("id, first_name, last_name, grade")
+        .in("id", ids.slice(i, i + 500))
+      for (const r of (rows ?? []) as StudentInfo[]) studentById.set(r.id, r)
+    }
+  }
+
+  const courses: CourseRow[] = courseRecords.map(c => {
+    const ids   = studentIdsByCourse.get(c.id) ?? []
+    const roster = ids
+      .map(id => studentById.get(id))
+      .filter((s): s is StudentInfo => !!s)
+      .sort((a, b) =>
+        (a.last_name ?? "").localeCompare(b.last_name ?? "") ||
+        (a.first_name ?? "").localeCompare(b.first_name ?? "")
+      )
+    return {
+      id:               c.id,
+      name:             c.name,
+      block_number:     c.block_number,
+      room:             c.room,
+      is_advisory:      c.is_advisory ?? false,
+      is_active:        c.is_active !== false,
+      teacher:          c.teacher_id ? { display_name: nameById.get(c.teacher_id) ?? null } : null,
+      class_id:         c.class_id,
+      course_code:      c.course_code,
+      school_level:     c.school_level,
+      grade_level:      c.grade_level,
+      meeting_times:    c.meeting_times,
+      enrollment_count: ids.length,
+      roster,
+    }
+  })
 
   const activeCount = courses.filter(c => c.is_active !== false).length
 

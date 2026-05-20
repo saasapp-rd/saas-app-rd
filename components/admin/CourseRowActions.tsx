@@ -3,6 +3,13 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 
+export interface RosterStudent {
+  id:         string
+  first_name: string | null
+  last_name:  string | null
+  grade:      number | null
+}
+
 export interface CourseRow {
   id:               string
   name:             string
@@ -17,6 +24,7 @@ export interface CourseRow {
   grade_level:     string | null
   meeting_times:   string | null
   enrollment_count: number
+  roster?:          RosterStudent[]
 }
 
 export interface TeacherOption {
@@ -196,15 +204,19 @@ export default function CourseRowActions({
           </div>
         </div>
 
-        <button onClick={toggleEdit}
-          className="text-[10px] font-bold px-2 py-1 rounded-lg flex-shrink-0 ml-3"
-          style={{
-            background: mode === "edit" ? "#A6192E" : "#EAEAEA",
-            color:      mode === "edit" ? "#fff"    : "#3D3D3D",
-            border: "none", cursor: "pointer",
-          }}>
-          {mode === "edit" ? "✕" : "Edit"}
-        </button>
+        {/* Close (✕) button — only visible in edit mode. Entry to edit
+            now happens via the "Edit details" button in the view panel,
+            matching the student-row pattern. */}
+        {mode === "edit" && (
+          <button onClick={toggleEdit}
+            className="text-[10px] font-bold px-2 py-1 rounded-lg flex-shrink-0 ml-3"
+            style={{
+              background: "#A6192E", color: "#fff",
+              border: "none", cursor: "pointer",
+            }}>
+            ✕
+          </button>
+        )}
       </div>
 
       {/* View panel */}
@@ -229,17 +241,49 @@ export default function CourseRowActions({
               :             "Deactivated"
             } />
           </dl>
+          {/* Roster preview — small names in multiple columns. Link each
+              to the student profile for one-click drill-down. */}
+          {course.roster && course.roster.length > 0 && (
+            <div className="mt-3">
+              <p className="text-[9px] font-bold uppercase tracking-wide mb-1.5"
+                 style={{ color: "#3D3D3D", opacity: 0.5 }}>
+                Roster — {course.roster.length}
+              </p>
+              <div className="grid gap-x-3 gap-y-0.5"
+                   style={{ gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))" }}>
+                {course.roster.map(stu => {
+                  const name = [stu.last_name, stu.first_name].filter(Boolean).join(", ") || "Unknown"
+                  return (
+                    <Link key={stu.id} href={`/students/${stu.id}`}
+                      className="text-[10px] truncate"
+                      style={{ color: "#3D3D3D", textDecoration: "none" }}>
+                      {name}
+                      {stu.grade != null && (
+                        <span className="ml-1" style={{ color: "#BABABA" }}>
+                          · Gr {stu.grade}
+                        </span>
+                      )}
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="mt-3 flex justify-end gap-2 flex-wrap">
-            <Link href={`/admin/courses/${course.id}/roster`}
-              className="text-[10px] font-bold px-3 py-1.5 rounded-lg"
-              style={{ background: "#EEF6FF", color: "#1E5FA6", textDecoration: "none" }}>
-              Manage Roster →
-            </Link>
             <button onClick={toggleEdit}
-              className="text-[10px] font-bold px-3 py-1.5 rounded-lg"
-              style={{ background: "#A6192E", color: "#fff", border: "none", cursor: "pointer" }}>
+              className="text-[10px] font-semibold px-3 py-1.5 rounded-lg"
+              style={{
+                background: "#EAEAEA", color: "#3D3D3D",
+                border: "none", cursor: "pointer",
+              }}>
               Edit details
             </button>
+            <Link href={`/admin/courses/${course.id}/roster`}
+              className="text-[10px] font-bold px-3 py-1.5 rounded-lg"
+              style={{ background: "#A6192E", color: "#fff", textDecoration: "none" }}>
+              Edit Roster →
+            </Link>
           </div>
         </div>
       )}
