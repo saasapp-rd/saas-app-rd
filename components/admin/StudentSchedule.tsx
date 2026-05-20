@@ -1,5 +1,5 @@
 "use client"
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
 
 interface Enrollment {
@@ -51,52 +51,6 @@ export default function StudentSchedule({
   const [generalOpen,     setGeneralOpen]     = useState(false)
   const [generalSearch,   setGeneralSearch]   = useState("")
   const [error,           setError]           = useState("")
-
-  // Lock both html and body scroll + Escape to close while any modal
-  // picker is open. position:fixed alone misses cases where the
-  // scrollable element is <html> instead of <body>; locking both
-  // covers every browser quirk. Preserves scroll position on close.
-  const anyModalOpen = generalOpen || pickerForBlock !== null
-  useEffect(() => {
-    if (!anyModalOpen) return
-    const scrollY = window.scrollY
-    const html    = document.documentElement
-    const body    = document.body
-    const prev = {
-      htmlOverflow: html.style.overflow,
-      bodyPosition: body.style.position,
-      bodyTop:      body.style.top,
-      bodyLeft:     body.style.left,
-      bodyRight:    body.style.right,
-      bodyWidth:    body.style.width,
-      bodyOverflow: body.style.overflow,
-    }
-    html.style.overflow = "hidden"
-    body.style.position = "fixed"
-    body.style.top      = `-${scrollY}px`
-    body.style.left     = "0"
-    body.style.right    = "0"
-    body.style.width    = "100%"
-    body.style.overflow = "hidden"
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        setGeneralOpen(false)
-        setPickerForBlock(null)
-      }
-    }
-    window.addEventListener("keydown", onKey)
-    return () => {
-      html.style.overflow = prev.htmlOverflow
-      body.style.position = prev.bodyPosition
-      body.style.top      = prev.bodyTop
-      body.style.left     = prev.bodyLeft
-      body.style.right    = prev.bodyRight
-      body.style.width    = prev.bodyWidth
-      body.style.overflow = prev.bodyOverflow
-      window.scrollTo(0, scrollY)
-      window.removeEventListener("keydown", onKey)
-    }
-  }, [anyModalOpen])
 
   // Bucket enrollments by block
   const rowsByBlock = useMemo(() => {
@@ -232,30 +186,93 @@ export default function StudentSchedule({
           const rows = rowsByBlock.get(block) ?? []
 
           if (rows.length === 0) {
+            const isPickerOpen = pickerForBlock === block
+            const blockCourses = coursesForBlock(block)
             return [(
-              <div key={`empty-${block}`} className="rounded-xl border px-4 py-3 flex items-center gap-3"
-                   style={{ borderColor: "#EAEAEA", background: "#FAFAFA" }}>
-                <span className="w-9 h-9 rounded-lg flex items-center justify-center text-[10px] font-black flex-shrink-0"
-                      style={{ background: "#EAEAEA", color: "#BABABA" }}>
-                  {blockBadge(block)}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold" style={{ color: "#999" }}>
-                    No class
-                  </p>
-                  <p className="text-[10px]" style={{ color: "#BABABA" }}>
-                    {blockLabel(block)}
-                  </p>
+              <div key={`empty-${block}`} className="rounded-xl border overflow-hidden"
+                   style={{ borderColor: "#EAEAEA" }}>
+                <div className="px-4 py-3 flex items-center gap-3"
+                     style={{ background: "#FAFAFA" }}>
+                  <span className="w-9 h-9 rounded-lg flex items-center justify-center text-[10px] font-black flex-shrink-0"
+                        style={{ background: "#EAEAEA", color: "#BABABA" }}>
+                    {blockBadge(block)}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold" style={{ color: "#999" }}>
+                      No class
+                    </p>
+                    <p className="text-[10px]" style={{ color: "#BABABA" }}>
+                      {blockLabel(block)}
+                    </p>
+                  </div>
+                  {canEdit && (
+                    <button onClick={() => setPickerForBlock(isPickerOpen ? null : block)}
+                            className="text-[10px] font-bold px-2.5 py-1 rounded-lg flex-shrink-0"
+                            style={{
+                              background: isPickerOpen ? "#A6192E" : "#EEF6FF",
+                              color:      isPickerOpen ? "#fff"    : "#1E5FA6",
+                              border: "none", cursor: "pointer",
+                            }}>
+                      {isPickerOpen ? "Cancel" : "+ Add class"}
+                    </button>
+                  )}
                 </div>
-                {canEdit && (
-                  <button onClick={() => setPickerForBlock(block)}
-                          className="text-[10px] font-bold px-2.5 py-1 rounded-lg flex-shrink-0"
-                          style={{
-                            background: "#EEF6FF", color: "#1E5FA6",
-                            border: "none", cursor: "pointer",
-                          }}>
-                    + Add class
-                  </button>
+
+                {isPickerOpen && (
+                  <div className="px-4 py-3 border-t flex flex-col gap-2"
+                       style={{ background: "#fff", borderColor: "#EAEAEA" }}>
+                    {blockCourses.length === 0 ? (
+                      <p className="text-xs py-2 text-center" style={{ color: "#999" }}>
+                        No active courses available for {blockLabel(block).toLowerCase()}.
+                      </p>
+                    ) : (
+                      <>
+                        <p className="text-[10px] font-bold uppercase tracking-wider"
+                           style={{ color: "#999" }}>
+                          {blockCourses.length} option{blockCourses.length === 1 ? "" : "s"} · scroll to browse
+                        </p>
+                        <div className="flex flex-col gap-1 overflow-y-auto rounded-lg"
+                             style={{ maxHeight: "60vh", border: "1px solid #EAEAEA", overscrollBehavior: "contain" }}>
+                        {blockCourses.map(c => {
+                          const isBusy      = adding === c.courseId
+                          const isPlaceholder = c.blockNumber === null
+                          return (
+                            <button key={c.courseId} onClick={() => add(c, block)} disabled={isBusy}
+                              className="flex items-center gap-2 px-3 py-2 rounded-lg text-left"
+                              style={{
+                                background: isPlaceholder ? "#FFFBEB" : "#FAFAFA",
+                                border:     `1px solid ${isPlaceholder ? "#FDE68A" : "#EAEAEA"}`,
+                                cursor: "pointer", opacity: isBusy ? 0.5 : 1,
+                              }}>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <p className="text-xs font-semibold truncate" style={{ color: "#3D3D3D" }}>
+                                    {c.courseName}
+                                  </p>
+                                  {isPlaceholder && (
+                                    <span className="text-[8px] font-bold px-1 py-0.5 rounded uppercase flex-shrink-0"
+                                          style={{ background: "#FDE68A", color: "#78350F" }}>
+                                      Options / Unblocked
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[10px] truncate" style={{ color: "#999" }}>
+                                  {c.teacherName ?? "No teacher"}
+                                  {c.room ? ` · ${c.room}` : ""}
+                                  {isPlaceholder && ` · will land in ${blockLabel(block).toLowerCase()}`}
+                                </p>
+                              </div>
+                              <span className="text-[10px] font-bold flex-shrink-0"
+                                    style={{ color: "#1E5FA6" }}>
+                                {isBusy ? "…" : "+ Add"}
+                              </span>
+                            </button>
+                          )
+                        })}
+                        </div>
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
             )]
@@ -318,46 +335,25 @@ export default function StudentSchedule({
         })}
       </div>
 
-      {/* General add trigger — overlays + placeholders */}
+      {/* General add — for overlays + placeholder (no-block) courses */}
       {canEdit && (
-        <button onClick={() => { setGeneralOpen(true); setGeneralSearch("") }}
-          className="rounded-xl px-4 py-2.5 text-xs font-bold uppercase tracking-wider mt-1"
-          style={{
-            background: "#EEF6FF", color: "#1E5FA6",
-            border: "1px solid #BFD7F2", cursor: "pointer",
-          }}>
-          + Add another class (overlay or unblocked)
-        </button>
-      )}
+        <div className="rounded-xl border mt-1 overflow-hidden"
+             style={{ borderColor: "#EAEAEA" }}>
+          <button onClick={() => { setGeneralOpen(o => !o); if (generalOpen) setGeneralSearch("") }}
+            className="w-full px-4 py-2.5 flex items-center justify-between"
+            style={{ background: generalOpen ? "#FFF8F8" : "#FAFAFA", border: "none", cursor: "pointer" }}>
+            <p className="text-[10px] font-bold uppercase tracking-wider"
+               style={{ color: generalOpen ? "#A6192E" : "#3D3D3D", opacity: generalOpen ? 1 : 0.5 }}>
+              + Add another class (overlay or unblocked)
+            </p>
+            <span className="text-xs" style={{ color: generalOpen ? "#A6192E" : "#BABABA" }}>
+              {generalOpen ? "▲" : "▼"}
+            </span>
+          </button>
 
-      {/* General add modal */}
-      {canEdit && generalOpen && (
-        <div
-          onClick={() => setGeneralOpen(false)}
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
-          style={{ background: "rgba(0,0,0,0.55)" }}>
-          <div
-            onClick={e => e.stopPropagation()}
-            className="bg-white w-full sm:max-w-md flex flex-col rounded-t-2xl sm:rounded-2xl"
-            style={{ maxHeight: "85vh", overscrollBehavior: "contain" }}>
-
-            <div className="px-4 py-3 flex items-center justify-between border-b"
-                 style={{ borderColor: "#EAEAEA" }}>
-              <div className="min-w-0">
-                <p className="text-sm font-bold" style={{ color: "#3D3D3D" }}>Add a class</p>
-                <p className="text-[10px]" style={{ color: "#999" }}>
-                  Overlay an existing block, or attach an Options / placeholder course
-                </p>
-              </div>
-              <button onClick={() => setGeneralOpen(false)}
-                className="text-sm font-bold w-8 h-8 rounded-lg flex items-center justify-center"
-                style={{ background: "#EAEAEA", color: "#3D3D3D", border: "none", cursor: "pointer" }}
-                aria-label="Close">
-                ✕
-              </button>
-            </div>
-
-            <div className="px-4 py-3 border-b" style={{ borderColor: "#EAEAEA" }}>
+          {generalOpen && (
+            <div className="px-4 py-3 border-t flex flex-col gap-2"
+                 style={{ borderColor: "#EAEAEA", background: "#fff" }}>
               <input
                 type="search"
                 placeholder="Search courses by name, teacher, or room…"
@@ -367,16 +363,23 @@ export default function StudentSchedule({
                 style={{ borderColor: "#EAEAEA", background: "#FAFAFA", color: "#3D3D3D" }}
                 autoFocus
               />
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-3 py-2"
-                 style={{ overscrollBehavior: "contain" }}>
+              <p className="text-[10px]" style={{ color: "#999" }}>
+                Use this to add a second class to a block already filled, or to
+                attach a placeholder course that hasn&apos;t been given a block yet.
+              </p>
               {generalResults.length === 0 ? (
-                <p className="text-xs text-center py-6" style={{ color: "#999" }}>
+                <p className="text-xs text-center py-3" style={{ color: "#999" }}>
                   {generalSearch ? "No matching courses." : "All active courses already enrolled."}
                 </p>
               ) : (
-                <div className="flex flex-col gap-1">
+                <>
+                  <p className="text-[10px] font-bold uppercase tracking-wider"
+                     style={{ color: "#999" }}>
+                    {generalResults.length} course{generalResults.length === 1 ? "" : "s"}
+                    {!generalSearch && " · scroll to browse"}
+                  </p>
+                  <div className="flex flex-col gap-1 overflow-y-auto rounded-lg"
+                       style={{ maxHeight: "60vh", border: "1px solid #EAEAEA", overscrollBehavior: "contain" }}>
                   {generalResults.map(c => {
                     const isBusy = adding === c.courseId
                     const blockHasOverlap = c.blockNumber !== null && (rowsByBlock.get(c.blockNumber)?.length ?? 0) > 0
@@ -415,120 +418,11 @@ export default function StudentSchedule({
                       </button>
                     )
                   })}
-                </div>
+                  </div>
+                </>
               )}
             </div>
-
-            <div className="px-4 py-2.5 border-t flex items-center justify-between"
-                 style={{ borderColor: "#EAEAEA", background: "#FAFAFA" }}>
-              <p className="text-[10px]" style={{ color: "#999" }}>
-                {generalResults.length} course{generalResults.length === 1 ? "" : "s"} · tap outside or Esc to close
-              </p>
-              <button onClick={() => setGeneralOpen(false)}
-                className="text-[10px] font-bold px-3 py-1.5 rounded-lg"
-                style={{ background: "#EAEAEA", color: "#3D3D3D", border: "none", cursor: "pointer" }}>
-                Done
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Per-block add modal */}
-      {canEdit && pickerForBlock !== null && (
-        <div
-          onClick={() => setPickerForBlock(null)}
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
-          style={{ background: "rgba(0,0,0,0.55)" }}>
-          <div
-            onClick={e => e.stopPropagation()}
-            className="bg-white w-full sm:max-w-md flex flex-col rounded-t-2xl sm:rounded-2xl"
-            style={{ maxHeight: "85vh", overscrollBehavior: "contain" }}>
-
-            <div className="px-4 py-3 flex items-center justify-between border-b"
-                 style={{ borderColor: "#EAEAEA" }}>
-              <div className="min-w-0 flex items-center gap-2">
-                <span className="w-9 h-9 rounded-lg flex items-center justify-center text-[10px] font-black flex-shrink-0"
-                      style={{ background: "#EAEAEA", color: "#3D3D3D" }}>
-                  {blockBadge(pickerForBlock)}
-                </span>
-                <div>
-                  <p className="text-sm font-bold" style={{ color: "#3D3D3D" }}>
-                    Add to {blockLabel(pickerForBlock)}
-                  </p>
-                  <p className="text-[10px]" style={{ color: "#999" }}>
-                    {coursesForBlock(pickerForBlock).length} option{coursesForBlock(pickerForBlock).length === 1 ? "" : "s"}
-                  </p>
-                </div>
-              </div>
-              <button onClick={() => setPickerForBlock(null)}
-                className="text-sm font-bold w-8 h-8 rounded-lg flex items-center justify-center"
-                style={{ background: "#EAEAEA", color: "#3D3D3D", border: "none", cursor: "pointer" }}
-                aria-label="Close">
-                ✕
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-3 py-2"
-                 style={{ overscrollBehavior: "contain" }}>
-              {coursesForBlock(pickerForBlock).length === 0 ? (
-                <p className="text-xs text-center py-6" style={{ color: "#999" }}>
-                  No active courses available for {blockLabel(pickerForBlock).toLowerCase()}.
-                </p>
-              ) : (
-                <div className="flex flex-col gap-1">
-                  {coursesForBlock(pickerForBlock).map(c => {
-                    const isBusy        = adding === c.courseId
-                    const isPlaceholder = c.blockNumber === null
-                    return (
-                      <button key={c.courseId} onClick={() => add(c, pickerForBlock!)} disabled={isBusy}
-                        className="flex items-center gap-2 px-3 py-2 rounded-lg text-left"
-                        style={{
-                          background: isPlaceholder ? "#FFFBEB" : "#FAFAFA",
-                          border:     `1px solid ${isPlaceholder ? "#FDE68A" : "#EAEAEA"}`,
-                          cursor: "pointer", opacity: isBusy ? 0.5 : 1,
-                        }}>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <p className="text-xs font-semibold truncate" style={{ color: "#3D3D3D" }}>
-                              {c.courseName}
-                            </p>
-                            {isPlaceholder && (
-                              <span className="text-[8px] font-bold px-1 py-0.5 rounded uppercase flex-shrink-0"
-                                    style={{ background: "#FDE68A", color: "#78350F" }}>
-                                Options / Unblocked
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[10px] truncate" style={{ color: "#999" }}>
-                            {c.teacherName ?? "No teacher"}
-                            {c.room ? ` · ${c.room}` : ""}
-                            {isPlaceholder && ` · will land in ${blockLabel(pickerForBlock!).toLowerCase()}`}
-                          </p>
-                        </div>
-                        <span className="text-[10px] font-bold flex-shrink-0"
-                              style={{ color: "#1E5FA6" }}>
-                          {isBusy ? "…" : "+ Add"}
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-
-            <div className="px-4 py-2.5 border-t flex items-center justify-between"
-                 style={{ borderColor: "#EAEAEA", background: "#FAFAFA" }}>
-              <p className="text-[10px]" style={{ color: "#999" }}>
-                Tap outside or press Esc to close
-              </p>
-              <button onClick={() => setPickerForBlock(null)}
-                className="text-[10px] font-bold px-3 py-1.5 rounded-lg"
-                style={{ background: "#EAEAEA", color: "#3D3D3D", border: "none", cursor: "pointer" }}>
-                Done
-              </button>
-            </div>
-          </div>
+          )}
         </div>
       )}
 

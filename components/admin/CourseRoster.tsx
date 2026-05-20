@@ -1,5 +1,5 @@
 "use client"
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
 
 export interface RosterStudent {
@@ -34,48 +34,6 @@ export default function CourseRoster({
   const [search,      setSearch]      = useState("")
   const [busy,        setBusy]        = useState<string | null>(null)
   const [error,       setError]       = useState("")
-
-  // Lock both html and body scroll + Escape to close while the modal
-  // is open. Belt-and-suspenders: position:fixed on body, overflow:hidden
-  // on html — covers every browser quirk including iOS Safari. Preserves
-  // and restores the scroll position on close.
-  useEffect(() => {
-    if (!pickerOpen) return
-    const scrollY = window.scrollY
-    const html    = document.documentElement
-    const body    = document.body
-    const prev = {
-      htmlOverflow: html.style.overflow,
-      bodyPosition: body.style.position,
-      bodyTop:      body.style.top,
-      bodyLeft:     body.style.left,
-      bodyRight:    body.style.right,
-      bodyWidth:    body.style.width,
-      bodyOverflow: body.style.overflow,
-    }
-    html.style.overflow = "hidden"
-    body.style.position = "fixed"
-    body.style.top      = `-${scrollY}px`
-    body.style.left     = "0"
-    body.style.right    = "0"
-    body.style.width    = "100%"
-    body.style.overflow = "hidden"
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setPickerOpen(false)
-    }
-    window.addEventListener("keydown", onKey)
-    return () => {
-      html.style.overflow = prev.htmlOverflow
-      body.style.position = prev.bodyPosition
-      body.style.top      = prev.bodyTop
-      body.style.left     = prev.bodyLeft
-      body.style.right    = prev.bodyRight
-      body.style.width    = prev.bodyWidth
-      body.style.overflow = prev.bodyOverflow
-      window.scrollTo(0, scrollY)
-      window.removeEventListener("keydown", onKey)
-    }
-  }, [pickerOpen])
 
   const enrolledIds = useMemo(
     () => new Set(roster.map(s => s.id)),
@@ -202,121 +160,86 @@ export default function CourseRoster({
         </div>
       )}
 
-      {/* Add student trigger button */}
+      {/* Add student picker */}
       {canEdit && (
-        <button onClick={() => { setPickerOpen(true); setSearch("") }}
-          className="rounded-xl py-2.5 text-xs font-bold uppercase tracking-wider"
-          style={{
-            background: "#A6192E", color: "#fff", border: "none", cursor: "pointer",
-          }}>
-          + Add student
-        </button>
-      )}
+        <div className="rounded-xl border overflow-hidden"
+             style={{ borderColor: "#EAEAEA" }}>
+          <button onClick={() => { setPickerOpen(o => !o); if (pickerOpen) setSearch("") }}
+            className="w-full px-4 py-2.5 flex items-center justify-between"
+            style={{ background: pickerOpen ? "#FFF8F8" : "#FAFAFA", border: "none", cursor: "pointer" }}>
+            <p className="text-[10px] font-bold uppercase tracking-wider"
+               style={{ color: pickerOpen ? "#A6192E" : "#3D3D3D", opacity: pickerOpen ? 1 : 0.5 }}>
+              + Add student
+            </p>
+            <span className="text-xs" style={{ color: pickerOpen ? "#A6192E" : "#BABABA" }}>
+              {pickerOpen ? "▲" : "▼"}
+            </span>
+          </button>
 
-      {/* Add-student modal */}
-      {canEdit && pickerOpen && (
-        <div
-          onClick={() => setPickerOpen(false)}
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
-          style={{ background: "rgba(0,0,0,0.55)" }}>
-          <div
-            onClick={e => e.stopPropagation()}
-            className="bg-white w-full sm:max-w-md flex flex-col rounded-t-2xl sm:rounded-2xl"
-            style={{ maxHeight: "85vh", overscrollBehavior: "contain" }}>
-
-            {/* Header */}
-            <div className="px-4 py-3 flex items-center justify-between border-b"
-                 style={{ borderColor: "#EAEAEA" }}>
-              <div className="min-w-0">
-                <p className="text-sm font-bold" style={{ color: "#3D3D3D" }}>
-                  Add Student
-                </p>
-                <p className="text-[10px]" style={{ color: "#999" }}>
-                  {availableStudents.length} student{availableStudents.length === 1 ? "" : "s"} available
-                </p>
-              </div>
-              <button onClick={() => setPickerOpen(false)}
-                className="text-sm font-bold w-8 h-8 rounded-lg flex items-center justify-center"
-                style={{ background: "#EAEAEA", color: "#3D3D3D", border: "none", cursor: "pointer" }}
-                aria-label="Close">
-                ✕
-              </button>
-            </div>
-
-            {/* Search */}
-            <div className="px-4 py-3 border-b" style={{ borderColor: "#EAEAEA" }}>
+          {pickerOpen && (
+            <div className="px-4 py-3 border-t flex flex-col gap-2"
+                 style={{ borderColor: "#EAEAEA", background: "#fff" }}>
               <input
                 type="search"
-                placeholder="Search by name, grade, or Veracross ID…"
+                placeholder="Search students by name, grade, or Veracross ID…"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl text-sm border outline-none"
                 style={{ borderColor: "#EAEAEA", background: "#FAFAFA", color: "#3D3D3D" }}
                 autoFocus
               />
-            </div>
-
-            {/* List — the only scrollable area */}
-            <div className="flex-1 overflow-y-auto px-3 py-2"
-                 style={{ overscrollBehavior: "contain" }}>
               {availableStudents.length === 0 ? (
-                <p className="text-xs text-center py-6" style={{ color: "#999" }}>
+                <p className="text-xs text-center py-3" style={{ color: "#999" }}>
                   {search ? "No matching students." : "All active students already enrolled."}
                 </p>
               ) : (
-                <div className="flex flex-col gap-1">
-                  {availableStudents.map(s => {
-                    const isBusy = busy === s.id
-                    const name = [s.last_name, s.first_name].filter(Boolean).join(", ") || "Unknown"
-                    return (
-                      <button key={s.id} onClick={() => add(s)} disabled={isBusy}
-                        className="flex items-center gap-2 px-3 py-2 rounded-lg text-left"
-                        style={{
-                          background: "#FAFAFA", border: "1px solid #EAEAEA",
-                          cursor: "pointer", opacity: isBusy ? 0.5 : 1,
-                        }}>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold truncate" style={{ color: "#3D3D3D" }}>
-                            {name}
-                            {s.call_by && s.call_by !== s.first_name && (
-                              <span className="ml-1.5 text-[10px] font-normal" style={{ color: "#999" }}>
-                                ({s.call_by})
-                              </span>
-                            )}
-                          </p>
-                          <p className="text-[10px] truncate" style={{ color: "#999" }}>
-                            {s.grade ? `Gr ${s.grade}` : "No grade"}
-                            {s.veracross_id && (
-                              <span> · <span style={{ fontFamily: "monospace" }}>ID {s.veracross_id}</span></span>
-                            )}
-                            {s.advisor_name && ` · ${s.advisor_name}`}
-                          </p>
-                        </div>
-                        <span className="text-[10px] font-bold flex-shrink-0"
-                              style={{ color: "#1E5FA6" }}>
-                          {isBusy ? "…" : "+ Add"}
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
+                <>
+                  <p className="text-[10px] font-bold uppercase tracking-wider"
+                     style={{ color: "#999" }}>
+                    {availableStudents.length} student{availableStudents.length === 1 ? "" : "s"}
+                    {!search && " · scroll to browse"}
+                  </p>
+                  <div className="flex flex-col gap-1 overflow-y-auto rounded-lg"
+                       style={{ maxHeight: "60vh", border: "1px solid #EAEAEA", overscrollBehavior: "contain" }}>
+                    {availableStudents.map(s => {
+                      const isBusy = busy === s.id
+                      const name = [s.last_name, s.first_name].filter(Boolean).join(", ") || "Unknown"
+                      return (
+                        <button key={s.id} onClick={() => add(s)} disabled={isBusy}
+                          className="flex items-center gap-2 px-3 py-2 rounded-lg text-left"
+                          style={{
+                            background: "#FAFAFA", border: "1px solid #EAEAEA",
+                            cursor: "pointer", opacity: isBusy ? 0.5 : 1,
+                          }}>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold truncate" style={{ color: "#3D3D3D" }}>
+                              {name}
+                              {s.call_by && s.call_by !== s.first_name && (
+                                <span className="ml-1.5 text-[10px] font-normal" style={{ color: "#999" }}>
+                                  ({s.call_by})
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-[10px] truncate" style={{ color: "#999" }}>
+                              {s.grade ? `Gr ${s.grade}` : "No grade"}
+                              {s.veracross_id && (
+                                <span> · <span style={{ fontFamily: "monospace" }}>ID {s.veracross_id}</span></span>
+                              )}
+                              {s.advisor_name && ` · ${s.advisor_name}`}
+                            </p>
+                          </div>
+                          <span className="text-[10px] font-bold flex-shrink-0"
+                                style={{ color: "#1E5FA6" }}>
+                            {isBusy ? "…" : "+ Add"}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </>
               )}
             </div>
-
-            {/* Footer */}
-            <div className="px-4 py-2.5 border-t flex items-center justify-between"
-                 style={{ borderColor: "#EAEAEA", background: "#FAFAFA" }}>
-              <p className="text-[10px]" style={{ color: "#999" }}>
-                Tap outside or press Esc to close
-              </p>
-              <button onClick={() => setPickerOpen(false)}
-                className="text-[10px] font-bold px-3 py-1.5 rounded-lg"
-                style={{ background: "#EAEAEA", color: "#3D3D3D", border: "none", cursor: "pointer" }}>
-                Done
-              </button>
-            </div>
-
-          </div>
+          )}
         </div>
       )}
 
