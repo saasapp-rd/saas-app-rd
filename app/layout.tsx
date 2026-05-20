@@ -30,7 +30,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             height:        "100dvh",
             overflow:      "hidden",
           }}>
-            <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
+            <div id="app-scroll"
+                 style={{ flex: 1, overflowY: "auto", overflowX: "hidden" }}>
               <PushSubscriber />
               {children}
             </div>

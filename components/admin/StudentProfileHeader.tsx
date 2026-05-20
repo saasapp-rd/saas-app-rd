@@ -160,11 +160,16 @@ function EditModal({
   const [saving,    setSaving]    = useState(false)
   const [err,       setErr]       = useState("")
 
-  // Modal scroll lock — html + body, same pattern as elsewhere.
+  // Modal scroll lock — html + body + the app-shell scroll container.
+  // The root layout puts a custom <div id="app-scroll" overflow-y:auto>
+  // around all pages, and locking only html/body leaves THAT element
+  // free to scroll behind the modal. Freeze it too, then restore.
   useEffect(() => {
-    const scrollY = window.scrollY
-    const html = document.documentElement
-    const body = document.body
+    const html       = document.documentElement
+    const body       = document.body
+    const appScroll  = document.getElementById("app-scroll")
+    const scrollY    = window.scrollY
+    const appScrollY = appScroll?.scrollTop ?? 0
     const prev = {
       htmlOverflow: html.style.overflow,
       bodyPosition: body.style.position,
@@ -173,6 +178,7 @@ function EditModal({
       bodyRight:    body.style.right,
       bodyWidth:    body.style.width,
       bodyOverflow: body.style.overflow,
+      appOverflow:  appScroll?.style.overflow ?? "",
     }
     html.style.overflow = "hidden"
     body.style.position = "fixed"
@@ -181,6 +187,7 @@ function EditModal({
     body.style.right    = "0"
     body.style.width    = "100%"
     body.style.overflow = "hidden"
+    if (appScroll) appScroll.style.overflow = "hidden"
     function onKey(e: KeyboardEvent) { if (e.key === "Escape") onClose() }
     window.addEventListener("keydown", onKey)
     return () => {
@@ -191,6 +198,10 @@ function EditModal({
       body.style.right    = prev.bodyRight
       body.style.width    = prev.bodyWidth
       body.style.overflow = prev.bodyOverflow
+      if (appScroll) {
+        appScroll.style.overflow = prev.appOverflow
+        appScroll.scrollTop      = appScrollY
+      }
       window.scrollTo(0, scrollY)
       window.removeEventListener("keydown", onKey)
     }
@@ -224,10 +235,14 @@ function EditModal({
   return (
     <div onClick={onClose}
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
-      style={{ background: "rgba(0,0,0,0.55)" }}>
+      style={{ background: "rgba(0,0,0,0.7)" }}>
       <div onClick={e => e.stopPropagation()}
-        className="bg-white w-full sm:max-w-md flex flex-col rounded-t-2xl sm:rounded-2xl"
-        style={{ maxHeight: "85vh", overscrollBehavior: "contain" }}>
+        className="w-full sm:max-w-md flex flex-col rounded-t-2xl sm:rounded-2xl"
+        style={{
+          maxHeight: "85vh", overscrollBehavior: "contain",
+          background: "#fff",
+          boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)",
+        }}>
 
         <div className="px-4 py-3 flex items-center justify-between border-b"
              style={{ borderColor: "#EAEAEA" }}>
