@@ -15,7 +15,6 @@ const ALLOWED       = ["coordinator","counselor","dean","admin","super_admin"]
 const DELETE_ROLES  = ["admin","super_admin"]
 const PHONE_ALLOWED = ["coordinator","counselor","dean","admin","super_admin"]
 const EDIT_ALLOWED  = ["admin","super_admin"]
-const ACK_ALLOWED   = ["coordinator","counselor","dean","admin","super_admin"]
 
 export default async function StudentIncidentsPage({
   params,
@@ -81,7 +80,10 @@ export default async function StudentIncidentsPage({
   const canDelete       = DELETE_ROLES.includes(session.user.role)
   const canSeePhone     = PHONE_ALLOWED.includes(session.user.role)
   const canEditProfile  = EDIT_ALLOWED.includes(session.user.role)
-  const canAckSchedule  = ACK_ALLOWED.includes(session.user.role)
+  // The schedule-ack button doesn't belong on the incidents page (it's a
+  // schedule-management action). The badge still shows when relevant, but
+  // toggling lives on the schedule page.
+  const canAckSchedule  = false
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#fff" }}>
