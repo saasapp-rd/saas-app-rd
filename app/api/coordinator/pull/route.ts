@@ -16,16 +16,17 @@ export async function POST(req: NextRequest) {
   if (!student_id)
     return NextResponse.json({ error: "student_id required" }, { status: 400 })
 
+  // students were merged into users (migration 011) — query users table
   const { data: stu } = await db
-    .from("students")
+    .from("users")
     .select("first_name, last_name")
     .eq("id", student_id)
     .single()
 
   const name = stu ? stu.last_name + ", " + stu.first_name : "Unknown"
 
-  const period   = await getCurrentPeriod()
-  const blockId  = period.type === "block" ? period.blockNumber : null
+  const period  = await getCurrentPeriod()
+  const blockId = period.type === "block" ? period.blockNumber : null
   const incLevel = level === "elevated" ? "elevated" : "routine"
 
   const { data, error } = await db
@@ -35,6 +36,7 @@ export async function POST(req: NextRequest) {
       reported_by:  session.user.userId,
       report_type:  "absent_from_start",
       initiated_by: "coordinator_pull",
+      period_type:  period.type,
       level:        incLevel,
       status:       "open",
       block_id:     blockId,

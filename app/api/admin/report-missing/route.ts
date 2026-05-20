@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/supabase"
+import { getCurrentPeriod } from "@/lib/schedule"
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -10,6 +11,8 @@ export async function POST(req: NextRequest) {
 
   const { student_id } = await req.json()
   if (!student_id) return NextResponse.json({ error: "student_id required" }, { status: 400 })
+
+  const period = await getCurrentPeriod()
 
   const { data, error } = await db
     .from("incidents")
@@ -20,6 +23,8 @@ export async function POST(req: NextRequest) {
       level:               "routine",
       report_type:         "absent_from_start",
       initiated_by:        "coordinator_pull",
+      period_type:         period.type,
+      block_id:            period.type === "block" ? period.blockNumber : null,
       suppress_email_home: false,
     })
     .select("id")
