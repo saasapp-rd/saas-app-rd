@@ -7,7 +7,7 @@ import Link from "next/link"
 import FlagManager from "@/components/counselor/FlagManager"
 import StudentSchedule from "@/components/admin/StudentSchedule"
 import StudentProfileHeader from "@/components/admin/StudentProfileHeader"
-import { analyzeSchedule } from "@/components/admin/StudentList"
+import { analyzeSchedule } from "@/lib/scheduleAnalysis"
 
 const ALLOWED       = ["coordinator","counselor","dean","admin","super_admin","teacher","staff"]
 const FLAG_ALLOWED  = ["counselor","dean","admin","super_admin"]
