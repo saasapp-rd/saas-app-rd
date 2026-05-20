@@ -82,6 +82,11 @@ interface Props {
 
 type Mode = "none" | "view" | "edit"
 
+
+function blockLabel(n: number | null | undefined): string {
+  if (n === 9) return "Advisory"
+  return n != null ? "Block " + n : "Block"
+}
 export default function UserRowActions({
   id, displayName, firstName, lastName, email, phone, businessPhone,
   role, roles: rolesProp, isActive, isSelf,
@@ -269,8 +274,7 @@ export default function UserRowActions({
 
   const coursesSummary = courses.length === 0
     ? "No courses assigned"
-    : "Block" + (courses.length > 1 ? "s" : "") + " " +
-      courses.map(c => c.block_number).join(", ") +
+    : courses.map(c => blockLabel(c.block_number)).join(", ") +
       " · " + courses.length + " course" + (courses.length !== 1 ? "s" : "")
 
   const extraCount  = savedRoles.length - 1
@@ -426,7 +430,7 @@ export default function UserRowActions({
                       <div>
                         <span className="text-xs font-semibold" style={{ color: "#3D3D3D" }}>{c.name}</span>
                         <span className="ml-2 text-[10px]" style={{ color: "#999" }}>
-                          Block {c.block_number}{c.room ? ` · ${c.room}` : ""}
+                          {blockLabel(c.block_number)}{c.room ? ` · ${c.room}` : ""}
                         </span>
                       </div>
                       <button onClick={() => unassignCourse(c.id)} disabled={unassigning === c.id}
@@ -447,7 +451,7 @@ export default function UserRowActions({
                     <option value="">Assign a course…</option>
                     {unassignedCourses.map(c => (
                       <option key={c.id} value={c.id}>
-                        Block {c.block_number} — {c.name}{c.room ? ` (${c.room})` : ""}
+                        {`${blockLabel(c.block_number)} — ${c.name}${c.room ? ` (${c.room})` : ""}`}
                       </option>
                     ))}
                   </select>
