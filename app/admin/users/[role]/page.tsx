@@ -81,7 +81,7 @@ export default async function UserRolePage({
     // courses + teacher_id so we can hydrate enrollment details client-side.
     // Bumped past PostgREST's 1000-row default — 800 students × 7 classes
     // is well over a thousand rows.
-    const [studentsRes, enrollData, courseRes] = await Promise.all([
+    const [studentsRes, enrollData, courseRes, incidentRows] = await Promise.all([
       db.from("users")
         .select("id, first_name, last_name, call_by, grade, veracross_id, phone, is_active, advisor_name, schedule_acknowledged")
         .eq("role", "student")
@@ -97,6 +97,15 @@ export default async function UserRolePage({
       db.from("courses")
         .select("id, name, block_number, room, is_advisory, teacher_id")
         .range(0, 9999),
+      // Incident summaries for the current academic year. Slim payload
+      // (just student_id, level, reported_at) so we can aggregate
+      // counts client-side without dragging full incident bodies.
+      fetchAllPaginated<{ student_id: string; level: string; reported_at: string }>(() =>
+        db.from("incidents")
+          .select("student_id, level, reported_at")
+          .gte("reported_at", "2025-08-01")
+          .neq("report_type", "welfare_concern")
+      ),
     ])
     const enrollRes = { data: enrollData }
 
@@ -155,6 +164,29 @@ export default async function UserRolePage({
       list.sort((a, b) => (a.block ?? 99) - (b.block ?? 99))
     }
 
+    // Aggregate incident counts per student for the current academic year.
+    interface IncidentSummary {
+      total:    number
+      last30d:  number
+      elevated: number
+      lastDate: string | null
+    }
+    const incidentsByStudent: Record<string, IncidentSummary> = {}
+    const now      = Date.now()
+    const thirtyMs = 30 * 86400000
+    for (const i of incidentRows) {
+      if (!i.student_id) continue
+      const sum = incidentsByStudent[i.student_id] ?? {
+        total: 0, last30d: 0, elevated: 0, lastDate: null,
+      }
+      sum.total++
+      if (i.level === "elevated") sum.elevated++
+      const t = new Date(i.reported_at).getTime()
+      if (now - t < thirtyMs) sum.last30d++
+      if (!sum.lastDate || t > new Date(sum.lastDate).getTime()) sum.lastDate = i.reported_at
+      incidentsByStudent[i.student_id] = sum
+    }
+
     return (
       <div className="min-h-screen flex flex-col" style={{ background: "#fff" }}>
         <header className="px-5 py-3.5 flex items-center justify-between"
@@ -178,7 +210,11 @@ export default async function UserRolePage({
         </nav>
         <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
           <AddStudentForm />
-          <StudentList students={students} enrollmentsByStudent={enrollmentsByStudent} />
+          <StudentList
+            students={students}
+            enrollmentsByStudent={enrollmentsByStudent}
+            incidentsByStudent={incidentsByStudent}
+          />
         </main>
       </div>
     )

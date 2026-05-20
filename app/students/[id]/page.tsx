@@ -258,7 +258,7 @@ export default async function StudentProfilePage({
         </div>
 
         {/* Schedule */}
-        <div>
+        <div id="schedule" style={{ scrollMarginTop: 80 }}>
           <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
              style={{ color: "#3D3D3D", opacity: 0.35 }}>
             Schedule &mdash; {enrollments.length} {enrollments.length === 1 ? "class" : "classes"}
@@ -307,8 +307,8 @@ export default async function StudentProfilePage({
           )}
         </div>
 
-        {/* Incident history */}
-        <div>
+        {/* Incident history — anchor target for "See Missing Data" links */}
+        <div id="incidents" style={{ scrollMarginTop: 80 }}>
           <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
              style={{ color: "#3D3D3D", opacity: 0.35 }}>
             Incident History &mdash; {incidents.length}

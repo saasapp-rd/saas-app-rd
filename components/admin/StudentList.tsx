@@ -47,12 +47,21 @@ function sortStudents(students: StudentRow[], field: SortField, dir: SortDir): S
   })
 }
 
+export interface IncidentSummary {
+  total:    number
+  last30d:  number
+  elevated: number
+  lastDate: string | null
+}
+
 export default function StudentList({
   students,
   enrollmentsByStudent,
+  incidentsByStudent,
 }: {
-  students:             StudentRow[]
+  students:              StudentRow[]
   enrollmentsByStudent?: Record<string, EnrollmentRow[]>
+  incidentsByStudent?:   Record<string, IncidentSummary>
 }) {
   const [search,             setSearch]             = useState("")
   const [sortField,          setSortField]          = useState<SortField>("last_name")
@@ -388,6 +397,7 @@ export default function StudentList({
               key={s.id}
               s={s}
               enrollments={enrollmentsByStudent?.[s.id] ?? []}
+              incidents={incidentsByStudent?.[s.id]}
             />
           ))}
         </div>

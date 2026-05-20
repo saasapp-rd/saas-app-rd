@@ -2,7 +2,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import type { StudentRow, EnrollmentRow } from "./StudentList"
+import type { StudentRow, EnrollmentRow, IncidentSummary } from "./StudentList"
 import { analyzeSchedule } from "./StudentList"
 
 const GRADES = [9, 10, 11, 12]
@@ -12,9 +12,11 @@ type Mode = "none" | "view" | "edit"
 export default function StudentRowActions({
   s,
   enrollments = [],
+  incidents,
 }: {
-  s:           StudentRow
+  s:            StudentRow
   enrollments?: EnrollmentRow[]
+  incidents?:   IncidentSummary
 }) {
   const router = useRouter()
 
@@ -268,6 +270,28 @@ export default function StudentRowActions({
             </div>
           )}
 
+          {/* Missing-student stats — current academic year. Surfaces
+              right where admin needs to triage from. */}
+          <div className="mt-3">
+            <p className="text-[9px] font-bold uppercase tracking-wide mb-1.5"
+               style={{ color: "#3D3D3D", opacity: 0.5 }}>
+              Missing Student Data — This Year
+            </p>
+            <div className="grid grid-cols-3 gap-1.5">
+              <StatTile label="Total"        value={incidents?.total    ?? 0} />
+              <StatTile label="Last 30 d"    value={incidents?.last30d  ?? 0} />
+              <StatTile label="Elevated"     value={incidents?.elevated ?? 0}
+                        emphasis={(incidents?.elevated ?? 0) > 0 ? "alarm" : "default"} />
+            </div>
+            {incidents?.lastDate && (
+              <p className="text-[9px] mt-1.5" style={{ color: "#999" }}>
+                Last reported: {new Date(incidents.lastDate).toLocaleDateString("en-US", {
+                  month: "short", day: "numeric", year: "numeric",
+                })}
+              </p>
+            )}
+          </div>
+
           {/* Course enrollments */}
           <div className="mt-3">
             <p className="text-[9px] font-bold uppercase tracking-wide mb-1.5"
@@ -314,16 +338,24 @@ export default function StudentRowActions({
             )}
           </div>
 
-          <div className="mt-3 flex justify-end gap-2">
+          <div className="mt-3 flex justify-end gap-2 flex-wrap">
+            <Link href={`/students/${s.id}#incidents`}
+              className="text-[10px] font-semibold px-3 py-1.5 rounded-lg"
+              style={{
+                background: "#EAEAEA", color: "#3D3D3D",
+                textDecoration: "none",
+              }}>
+              See Missing Data →
+            </Link>
             <button onClick={toggleEdit}
               className="text-[10px] font-semibold px-3 py-1.5 rounded-lg"
               style={{
                 background: "#EAEAEA", color: "#3D3D3D",
                 border: "none", cursor: "pointer",
               }}>
-              Edit details
+              Edit Student Info
             </button>
-            <Link href={`/students/${s.id}`}
+            <Link href={`/students/${s.id}#schedule`}
               className="text-[10px] font-bold px-3 py-1.5 rounded-lg"
               style={{ background: "#A6192E", color: "#fff", textDecoration: "none" }}>
               Edit Schedule →
@@ -510,6 +542,30 @@ export default function StudentRowActions({
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+function StatTile({ label, value, emphasis = "default" }: {
+  label:    string
+  value:    number
+  emphasis?: "default" | "alarm"
+}) {
+  const isAlarm = emphasis === "alarm" && value > 0
+  return (
+    <div className="rounded-lg px-2 py-1.5 text-center"
+         style={{
+           background: isAlarm ? "#FFF0F0" : "#FAFAFA",
+           border:     `1px solid ${isAlarm ? "#FECACA" : "#EAEAEA"}`,
+         }}>
+      <div className="text-base font-black leading-tight"
+           style={{ color: isAlarm ? "#CE2033" : "#3D3D3D" }}>
+        {value}
+      </div>
+      <div className="text-[8px] font-bold uppercase tracking-wide"
+           style={{ color: isAlarm ? "#CE2033" : "#999" }}>
+        {label}
+      </div>
     </div>
   )
 }
