@@ -137,7 +137,7 @@ export default async function AdminDashboard() {
               {rows.map(r => (
                 <Link
                   key={r.id}
-                  href={r.student ? "/students/" + r.student.id : "/coordinator/" + r.id}
+                  href={"/coordinator/" + r.id}
                   style={{ textDecoration: "none", display: "block" }}>
                   <div className="flex items-center justify-between py-1.5 px-1 rounded-lg">
                     <span className="text-xs font-semibold" style={{ color: "#3D3D3D" }}>
