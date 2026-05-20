@@ -21,18 +21,6 @@ const FLAG_STYLE: Record<string, { bg: string; color: string }> = {
   emergency: { bg: "#FFE0E0", color: "#7B0000" },
 }
 
-interface IncidentRow {
-  id:               string
-  level:            string
-  status:           string
-  report_type:      string
-  reported_at:      string
-  resolved_at:      string | null
-  block_id:         number | null
-  located_location: string | null
-  reporter:         { display_name: string } | null
-}
-
 interface FlagRow {
   id:          string
   flag_level:  string
@@ -53,7 +41,7 @@ export default async function StudentProfilePage({
   // Students live in the users table post-migration 011 — the legacy
   // students table doesn't exist on this instance. Map veracross_id →
   // student_id so downstream rendering stays uniform.
-  const [stuResult, flagResult, incResult, enrollResult, allCoursesResult] = await Promise.all([
+  const [stuResult, flagResult, enrollResult, allCoursesResult] = await Promise.all([
     db.from("users")
       .select("id, first_name, last_name, call_by, grade, veracross_id, parent_email, parent_name, phone, schedule_acknowledged")
       .eq("id", id)
@@ -62,11 +50,6 @@ export default async function StudentProfilePage({
       .select("id, flag_level, public_note, flagged_at")
       .eq("student_id", id)
       .order("flagged_at", { ascending: false }),
-    db.from("incidents")
-      .select("id, level, status, report_type, reported_at, resolved_at, block_id, located_location, reporter:reported_by(display_name)")
-      .eq("student_id", id)
-      .order("reported_at", { ascending: false })
-      .limit(50),
     db.from("student_enrollments")
       .select("course_id, block_number")
       .eq("student_id", id)
@@ -102,8 +85,7 @@ export default async function StudentProfilePage({
     phone:        stuRaw.phone,
     schedule_acknowledged: !!stuRaw.schedule_acknowledged,
   }
-  const flags     = (flagResult.data ?? []) as FlagRow[]
-  const incidents = (incResult.data ?? []) as unknown as IncidentRow[]
+  const flags = (flagResult.data ?? []) as FlagRow[]
 
   // Build a course lookup (for both the student's enrollments and the
   // "add a class" picker). All active courses come from allCoursesResult.
@@ -165,9 +147,6 @@ export default async function StudentProfilePage({
   const scheduleStatus = analyzeSchedule(scheduleEnrollmentsForAnalyze)
 
   const canManageFlags = FLAG_ALLOWED.includes(session.user.role)
-  const now            = Date.now()
-  const thirtyDays     = incidents.filter(i => (now - new Date(i.reported_at).getTime()) < 30 * 86400000)
-  const elevCount      = incidents.filter(i => i.level === "elevated").length
 
   function fmtDate(iso: string): string {
     return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" })
@@ -219,25 +198,6 @@ export default async function StudentProfilePage({
           canAckSchedule={canAckSchedule}
         />
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-2">
-          <div className="rounded-xl p-3 text-center" style={{ background: "#F7F7F7" }}>
-            <div className="text-2xl font-black" style={{ color: "#A6192E" }}>{incidents.length}</div>
-            <div className="text-[9px] font-bold uppercase tracking-wide opacity-50">Total</div>
-          </div>
-          <div className="rounded-xl p-3 text-center" style={{ background: "#F7F7F7" }}>
-            <div className="text-2xl font-black" style={{ color: "#A6192E" }}>{thirtyDays.length}</div>
-            <div className="text-[9px] font-bold uppercase tracking-wide opacity-50">Last 30d</div>
-          </div>
-          <div className="rounded-xl p-3 text-center" style={{ background: "#F7F7F7" }}>
-            <div className="text-2xl font-black"
-                 style={{ color: elevCount > 0 ? "#CE2033" : "#A6192E" }}>
-              {elevCount}
-            </div>
-            <div className="text-[9px] font-bold uppercase tracking-wide opacity-50">Elevated</div>
-          </div>
-        </div>
-
         {/* Schedule */}
         <div id="schedule" style={{ scrollMarginTop: 80 }}>
           <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
@@ -288,33 +248,6 @@ export default async function StudentProfilePage({
           )}
         </div>
 
-        {/* Missing-data summary — full detail + delete lives on the
-            dedicated /students/[id]/incidents drill-down page. */}
-        <div>
-          <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
-             style={{ color: "#3D3D3D", opacity: 0.35 }}>
-            Missing Student Data
-          </p>
-          <Link href={`/students/${stu.id}/incidents`}
-                style={{ textDecoration: "none", display: "block" }}>
-            <div className="rounded-xl px-4 py-3 border flex items-center justify-between"
-                 style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
-              <div>
-                <p className="text-sm font-bold" style={{ color: "#3D3D3D" }}>
-                  {incidents.length} {incidents.length === 1 ? "incident" : "incidents"} on record
-                </p>
-                <p className="text-[10px]" style={{ color: "#999" }}>
-                  {incidents.length === 0
-                    ? "Clean attendance record."
-                    : `${thirtyDays.length} in the last 30 days · ${elevCount} elevated`}
-                </p>
-              </div>
-              <span style={{ color: "#A6192E", fontSize: "11px", fontWeight: "bold" }}>
-                Open drill-down →
-              </span>
-            </div>
-          </Link>
-        </div>
       </main>
     </div>
   )
