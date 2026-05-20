@@ -1,5 +1,6 @@
 "use client"
 import { useState, useMemo, useEffect } from "react"
+import { createPortal } from "react-dom"
 import Link from "next/link"
 
 export interface RosterStudent {
@@ -35,36 +36,46 @@ export default function CourseRoster({
   const [busy,        setBusy]        = useState<string | null>(null)
   const [error,       setError]       = useState("")
 
-  // Lock body scroll + listen for Escape while the modal is open.
-  // Uses position:fixed instead of overflow:hidden so iOS Safari and
-  // other mobile browsers actually stop background scroll. Preserves
+  // Lock both html and body scroll + Escape to close while the modal
+  // is open. Belt-and-suspenders: position:fixed on body, overflow:hidden
+  // on html — covers every browser quirk including iOS Safari. Preserves
   // and restores the scroll position on close.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
   useEffect(() => {
     if (!pickerOpen) return
     const scrollY = window.scrollY
+    const html    = document.documentElement
     const body    = document.body
-    const prev    = {
-      position: body.style.position,
-      top:      body.style.top,
-      left:     body.style.left,
-      right:    body.style.right,
-      width:    body.style.width,
+    const prev = {
+      htmlOverflow: html.style.overflow,
+      bodyPosition: body.style.position,
+      bodyTop:      body.style.top,
+      bodyLeft:     body.style.left,
+      bodyRight:    body.style.right,
+      bodyWidth:    body.style.width,
+      bodyOverflow: body.style.overflow,
     }
+    html.style.overflow = "hidden"
     body.style.position = "fixed"
     body.style.top      = `-${scrollY}px`
     body.style.left     = "0"
     body.style.right    = "0"
     body.style.width    = "100%"
+    body.style.overflow = "hidden"
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") setPickerOpen(false)
     }
     window.addEventListener("keydown", onKey)
     return () => {
-      body.style.position = prev.position
-      body.style.top      = prev.top
-      body.style.left     = prev.left
-      body.style.right    = prev.right
-      body.style.width    = prev.width
+      html.style.overflow = prev.htmlOverflow
+      body.style.position = prev.bodyPosition
+      body.style.top      = prev.bodyTop
+      body.style.left     = prev.bodyLeft
+      body.style.right    = prev.bodyRight
+      body.style.width    = prev.bodyWidth
+      body.style.overflow = prev.bodyOverflow
       window.scrollTo(0, scrollY)
       window.removeEventListener("keydown", onKey)
     }
@@ -206,8 +217,9 @@ export default function CourseRoster({
         </button>
       )}
 
-      {/* Add-student modal */}
-      {canEdit && pickerOpen && (
+      {/* Add-student modal — portal'd to body so the overlay sits above
+          everything and the background is fully scroll-locked. */}
+      {mounted && canEdit && pickerOpen && createPortal(
         <div
           onClick={() => setPickerOpen(false)}
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
@@ -310,7 +322,8 @@ export default function CourseRoster({
             </div>
 
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {error && (

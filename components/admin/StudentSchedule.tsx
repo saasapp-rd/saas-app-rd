@@ -1,5 +1,6 @@
 "use client"
 import { useState, useMemo, useEffect } from "react"
+import { createPortal } from "react-dom"
 import Link from "next/link"
 
 interface Enrollment {
@@ -52,27 +53,35 @@ export default function StudentSchedule({
   const [generalSearch,   setGeneralSearch]   = useState("")
   const [error,           setError]           = useState("")
 
-  // Lock body scroll + Escape to close while any modal picker is open.
-  // Uses position:fixed instead of overflow:hidden — the latter doesn't
-  // actually prevent scroll on iOS Safari, so background scroll leaks
-  // through. Preserves scroll position on close.
+  // Lock both html and body scroll + Escape to close while any modal
+  // picker is open. position:fixed alone misses cases where the
+  // scrollable element is <html> instead of <body>; locking both
+  // covers every browser quirk. Preserves scroll position on close.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true) }, [])
+
   const anyModalOpen = generalOpen || pickerForBlock !== null
   useEffect(() => {
     if (!anyModalOpen) return
     const scrollY = window.scrollY
+    const html    = document.documentElement
     const body    = document.body
-    const prev    = {
-      position: body.style.position,
-      top:      body.style.top,
-      left:     body.style.left,
-      right:    body.style.right,
-      width:    body.style.width,
+    const prev = {
+      htmlOverflow: html.style.overflow,
+      bodyPosition: body.style.position,
+      bodyTop:      body.style.top,
+      bodyLeft:     body.style.left,
+      bodyRight:    body.style.right,
+      bodyWidth:    body.style.width,
+      bodyOverflow: body.style.overflow,
     }
+    html.style.overflow = "hidden"
     body.style.position = "fixed"
     body.style.top      = `-${scrollY}px`
     body.style.left     = "0"
     body.style.right    = "0"
     body.style.width    = "100%"
+    body.style.overflow = "hidden"
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
         setGeneralOpen(false)
@@ -81,11 +90,13 @@ export default function StudentSchedule({
     }
     window.addEventListener("keydown", onKey)
     return () => {
-      body.style.position = prev.position
-      body.style.top      = prev.top
-      body.style.left     = prev.left
-      body.style.right    = prev.right
-      body.style.width    = prev.width
+      html.style.overflow = prev.htmlOverflow
+      body.style.position = prev.bodyPosition
+      body.style.top      = prev.bodyTop
+      body.style.left     = prev.bodyLeft
+      body.style.right    = prev.bodyRight
+      body.style.width    = prev.bodyWidth
+      body.style.overflow = prev.bodyOverflow
       window.scrollTo(0, scrollY)
       window.removeEventListener("keydown", onKey)
     }
@@ -323,8 +334,9 @@ export default function StudentSchedule({
         </button>
       )}
 
-      {/* General add modal */}
-      {canEdit && generalOpen && (
+      {/* General add modal — portaled to document.body so parent CSS
+          (transforms, flex, etc.) can't trap the fixed positioning. */}
+      {mounted && canEdit && generalOpen && createPortal(
         <div
           onClick={() => setGeneralOpen(false)}
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
@@ -424,14 +436,15 @@ export default function StudentSchedule({
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* Per-block add modal */}
-      {canEdit && pickerForBlock !== null && (() => {
+      {/* Per-block add modal — also portaled to document.body */}
+      {mounted && canEdit && pickerForBlock !== null && (() => {
         const block = pickerForBlock
         const blockCourses = coursesForBlock(block)
-        return (
+        return createPortal(
           <div
             onClick={() => setPickerForBlock(null)}
             className="fixed inset-0 z-50 flex items-end sm:items-center justify-center sm:p-4"
@@ -525,7 +538,8 @@ export default function StudentSchedule({
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )
       })()}
 
