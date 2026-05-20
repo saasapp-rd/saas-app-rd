@@ -83,7 +83,7 @@ export default async function UserRolePage({
     // is well over a thousand rows.
     const [studentsRes, enrollData, courseRes] = await Promise.all([
       db.from("users")
-        .select("id, first_name, last_name, call_by, grade, veracross_id, phone, is_active, advisor_name")
+        .select("id, first_name, last_name, call_by, grade, veracross_id, phone, is_active, advisor_name, schedule_acknowledged")
         .eq("role", "student")
         .order("last_name")
         .order("first_name")

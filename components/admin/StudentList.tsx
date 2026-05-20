@@ -3,15 +3,16 @@ import { useState, useMemo } from "react"
 import StudentRowActions from "./StudentRowActions"
 
 export interface StudentRow {
-  id:            string
-  first_name:    string | null
-  last_name:     string | null
-  call_by:       string | null
-  grade:         number | null
-  veracross_id:  string | null
-  phone:         string | null
-  is_active:     boolean | null
-  advisor_name:  string | null
+  id:                     string
+  first_name:             string | null
+  last_name:              string | null
+  call_by:                string | null
+  grade:                  number | null
+  veracross_id:           string | null
+  phone:                  string | null
+  is_active:              boolean | null
+  advisor_name:           string | null
+  schedule_acknowledged?: boolean | null
 }
 
 export interface EnrollmentRow {
@@ -130,10 +131,13 @@ export default function StudentList({
     return sortStudents(base, sortField, sortDir)
   }, [students, query, sortField, sortDir, gradeFilter, advisorFilter, showInactive, scheduleIssuesOnly, enrollmentsByStudent])
 
+  // Count only unacknowledged issues — acknowledged variants are
+  // intentionally weird and shouldn't pad the warning total.
   const scheduleIssuesCount = useMemo(() => {
     if (!enrollmentsByStudent) return 0
     return students.filter(s =>
       s.is_active !== false &&
+      !s.schedule_acknowledged &&
       analyzeSchedule(enrollmentsByStudent[s.id] ?? []).hasIssues
     ).length
   }, [students, enrollmentsByStudent])

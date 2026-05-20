@@ -197,6 +197,8 @@ export async function PATCH(req: NextRequest) {
     updates.grade = Number(body.grade)
   if (body.veracross_id !== undefined)
     updates.veracross_id = body.veracross_id ? String(body.veracross_id).trim() : null
+  if (typeof body.schedule_acknowledged === "boolean")
+    updates.schedule_acknowledged = body.schedule_acknowledged
 
   if (Object.keys(updates).length === 0)
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 })

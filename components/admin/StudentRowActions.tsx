@@ -28,6 +28,7 @@ export default function StudentRowActions({
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [saving,        setSaving]        = useState(false)
   const [toggling,      setToggling]      = useState(false)
+  const [acking,        setAcking]        = useState(false)
   const [deleting,      setDeleting]      = useState(false)
   const [error,         setError]         = useState("")
 
@@ -37,6 +38,12 @@ export default function StudentRowActions({
   // Only flag schedule issues for active students — inactive students often
   // have intentionally incomplete enrollments.
   const scheduleStatus = isActive ? analyzeSchedule(enrollments) : { hasIssues: false, missingBlocks: [], missingAdvisory: false, overlays: [] }
+  const acknowledged   = !!s.schedule_acknowledged
+  // Three states: clean / unacknowledged issues (red) / acknowledged variant (orange)
+  const issueState: "clean" | "open" | "acknowledged" =
+    !scheduleStatus.hasIssues ? "clean"
+      : acknowledged          ? "acknowledged"
+      :                         "open"
 
   function toggleView() {
     if (mode === "edit") return
@@ -83,6 +90,18 @@ export default function StudentRowActions({
     setSaving(false)
   }
 
+  async function toggleAcknowledged() {
+    setAcking(true); setError("")
+    const res = await fetch("/api/admin/users", {
+      method:  "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ id: s.id, schedule_acknowledged: !acknowledged }),
+    })
+    if (res.ok) { router.refresh() }
+    else { const d = await res.json(); setError(d.error ?? "Failed.") }
+    setAcking(false)
+  }
+
   async function toggleActive() {
     setToggling(true); setError("")
     const res = await fetch("/api/admin/users", {
@@ -107,14 +126,16 @@ export default function StudentRowActions({
     setDeleting(false)
   }
 
-  const borderColor = mode !== "none"             ? "#A6192E"
-                    : scheduleStatus.hasIssues    ? "#CE2033"
-                    : !isActive                   ? "#FECACA"
-                    :                               "#EAEAEA"
-  const bgColor     = mode !== "none"             ? "#FFF8F8"
-                    : scheduleStatus.hasIssues    ? "#FFF0F0"
-                    : !isActive                   ? "#FFF5F5"
-                    :                               "#FAFAFA"
+  const borderColor = mode !== "none"           ? "#A6192E"
+                    : issueState === "open"     ? "#CE2033"
+                    : issueState === "acknowledged" ? "#F0A030"
+                    : !isActive                 ? "#FECACA"
+                    :                             "#EAEAEA"
+  const bgColor     = mode !== "none"           ? "#FFF8F8"
+                    : issueState === "open"     ? "#FFF0F0"
+                    : issueState === "acknowledged" ? "#FFF8E0"
+                    : !isActive                 ? "#FFF5F5"
+                    :                             "#FAFAFA"
 
   return (
     <div className="rounded-xl border overflow-hidden" style={{ borderColor }}>
@@ -141,10 +162,17 @@ export default function StudentRowActions({
                 Inactive
               </span>
             )}
-            {scheduleStatus.hasIssues && (
+            {issueState === "open" && (
               <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase flex-shrink-0"
                     style={{ background: "#FEE2E2", color: "#CE2033" }}>
                 ⚠ Schedule
+              </span>
+            )}
+            {issueState === "acknowledged" && (
+              <span className="text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase flex-shrink-0"
+                    style={{ background: "#FFF1D6", color: "#A06000" }}
+                    title="Schedule is a known-OK variant — admin has acknowledged it.">
+                ✓ Variant OK
               </span>
             )}
           </div>
@@ -193,28 +221,45 @@ export default function StudentRowActions({
           {/* Schedule issues callout */}
           {scheduleStatus.hasIssues && (
             <div className="mt-3 rounded-xl px-3 py-2"
-                 style={{ background: "#FFF0F0", border: "1px solid #FECACA" }}>
+                 style={{
+                   background: issueState === "acknowledged" ? "#FFF8E0" : "#FFF0F0",
+                   border:     issueState === "acknowledged" ? "1px solid #FDE68A" : "1px solid #FECACA",
+                 }}>
               <p className="text-[9px] font-bold uppercase tracking-wide mb-1"
-                 style={{ color: "#CE2033" }}>
-                ⚠ Schedule Issues
+                 style={{ color: issueState === "acknowledged" ? "#A06000" : "#CE2033" }}>
+                {issueState === "acknowledged" ? "✓ Known-OK Variant" : "⚠ Schedule Issues"}
               </p>
               {scheduleStatus.missingBlocks.length > 0 && (
-                <p className="text-[10px]" style={{ color: "#CE2033" }}>
+                <p className="text-[10px]" style={{ color: issueState === "acknowledged" ? "#A06000" : "#CE2033" }}>
                   Missing block{scheduleStatus.missingBlocks.length === 1 ? "" : "s"}:{" "}
                   {scheduleStatus.missingBlocks.join(", ")}
                 </p>
               )}
               {scheduleStatus.missingAdvisory && (
-                <p className="text-[10px]" style={{ color: "#CE2033" }}>
+                <p className="text-[10px]" style={{ color: issueState === "acknowledged" ? "#A06000" : "#CE2033" }}>
                   No advisory enrollment
                 </p>
               )}
               {scheduleStatus.overlays.length > 0 && (
-                <p className="text-[10px]" style={{ color: "#CE2033" }}>
+                <p className="text-[10px]" style={{ color: issueState === "acknowledged" ? "#A06000" : "#CE2033" }}>
                   Multiple classes in block{scheduleStatus.overlays.length === 1 ? "" : "s"}:{" "}
                   {scheduleStatus.overlays.join(", ")}
                 </p>
               )}
+              <button onClick={toggleAcknowledged} disabled={acking}
+                className="mt-2 text-[10px] font-bold px-2.5 py-1 rounded-lg"
+                style={{
+                  background: issueState === "acknowledged" ? "#fff" : "#FFF1D6",
+                  color:      issueState === "acknowledged" ? "#A06000" : "#A06000",
+                  border:     issueState === "acknowledged" ? "1px solid #FDE68A" : "1px solid #FDE68A",
+                  cursor: "pointer", opacity: acking ? 0.5 : 1,
+                }}>
+                {acking
+                  ? "…"
+                  : issueState === "acknowledged"
+                    ? "Un-acknowledge variant"
+                    : "Mark as known-OK variant"}
+              </button>
             </div>
           )}
 
