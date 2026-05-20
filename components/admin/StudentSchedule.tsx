@@ -53,11 +53,26 @@ export default function StudentSchedule({
   const [error,           setError]           = useState("")
 
   // Lock body scroll + Escape to close while any modal picker is open.
+  // Uses position:fixed instead of overflow:hidden — the latter doesn't
+  // actually prevent scroll on iOS Safari, so background scroll leaks
+  // through. Preserves scroll position on close.
   const anyModalOpen = generalOpen || pickerForBlock !== null
   useEffect(() => {
     if (!anyModalOpen) return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = "hidden"
+    const scrollY = window.scrollY
+    const body    = document.body
+    const prev    = {
+      position: body.style.position,
+      top:      body.style.top,
+      left:     body.style.left,
+      right:    body.style.right,
+      width:    body.style.width,
+    }
+    body.style.position = "fixed"
+    body.style.top      = `-${scrollY}px`
+    body.style.left     = "0"
+    body.style.right    = "0"
+    body.style.width    = "100%"
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") {
         setGeneralOpen(false)
@@ -66,7 +81,12 @@ export default function StudentSchedule({
     }
     window.addEventListener("keydown", onKey)
     return () => {
-      document.body.style.overflow = prev
+      body.style.position = prev.position
+      body.style.top      = prev.top
+      body.style.left     = prev.left
+      body.style.right    = prev.right
+      body.style.width    = prev.width
+      window.scrollTo(0, scrollY)
       window.removeEventListener("keydown", onKey)
     }
   }, [anyModalOpen])
