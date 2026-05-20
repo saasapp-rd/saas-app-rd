@@ -3,20 +3,31 @@ import { usePathname } from "next/navigation"
 import { useSession }  from "next-auth/react"
 import Link            from "next/link"
 
-interface NavItem { href: string; label: string; icon: string; activeOn?: "exact" | "sub" }
+interface NavItem {
+  href:          string
+  label:         string
+  icon:          string
+  activeOn?:     "exact" | "sub"
+  /**
+   * Override the prefix used for "sub" matching. Use this when the
+   * button links to a deeper page (e.g. /admin/config) but should
+   * highlight for the whole section (e.g. /admin/users, /admin/courses).
+   */
+  activePrefix?: string
+}
 
 const NAV: Record<string, NavItem[]> = {
   super_admin: [
     { href: "/admin",        label: "Dashboard", icon: "🏠", activeOn: "exact" },
     { href: "/missing",      label: "Live",      icon: "👁"  },
     { href: "/analytics",    label: "Analytics", icon: "📊" },
-    { href: "/admin/config", label: "Admin",     icon: "⚙️",  activeOn: "sub"  },
+    { href: "/admin/config", label: "Admin",     icon: "⚙️",  activeOn: "sub", activePrefix: "/admin" },
   ],
   admin: [
     { href: "/admin",        label: "Dashboard", icon: "🏠", activeOn: "exact" },
     { href: "/missing",      label: "Live",      icon: "👁"  },
     { href: "/analytics",    label: "Analytics", icon: "📊" },
-    { href: "/admin/config", label: "Admin",     icon: "⚙️",  activeOn: "sub"  },
+    { href: "/admin/config", label: "Admin",     icon: "⚙️",  activeOn: "sub", activePrefix: "/admin" },
   ],
   dean: [
     { href: "/missing",     label: "Live",        icon: "👁"  },
@@ -49,7 +60,11 @@ const NAV: Record<string, NavItem[]> = {
 
 function isActive(item: NavItem, pathname: string): boolean {
   if (item.activeOn === "exact") return pathname === item.href
-  if (item.activeOn === "sub")   return pathname.startsWith(item.href + "/")
+  // "sub" = anything *under* the prefix. With prefix=/admin this lights
+  // up on /admin/config, /admin/users, etc. — but NOT on /admin itself,
+  // so the Dashboard button keeps that page exclusively.
+  const prefix = item.activePrefix ?? item.href
+  if (item.activeOn === "sub")   return pathname.startsWith(prefix + "/")
   return pathname === item.href || pathname.startsWith(item.href + "/")
 }
 
