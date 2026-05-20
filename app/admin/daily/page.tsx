@@ -50,7 +50,13 @@ export default async function AdminDailyPage() {
     .lte("reported_at", today + "T23:59:59+00:00")
     .order("reported_at", { ascending: false })
 
-  const rows          = (incidents ?? []) as unknown as IncidentRow[]
+  const allRows = (incidents ?? []) as unknown as IncidentRow[]
+  // Split the day's reports: missing-student vs welfare-concern.
+  // Welfare concerns belong to a separate workflow (flag the
+  // counselor + dean) and shouldn't be counted in the missing-
+  // student totals on this page.
+  const rows          = allRows.filter(r => r.report_type !== "welfare_concern")
+  const welfareRows   = allRows.filter(r => r.report_type === "welfare_concern")
   const openCount     = rows.filter(r => r.status === "open").length
   const elevCount     = rows.filter(r => r.level  === "elevated").length
   const resolvedCount = rows.filter(r => r.status === "resolved").length
@@ -177,6 +183,51 @@ export default async function AdminDailyPage() {
             })}
           </div>
         </div>
+
+        {/* Welfare concerns — separate workflow (counselor / dean follow-up),
+            kept distinct from the missing-student list. */}
+        {welfareRows.length > 0 && (
+          <div>
+            <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
+               style={{ color: "#8B6200", opacity: 0.6 }}>
+              Welfare Concerns Today — {welfareRows.length}
+            </p>
+            <div className="flex flex-col gap-1.5">
+              {welfareRows.map(r => (
+                <Link key={r.id} href={"/coordinator/" + r.id} style={{ textDecoration: "none" }}>
+                  <div className="rounded-xl px-4 py-3 border flex items-center gap-3"
+                       style={{
+                         background:  "#FFFBEB",
+                         borderColor: "#FDE68A",
+                         borderLeft:  "3px solid #F0C040",
+                       }}>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <span className="text-sm font-bold" style={{ color: "#3D3D3D" }}>
+                          {r.student ? r.student.last_name + ", " + r.student.first_name : "Unknown"}
+                        </span>
+                        <span className="text-[10px]" style={{ color: "#999" }}>
+                          Gr {r.student?.grade ?? "?"}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase"
+                              style={{ background: "#FEF3C7", color: "#8B6200" }}>
+                          Welfare Concern
+                        </span>
+                        <span className="text-[9px]" style={{ color: "#999" }}>
+                          {fmtTime(r.reported_at)}
+                          {r.reporter ? " · " + r.reporter.display_name : ""}
+                        </span>
+                      </div>
+                    </div>
+                    <p className="text-[9px] flex-shrink-0" style={{ color: "#BABABA" }}>&rarr;</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
     </div>
   )
