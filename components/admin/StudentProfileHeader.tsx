@@ -97,7 +97,7 @@ export default function StudentProfileHeader({
           </div>
         </div>
 
-        <h1 className="text-lg font-black mb-0.5" style={{ color: "#3D3D3D" }}>
+        <h1 className="text-lg font-black mb-1" style={{ color: "#3D3D3D" }}>
           {student.last_name}, {student.first_name}
           {student.call_by && student.call_by !== student.first_name && (
             <span className="text-xs font-normal ml-2" style={{ color: "#999" }}>
@@ -105,12 +105,20 @@ export default function StudentProfileHeader({
             </span>
           )}
         </h1>
+
+        {/* Phone gets its own line — it's the most actionable identifier
+            (tap-to-call) and was getting crowded out by id/email. */}
+        {canSeePhone && student.phone && (
+          <a href={`tel:${student.phone}`}
+             className="inline-block text-xs font-semibold mb-1"
+             style={{ color: "#1E5FA6", textDecoration: "none" }}>
+            📱 {student.phone}
+          </a>
+        )}
+
         <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px]" style={{ color: "#999" }}>
           <span>Grade {student.grade ?? "—"}</span>
           {student.veracross_id && <span>ID: {student.veracross_id}</span>}
-          {canSeePhone && student.phone && (
-            <span><a href={`tel:${student.phone}`} style={{ color: "#1E5FA6", textDecoration: "none" }}>📱 {student.phone}</a></span>
-          )}
           {student.parent_email && <span>{student.parent_email}</span>}
         </div>
 
