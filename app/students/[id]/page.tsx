@@ -6,9 +6,14 @@ import SignOutButton from "@/components/SignOutButton"
 import Link from "next/link"
 import FlagManager from "@/components/counselor/FlagManager"
 import StudentSchedule from "@/components/admin/StudentSchedule"
+import StudentProfileHeader from "@/components/admin/StudentProfileHeader"
+import { analyzeSchedule } from "@/components/admin/StudentList"
 
-const ALLOWED      = ["coordinator","counselor","dean","admin","super_admin","teacher","staff"]
-const FLAG_ALLOWED = ["counselor","dean","admin","super_admin"]
+const ALLOWED       = ["coordinator","counselor","dean","admin","super_admin","teacher","staff"]
+const FLAG_ALLOWED  = ["counselor","dean","admin","super_admin"]
+const PHONE_ALLOWED = ["coordinator","counselor","dean","admin","super_admin"]
+const EDIT_ALLOWED  = ["admin","super_admin"]
+const ACK_ALLOWED   = ["coordinator","counselor","dean","admin","super_admin"]
 
 const FLAG_STYLE: Record<string, { bg: string; color: string }> = {
   elevated:  { bg: "#FFF0F0", color: "#A6192E" },
@@ -62,7 +67,7 @@ export default async function StudentProfilePage({
   // student_id so downstream rendering stays uniform.
   const [stuResult, flagResult, incResult, enrollResult, allCoursesResult] = await Promise.all([
     db.from("users")
-      .select("id, first_name, last_name, grade, veracross_id, parent_email, parent_name")
+      .select("id, first_name, last_name, call_by, grade, veracross_id, parent_email, parent_name, phone, schedule_acknowledged")
       .eq("id", id)
       .maybeSingle(),
     db.from("student_concern_flags")
@@ -91,17 +96,23 @@ export default async function StudentProfilePage({
 
   const stuRaw = stuResult.data as {
     id: string; first_name: string | null; last_name: string | null
+    call_by: string | null
     grade: number | null; veracross_id: string | null
     parent_email: string | null; parent_name: string | null
+    phone: string | null; schedule_acknowledged: boolean | null
   }
   const stu = {
     id:           stuRaw.id,
     first_name:   stuRaw.first_name,
     last_name:    stuRaw.last_name,
+    call_by:      stuRaw.call_by,
     grade:        stuRaw.grade,
     student_id:   stuRaw.veracross_id,
+    veracross_id: stuRaw.veracross_id,
     parent_email: stuRaw.parent_email,
     parent_name:  stuRaw.parent_name,
+    phone:        stuRaw.phone,
+    schedule_acknowledged: !!stuRaw.schedule_acknowledged,
   }
   const flags     = (flagResult.data ?? []) as FlagRow[]
   const incidents = (incResult.data ?? []) as unknown as IncidentRow[]
@@ -148,7 +159,22 @@ export default async function StudentProfilePage({
     }))
     .sort((a, b) => a.blockNumber - b.blockNumber)
 
-  const canEdit = ["admin","super_admin","coordinator","counselor","dean"].includes(session.user.role)
+  const canEdit         = ["admin","super_admin","coordinator","counselor","dean"].includes(session.user.role)
+  const canSeePhone     = PHONE_ALLOWED.includes(session.user.role)
+  const canEditProfile  = EDIT_ALLOWED.includes(session.user.role)
+  const canAckSchedule  = ACK_ALLOWED.includes(session.user.role)
+
+  // Surface the "known-OK variant" affordance only when there's actually
+  // a schedule issue to acknowledge. Computed server-side so the page
+  // ships the right initial state without a client round-trip.
+  const scheduleEnrollmentsForAnalyze = enrollments.map(e => ({
+    block:       e.blockNumber as number | null,
+    courseName:  e.courseName,
+    room:        e.room,
+    teacherName: e.teacherName,
+    isAdvisory:  e.blockNumber === 9,
+  }))
+  const scheduleStatus = analyzeSchedule(scheduleEnrollmentsForAnalyze)
 
   const canManageFlags = FLAG_ALLOWED.includes(session.user.role)
   const now            = Date.now()
@@ -192,32 +218,25 @@ export default async function StudentProfilePage({
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
 
-        {/* Student info */}
-        <div className="rounded-xl p-4 border" style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
-          <div className="flex items-start justify-between mb-3">
-            <div className="w-12 h-12 rounded-full flex items-center justify-center text-lg font-black"
-                 style={{ background: "#EAEAEA", color: "#888" }}>
-              {(stu.last_name ?? "?")[0]}{(stu.first_name ?? "?")[0]}
-            </div>
-            {flags.length > 0 && (
-              <span className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase"
-                    style={{
-                      background: FLAG_STYLE[flags[0].flag_level]?.bg ?? "#EAEAEA",
-                      color:      FLAG_STYLE[flags[0].flag_level]?.color ?? "#666",
-                    }}>
-                {flags[0].flag_level} concern
-              </span>
-            )}
-          </div>
-          <h1 className="text-lg font-black mb-0.5" style={{ color: "#3D3D3D" }}>
-            {stu.last_name}, {stu.first_name}
-          </h1>
-          <div className="flex flex-wrap gap-3 text-[10px]" style={{ color: "#999" }}>
-            <span>Grade {stu.grade}</span>
-            {stu.student_id && <span>ID: {stu.student_id}</span>}
-            {stu.parent_email && <span>{stu.parent_email}</span>}
-          </div>
-        </div>
+        {/* Student info — client component so edit modal + ack toggle work */}
+        <StudentProfileHeader
+          student={{
+            id:           stu.id,
+            first_name:   stu.first_name,
+            last_name:    stu.last_name,
+            call_by:      stu.call_by,
+            grade:        stu.grade,
+            veracross_id: stu.veracross_id,
+            parent_email: stu.parent_email,
+            phone:        stu.phone,
+            schedule_acknowledged: stu.schedule_acknowledged,
+          }}
+          topFlag={flags[0] ? { level: flags[0].flag_level } : null}
+          hasScheduleIssues={scheduleStatus.hasIssues}
+          canSeePhone={canSeePhone}
+          canEditProfile={canEditProfile}
+          canAckSchedule={canAckSchedule}
+        />
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-2">

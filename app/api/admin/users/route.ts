@@ -128,8 +128,7 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   const session = await getServerSession(authOptions)
-  if (!session || !["admin","super_admin"].includes(session.user.role))
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const body = await req.json()
   const { id, is_active, display_name, email, phone } = body
@@ -137,6 +136,19 @@ export async function PATCH(req: NextRequest) {
   const roleField: string | undefined = body.role
 
   if (!id) return NextResponse.json({ error: "id required" }, { status: 400 })
+
+  // Permission check is two-tier:
+  //   admin / super_admin → can edit anything in this payload
+  //   coordinator / counselor / dean → can ONLY toggle schedule_acknowledged
+  //                                    (a low-stakes review-workflow flag)
+  // Everyone else is rejected outright.
+  const role         = session.user.role
+  const isAdmin      = ["admin","super_admin"].includes(role)
+  const isSchedAck   = ["coordinator","counselor","dean"].includes(role)
+  const onlyAckField = Object.keys(body).every(k => k === "id" || k === "schedule_acknowledged")
+                    && typeof body.schedule_acknowledged === "boolean"
+  if (!isAdmin && !(isSchedAck && onlyAckField))
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   // Prevent self-deactivation
   if (typeof is_active === "boolean" && !is_active && id === session.user.userId)
