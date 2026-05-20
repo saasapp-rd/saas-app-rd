@@ -231,8 +231,8 @@ export default function StudentSchedule({
                            style={{ color: "#999" }}>
                           {blockCourses.length} option{blockCourses.length === 1 ? "" : "s"} · scroll to browse
                         </p>
-                        <div className="flex flex-col gap-1 overflow-y-auto rounded-lg"
-                             style={{ maxHeight: "60vh", border: "1px solid #EAEAEA", overscrollBehavior: "contain" }}>
+                        <div className="picker-scroll flex flex-col gap-1 overflow-y-scroll rounded-lg"
+                             style={{ maxHeight: "320px", border: "1px solid #EAEAEA", overscrollBehavior: "contain" }}>
                         {blockCourses.map(c => {
                           const isBusy      = adding === c.courseId
                           const isPlaceholder = c.blockNumber === null
@@ -378,8 +378,8 @@ export default function StudentSchedule({
                     {generalResults.length} course{generalResults.length === 1 ? "" : "s"}
                     {!generalSearch && " · scroll to browse"}
                   </p>
-                  <div className="flex flex-col gap-1 overflow-y-auto rounded-lg"
-                       style={{ maxHeight: "60vh", border: "1px solid #EAEAEA", overscrollBehavior: "contain" }}>
+                  <div className="picker-scroll flex flex-col gap-1 overflow-y-scroll rounded-lg"
+                       style={{ maxHeight: "400px", border: "1px solid #EAEAEA", overscrollBehavior: "contain" }}>
                   {generalResults.map(c => {
                     const isBusy = adding === c.courseId
                     const blockHasOverlap = c.blockNumber !== null && (rowsByBlock.get(c.blockNumber)?.length ?? 0) > 0

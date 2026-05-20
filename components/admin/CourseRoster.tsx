@@ -199,8 +199,8 @@ export default function CourseRoster({
                     {availableStudents.length} student{availableStudents.length === 1 ? "" : "s"}
                     {!search && " · scroll to browse"}
                   </p>
-                  <div className="flex flex-col gap-1 overflow-y-auto rounded-lg"
-                       style={{ maxHeight: "60vh", border: "1px solid #EAEAEA", overscrollBehavior: "contain" }}>
+                  <div className="picker-scroll flex flex-col gap-1 overflow-y-scroll rounded-lg"
+                       style={{ maxHeight: "400px", border: "1px solid #EAEAEA", overscrollBehavior: "contain" }}>
                     {availableStudents.map(s => {
                       const isBusy = busy === s.id
                       const name = [s.last_name, s.first_name].filter(Boolean).join(", ") || "Unknown"

@@ -5,3 +5,25 @@
 html, body {
   height: 100%;
 }
+
+/* Always-visible scrollbar for picker lists so the affordance is
+   obvious on macOS (which hides scrollbars by default). */
+.picker-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #BABABA #FAFAFA;
+}
+.picker-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+.picker-scroll::-webkit-scrollbar-track {
+  background: #FAFAFA;
+  border-radius: 8px;
+}
+.picker-scroll::-webkit-scrollbar-thumb {
+  background: #BABABA;
+  border-radius: 8px;
+  border: 2px solid #FAFAFA;
+}
+.picker-scroll::-webkit-scrollbar-thumb:hover {
+  background: #888;
+}
