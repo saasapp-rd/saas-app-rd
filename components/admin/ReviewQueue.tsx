@@ -1,6 +1,7 @@
 "use client"
 import { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 
 export interface DataIssue {
   id:          string
@@ -17,15 +18,40 @@ export interface DataIssue {
 }
 
 const KIND_LABEL: Record<string, string> = {
-  block_overlay:    "Block Overlay",
-  missing_course:   "Missing Course",
-  missing_teacher:  "Missing Teacher",
+  block_overlay:        "Block Overlay",
+  course_needs_review:  "Course Needs Review",
+  missing_course:       "Missing Course",
+  missing_teacher:      "Missing Teacher",
 }
 
 const KIND_COLOR: Record<string, { bg: string; color: string }> = {
-  block_overlay:   { bg: "#FFF8E0", color: "#8B6200" },
-  missing_course:  { bg: "#FFF0F0", color: "#A6192E" },
-  missing_teacher: { bg: "#EEF6FF", color: "#1E5FA6" },
+  block_overlay:        { bg: "#FFF8E0", color: "#8B6200" },
+  course_needs_review:  { bg: "#FFF0F0", color: "#A6192E" },
+  missing_course:       { bg: "#FFF0F0", color: "#A6192E" },
+  missing_teacher:      { bg: "#EEF6FF", color: "#1E5FA6" },
+}
+
+/**
+ * Map an issue to the page where admin can fix it. Returns null if no
+ * actionable destination — e.g. the underlying row was deleted.
+ */
+function fixHref(issue: DataIssue): { href: string; label: string } | null {
+  if (issue.kind === "block_overlay" && issue.ref_type === "user" && issue.ref_id) {
+    return { href: `/students/${issue.ref_id}`, label: "Fix in schedule →" }
+  }
+  if (issue.kind === "course_needs_review") {
+    const classId = issue.details?.class_id
+    if (typeof classId === "string" && classId.length > 0) {
+      return { href: `/admin/courses?search=${encodeURIComponent(classId)}`, label: "Fix course →" }
+    }
+    if (issue.ref_id) {
+      return { href: `/admin/courses?needs_review=1`, label: "Fix course →" }
+    }
+  }
+  // Generic fallbacks by ref_type
+  if (issue.ref_type === "user"   && issue.ref_id) return { href: `/students/${issue.ref_id}`,    label: "Open student →" }
+  if (issue.ref_type === "course" && issue.ref_id) return { href: `/admin/courses`,               label: "Open courses →" }
+  return null
 }
 
 const TABS = [
@@ -155,34 +181,48 @@ export default function ReviewQueue({ issues }: { issues: DataIssue[] }) {
                     Note: {issue.notes}
                   </p>
                 )}
-                <div className="flex gap-2">
-                  {issue.status === "open" ? (
-                    <>
-                      <button onClick={() => setStatus(issue.id, "resolved")}
-                        disabled={busyId === issue.id}
-                        className="flex-1 py-1.5 rounded-lg text-[10px] font-bold text-white"
-                        style={{ background: "#166534", border: "none", cursor: "pointer",
-                                 opacity: busyId === issue.id ? 0.5 : 1 }}>
-                        Mark Resolved
-                      </button>
-                      <button onClick={() => setStatus(issue.id, "dismissed")}
+                {(() => { const fix = fixHref(issue); return (
+                <div className="flex flex-col gap-1.5">
+                  {issue.status === "open" && fix && (
+                    <Link href={fix.href}
+                      className="text-center py-1.5 rounded-lg text-[10px] font-bold"
+                      style={{
+                        background: "#EEF6FF", color: "#1E5FA6",
+                        border: "1px solid #BFD7F2", textDecoration: "none",
+                      }}>
+                      {fix.label}
+                    </Link>
+                  )}
+                  <div className="flex gap-2">
+                    {issue.status === "open" ? (
+                      <>
+                        <button onClick={() => setStatus(issue.id, "resolved")}
+                          disabled={busyId === issue.id}
+                          className="flex-1 py-1.5 rounded-lg text-[10px] font-bold text-white"
+                          style={{ background: "#166534", border: "none", cursor: "pointer",
+                                   opacity: busyId === issue.id ? 0.5 : 1 }}>
+                          Mark Resolved
+                        </button>
+                        <button onClick={() => setStatus(issue.id, "dismissed")}
+                          disabled={busyId === issue.id}
+                          className="flex-1 py-1.5 rounded-lg text-[10px] font-bold"
+                          style={{ background: "#EAEAEA", color: "#3D3D3D", border: "none", cursor: "pointer",
+                                   opacity: busyId === issue.id ? 0.5 : 1 }}>
+                          Dismiss
+                        </button>
+                      </>
+                    ) : (
+                      <button onClick={() => setStatus(issue.id, "open")}
                         disabled={busyId === issue.id}
                         className="flex-1 py-1.5 rounded-lg text-[10px] font-bold"
-                        style={{ background: "#EAEAEA", color: "#3D3D3D", border: "none", cursor: "pointer",
-                                 opacity: busyId === issue.id ? 0.5 : 1 }}>
-                        Dismiss
+                        style={{ background: "#FFF8E0", color: "#8B6200", border: "1px solid #FDE68A",
+                                 cursor: "pointer", opacity: busyId === issue.id ? 0.5 : 1 }}>
+                        Reopen
                       </button>
-                    </>
-                  ) : (
-                    <button onClick={() => setStatus(issue.id, "open")}
-                      disabled={busyId === issue.id}
-                      className="flex-1 py-1.5 rounded-lg text-[10px] font-bold"
-                      style={{ background: "#FFF8E0", color: "#8B6200", border: "1px solid #FDE68A",
-                               cursor: "pointer", opacity: busyId === issue.id ? 0.5 : 1 }}>
-                      Reopen
-                    </button>
-                  )}
+                    )}
+                  </div>
                 </div>
+                )})()}
               </div>
             )
           })}

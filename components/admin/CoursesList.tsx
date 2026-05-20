@@ -1,5 +1,6 @@
 "use client"
 import { useState, useMemo } from "react"
+import { useSearchParams } from "next/navigation"
 import CourseRowActions from "./CourseRowActions"
 import type { CourseRow, TeacherOption } from "./CourseRowActions"
 
@@ -51,7 +52,14 @@ export default function CoursesList({
   courses:  CourseRow[]
   teachers: TeacherOption[]
 }) {
-  const [search,           setSearch]           = useState("")
+  // Initial state can be deep-linked from the Review Queue ("Fix" button
+  // sends ?search=<class_id> for a single-course focus, or
+  // ?needs_review=1 for the placeholder-courses bucket).
+  const searchParams = useSearchParams()
+  const initialSearch       = searchParams?.get("search") ?? ""
+  const initialNeedsReview  = searchParams?.get("needs_review") === "1"
+
+  const [search,           setSearch]           = useState(initialSearch)
   const [sortField,        setSortField]        = useState<SortField>("block")
   const [sortDir,          setSortDir]          = useState<SortDir>("asc")
   const [blockFilter,      setBlockFilter]      = useState<number[]>([])
@@ -59,7 +67,7 @@ export default function CoursesList({
   const [gradeFilter,      setGradeFilter]      = useState<string[]>([])
   const [page,             setPage]             = useState(0)
   const [showInactive,     setShowInactive]     = useState(false)
-  const [needsReviewOnly,  setNeedsReviewOnly]  = useState(false)
+  const [needsReviewOnly,  setNeedsReviewOnly]  = useState(initialNeedsReview)
 
   const query = search.trim().toLowerCase()
 
