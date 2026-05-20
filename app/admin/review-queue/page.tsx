@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/supabase"
+import { autoResolveOpenIssues } from "@/lib/dataIssues"
 import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
@@ -13,6 +14,11 @@ export default async function ReviewQueuePage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect("/login")
   if (!["admin", "super_admin"].includes(session.user.role)) redirect("/dashboard")
+
+  // Sweep first: any open row whose underlying problem has been fixed
+  // elsewhere (admin edited the course, removed an overlay enrollment,
+  // deleted a referenced row) gets flipped to resolved before we render.
+  const autoResolved = await autoResolveOpenIssues()
 
   const { data } = await db
     .from("data_issues")
@@ -49,6 +55,14 @@ export default async function ReviewQueuePage() {
           once you&apos;ve fixed the underlying data, or dismiss if no action is
           needed (e.g. a legitimate schedule overlay).
         </div>
+
+        {autoResolved > 0 && (
+          <div className="rounded-xl px-4 py-3 mb-4 text-[10px]"
+               style={{ background: "#F0FDF4", border: "1px solid #BBF7D0", color: "#166534" }}>
+            Auto-resolved {autoResolved} issue{autoResolved === 1 ? "" : "s"} whose
+            underlying data was fixed elsewhere.
+          </div>
+        )}
         <ReviewQueue issues={issues} />
       </main>
     </div>
