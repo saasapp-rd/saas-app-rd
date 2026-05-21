@@ -12,6 +12,19 @@ export async function POST(req: NextRequest) {
   const { student_id } = await req.json()
   if (!student_id) return NextResponse.json({ error: "student_id required" }, { status: 400 })
 
+  // Pre-emption: active check-in for this student?
+  const now = new Date().toISOString()
+  const { data: activeCI } = await db
+    .from("student_check_ins")
+    .select("id, staff:staff_id(display_name)")
+    .eq("student_id", student_id)
+    .is("released_at", null)
+    .gt("expires_at", now)
+    .limit(1)
+  const preEmpted   = !!(activeCI && activeCI.length > 0)
+  const ciStaffRaw  = preEmpted ? (Array.isArray(activeCI![0].staff) ? activeCI![0].staff[0] : activeCI![0].staff) : null
+  const ciStaffName = (ciStaffRaw as any)?.display_name ?? "Staff"
+
   const period = await getCurrentPeriod()
 
   const { data, error } = await db
@@ -19,7 +32,8 @@ export async function POST(req: NextRequest) {
     .insert({
       student_id,
       reported_by:         session.user.userId,
-      status:              "open",
+      status:              preEmpted ? "located" : "open",
+      pre_empted_at:       preEmpted ? now : null,
       level:               "routine",
       report_type:         "absent_from_start",
       initiated_by:        "coordinator_pull",
@@ -31,5 +45,8 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json(data, { status: 201 })
+  return NextResponse.json(
+    preEmpted ? { pre_empted: true, staff_name: ciStaffName, ...data } : data,
+    { status: 201 }
+  )
 }

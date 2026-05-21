@@ -29,6 +29,19 @@ export async function POST(req: NextRequest) {
   const blockId = period.type === "block" ? period.blockNumber : null
   const incLevel = level === "elevated" ? "elevated" : "routine"
 
+  // Pre-emption: active check-in for this student?
+  const now = new Date().toISOString()
+  const { data: activeCI } = await db
+    .from("student_check_ins")
+    .select("id, staff:staff_id(display_name)")
+    .eq("student_id", student_id)
+    .is("released_at", null)
+    .gt("expires_at", now)
+    .limit(1)
+  const preEmpted   = !!(activeCI && activeCI.length > 0)
+  const ciStaffRaw  = preEmpted ? (Array.isArray(activeCI![0].staff) ? activeCI![0].staff[0] : activeCI![0].staff) : null
+  const ciStaffName = (ciStaffRaw as any)?.display_name ?? "Staff"
+
   const { data, error } = await db
     .from("incidents")
     .insert({
@@ -38,7 +51,8 @@ export async function POST(req: NextRequest) {
       initiated_by: "coordinator_pull",
       period_type:  period.type,
       level:        incLevel,
-      status:       "open",
+      status:       preEmpted ? "located" : "open",
+      pre_empted_at: preEmpted ? now : null,
       block_id:     blockId,
     })
     .select("id")
@@ -46,10 +60,15 @@ export async function POST(req: NextRequest) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  await sendPushToRole("coordinator", {
-    title: "Missing Student Reported — " + name,
-    body:  reason?.trim() ? reason.trim() : "Pulled by " + session.user.displayName,
-  }).catch(() => {})
+  if (!preEmpted) {
+    await sendPushToRole("coordinator", {
+      title: "Missing Student Reported — " + name,
+      body:  reason?.trim() ? reason.trim() : "Pulled by " + session.user.displayName,
+    }).catch(() => {})
+  }
 
-  return NextResponse.json({ id: data.id }, { status: 201 })
+  return NextResponse.json(
+    preEmpted ? { pre_empted: true, staff_name: ciStaffName, id: data.id } : { id: data.id },
+    { status: 201 }
+  )
 }

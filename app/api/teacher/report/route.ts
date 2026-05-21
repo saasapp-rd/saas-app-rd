@@ -32,6 +32,19 @@ export async function POST(req: NextRequest) {
   if (existing && existing.length > 0)
     return NextResponse.json({ duplicate: true, incident: existing[0] }, { status: 200 })
 
+  // Pre-emption: active check-in for this student?
+  const now = new Date().toISOString()
+  const { data: activeCI } = await db
+    .from("student_check_ins")
+    .select("id, staff:staff_id(display_name)")
+    .eq("student_id", student_id)
+    .is("released_at", null)
+    .gt("expires_at", now)
+    .limit(1)
+  const preEmpted   = !!(activeCI && activeCI.length > 0)
+  const ciStaffRaw  = preEmpted ? (Array.isArray(activeCI![0].staff) ? activeCI![0].staff[0] : activeCI![0].staff) : null
+  const ciStaffName = (ciStaffRaw as any)?.display_name ?? "Staff"
+
   // Block 1 suppression
   const period = await getCurrentPeriod()
   const suppressEmail =
@@ -57,7 +70,8 @@ export async function POST(req: NextRequest) {
     room,
     suppress_email_home: suppressEmail,
     initiated_by:        "teacher",
-    status:              "open",
+    status:              preEmpted ? "located" : "open",
+    pre_empted_at:       preEmpted ? now : null,
   }).select("id, block_id, student:student_id(first_name, last_name)").single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -69,11 +83,16 @@ export async function POST(req: NextRequest) {
     : (rawStudent as { first_name: string; last_name: string } | null)
   const fullName = student ? student.last_name + ", " + student.first_name : "Student"
 
-  sendPushToRole("coordinator", {
-    title: "Missing Student Reported",
-    body:  fullName + " — Block " + incident.block_id,
-    url:   "/coordinator",
-  }).catch(() => {})
+  if (!preEmpted) {
+    sendPushToRole("coordinator", {
+      title: "Missing Student Reported",
+      body:  fullName + " — Block " + incident.block_id,
+      url:   "/coordinator",
+    }).catch(() => {})
+  }
 
-  return NextResponse.json(incident, { status: 201 })
+  return NextResponse.json(
+    preEmpted ? { pre_empted: true, staff_name: ciStaffName, incident } : incident,
+    { status: 201 }
+  )
 }
