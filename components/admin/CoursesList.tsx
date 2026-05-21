@@ -68,6 +68,7 @@ export default function CoursesList({
   const [page,             setPage]             = useState(0)
   const [showInactive,     setShowInactive]     = useState(false)
   const [needsReviewOnly,  setNeedsReviewOnly]  = useState(initialNeedsReview)
+  const [noEnrollmentsOnly, setNoEnrollmentsOnly] = useState(false)
 
   const query = search.trim().toLowerCase()
 
@@ -89,14 +90,16 @@ export default function CoursesList({
     return [...set].sort()
   }, [courses])
 
-  const inactiveCount    = useMemo(() => courses.filter(c => c.is_active === false).length, [courses])
-  const needsReviewCount = useMemo(() => courses.filter(c => c.block_number === null && c.is_active !== false).length, [courses])
-  const activeCount      = courses.length - inactiveCount
+  const inactiveCount     = useMemo(() => courses.filter(c => c.is_active === false).length, [courses])
+  const needsReviewCount  = useMemo(() => courses.filter(c => c.block_number === null && c.is_active !== false).length, [courses])
+  const noEnrollmentCount = useMemo(() => courses.filter(c => c.is_active !== false && c.enrollment_count === 0).length, [courses])
+  const activeCount       = courses.length - inactiveCount
 
   const filtered = useMemo(() => {
     let base = showInactive ? courses : courses.filter(c => c.is_active !== false)
 
-    if (needsReviewOnly) base = base.filter(c => c.block_number === null)
+    if (needsReviewOnly)   base = base.filter(c => c.block_number === null)
+    if (noEnrollmentsOnly) base = base.filter(c => c.enrollment_count === 0)
 
     if (query) {
       base = base.filter(c =>
@@ -115,7 +118,7 @@ export default function CoursesList({
       base = base.filter(c => c.grade_level != null && gradeFilter.includes(c.grade_level))
 
     return sortCourses(base, sortField, sortDir)
-  }, [courses, query, sortField, sortDir, blockFilter, levelFilter, gradeFilter, showInactive, needsReviewOnly])
+  }, [courses, query, sortField, sortDir, blockFilter, levelFilter, gradeFilter, showInactive, needsReviewOnly, noEnrollmentsOnly])
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const safePage  = Math.min(page, pageCount - 1)
@@ -279,6 +282,19 @@ export default function CoursesList({
             {needsReviewOnly ? "✕ Showing needs-review" : `⚠ ${needsReviewCount} need${needsReviewCount === 1 ? "s" : ""} review`}
           </button>
         )}
+        {noEnrollmentCount > 0 && (
+          <button onClick={() => setNoEnrollmentsOnly(v => !v)}
+            className="text-[10px] font-bold px-2.5 py-1 rounded-full"
+            style={{
+              background: noEnrollmentsOnly ? "#8B6200" : "#FFF8E0",
+              color:      noEnrollmentsOnly ? "#fff"    : "#8B6200",
+              border: "none", cursor: "pointer",
+            }}>
+            {noEnrollmentsOnly
+              ? "✕ Showing no-enrollment courses"
+              : `○ ${noEnrollmentCount} no enrollment${noEnrollmentCount === 1 ? "" : "s"}`}
+          </button>
+        )}
         {inactiveCount > 0 && (
           <button onClick={() => setShowInactive(v => !v)}
             className="text-[10px] font-bold px-2.5 py-1 rounded-full"
@@ -295,7 +311,7 @@ export default function CoursesList({
       {/* Count */}
       <p className="text-[9px] font-bold tracking-[0.25em] uppercase"
          style={{ color: "#3D3D3D", opacity: 0.35 }}>
-        {query || hasFilters || needsReviewOnly
+        {query || hasFilters || needsReviewOnly || noEnrollmentsOnly
           ? `${filtered.length} match${filtered.length !== 1 ? "es" : ""}${pageCount > 1 ? ` · showing ${start}–${end}` : ""}`
           : `${activeCount} active · ${courses.length} total${pageCount > 1 ? ` · showing ${start}–${end}` : ""}`
         }
