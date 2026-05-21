@@ -3,15 +3,17 @@ import { useState, FormEvent } from "react"
 import { useRouter } from "next/navigation"
 
 const ROLE_LABEL: Record<string, string> = {
-  teacher:     "Teacher",
-  advisor:     "Advisor",
-  coordinator: "Coordinator",
-  counselor:   "Counselor",
-  dean:        "Dean",
-  staff:       "Staff",
-  admin:       "Administrator",
-  super_admin: "Super Admin",
-  parent:      "Parent",
+  teacher:        "Teacher",
+  advisor:        "Advisor",
+  coordinator:    "Coordinator",
+  counselor:      "Counselor",
+  nurse:          "Nurse / Health",
+  accommodations: "Accommodations",
+  dean:           "Dean",
+  staff:          "Staff",
+  admin:          "Administrator",
+  super_admin:    "Super Admin",
+  parent:         "Parent",
 }
 
 const DEAN_GRADE_OPTIONS = [9, 10, 11, 12]
@@ -44,7 +46,7 @@ export default function AddUserForm({
   const label   = ROLE_LABEL[defaultRole] ?? defaultRole
   const isDean  = defaultRole === "dean"
   // Job title makes sense for staff-side roles, not for students/parents/advisors.
-  const showJob = ["teacher","staff","coordinator","counselor","dean","admin","super_admin"].includes(defaultRole)
+  const showJob = ["teacher","staff","coordinator","counselor","nurse","accommodations","dean","admin","super_admin"].includes(defaultRole)
 
   function toggleDeanGrade(g: number) {
     setDeanGrades(prev =>

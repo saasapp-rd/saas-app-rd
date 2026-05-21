@@ -30,12 +30,9 @@ import { db } from "@/lib/supabase"
  */
 const ALLOWED = ["admin", "super_admin"]
 
-const ROLE_PRIORITY = [
-  "super_admin", "admin", "dean", "coordinator",
-  "counselor", "teacher", "advisor", "staff", "student", "parent",
-]
+const ROLE_HIERARCHY = ["super_admin", "admin", "dean", "coordinator"]
 function primaryRole(roles: string[]): string {
-  for (const r of ROLE_PRIORITY) if (roles.includes(r)) return r
+  for (const r of ROLE_HIERARCHY) if (roles.includes(r)) return r
   return roles[0] ?? "staff"
 }
 

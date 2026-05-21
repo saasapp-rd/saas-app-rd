@@ -3,24 +3,24 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 
 const ALL_ROLES = [
-  { value: "super_admin", label: "Super Admin" },
-  { value: "admin",       label: "Administrator" },
-  { value: "dean",        label: "Dean"        },
-  { value: "coordinator", label: "Coordinator" },
-  { value: "counselor",   label: "Counselor"   },
-  { value: "teacher",     label: "Teacher"     },
-  { value: "advisor",     label: "Advisor"     },
-  { value: "staff",       label: "Staff"       },
-  { value: "student",     label: "Student"     },
-  { value: "parent",      label: "Parent"      },
+  { value: "super_admin",    label: "Super Admin"    },
+  { value: "admin",          label: "Administrator"  },
+  { value: "dean",           label: "Dean"           },
+  { value: "coordinator",    label: "Coordinator"    },
+  { value: "counselor",      label: "Counselor"      },
+  { value: "nurse",          label: "Nurse / Health" },
+  { value: "accommodations", label: "Accommodations" },
+  { value: "teacher",        label: "Teacher"        },
+  { value: "advisor",        label: "Advisor"        },
+  { value: "staff",          label: "Staff"          },
+  { value: "student",        label: "Student"        },
+  { value: "parent",         label: "Parent"         },
 ]
 
-const ROLE_PRIORITY = [
-  "super_admin","admin","dean","coordinator","counselor","teacher","advisor","staff","student","parent",
-]
+const ROLE_HIERARCHY = ["super_admin","admin","dean","coordinator"]
 
 function primaryRole(roles: string[]): string {
-  for (const r of ROLE_PRIORITY) { if (roles.includes(r)) return r }
+  for (const r of ROLE_HIERARCHY) { if (roles.includes(r)) return r }
   return roles[0] ?? "staff"
 }
 
@@ -29,8 +29,10 @@ const ROLE_STYLE: Record<string, { bg: string; color: string; selBg: string; sel
   admin:       { bg: "#F4F4F4", color: "#BABABA", selBg: "#FFF0F0", selColor: "#A6192E" },
   dean:        { bg: "#F4F4F4", color: "#BABABA", selBg: "#FFF8E0", selColor: "#8B6200" },
   coordinator: { bg: "#F4F4F4", color: "#BABABA", selBg: "#EEF6FF", selColor: "#1E5FA6" },
-  counselor:   { bg: "#F4F4F4", color: "#BABABA", selBg: "#F0FDF4", selColor: "#166534" },
-  teacher:     { bg: "#F4F4F4", color: "#BABABA", selBg: "#EAEAEA", selColor: "#3D3D3D" },
+  counselor:      { bg: "#F4F4F4", color: "#BABABA", selBg: "#F0FDF4", selColor: "#166534" },
+  nurse:          { bg: "#F4F4F4", color: "#BABABA", selBg: "#F5F3FF", selColor: "#5B21B6" },
+  accommodations: { bg: "#F4F4F4", color: "#BABABA", selBg: "#E0F2FE", selColor: "#0369A1" },
+  teacher:        { bg: "#F4F4F4", color: "#BABABA", selBg: "#EAEAEA", selColor: "#3D3D3D" },
   advisor:     { bg: "#F4F4F4", color: "#BABABA", selBg: "#EAEAEA", selColor: "#3D3D3D" },
   staff:       { bg: "#F4F4F4", color: "#BABABA", selBg: "#EAEAEA", selColor: "#3D3D3D" },
   student:     { bg: "#F4F4F4", color: "#BABABA", selBg: "#EAEAEA", selColor: "#3D3D3D" },
@@ -42,8 +44,10 @@ const BADGE_STYLE: Record<string, { bg: string; color: string }> = {
   admin:       { bg: "#FFF0F0", color: "#A6192E" },
   dean:        { bg: "#FFF8E0", color: "#8B6200" },
   coordinator: { bg: "#EEF6FF", color: "#1E5FA6" },
-  counselor:   { bg: "#F0FDF4", color: "#166534" },
-  teacher:     { bg: "#EAEAEA", color: "#3D3D3D" },
+  counselor:      { bg: "#F0FDF4", color: "#166534" },
+  nurse:          { bg: "#F5F3FF", color: "#5B21B6" },
+  accommodations: { bg: "#E0F2FE", color: "#0369A1" },
+  teacher:        { bg: "#EAEAEA", color: "#3D3D3D" },
   advisor:     { bg: "#EAEAEA", color: "#3D3D3D" },
   staff:       { bg: "#EAEAEA", color: "#3D3D3D" },
   student:     { bg: "#EAEAEA", color: "#3D3D3D" },

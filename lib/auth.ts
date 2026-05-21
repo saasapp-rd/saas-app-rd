@@ -14,7 +14,9 @@ const TEST_USERS = [
   { id: "00000000-0000-0000-0000-000000000005", username: "counselor",   password: "saas2026", role: "counselor",    displayName: "Dr. Park (Counselor)", email: "counselor@test.saas" },
   { id: "00000000-0000-0000-0000-000000000006", username: "teacher",     password: "saas2026", role: "teacher",      displayName: "Ms. Jones (Teacher)",  email: "teacher@test.saas" },
   { id: "00000000-0000-0000-0000-000000000007", username: "staff",       password: "saas2026", role: "staff",        displayName: "Staff Member",         email: "staff@test.saas" },
-  { id: "00000000-0000-0000-0000-000000000008", username: "student",     password: "saas2026", role: "student",      displayName: "Test Student",         email: "student@test.saas" },
+  { id: "00000000-0000-0000-0000-000000000008", username: "student",       password: "saas2026", role: "student",        displayName: "Test Student",              email: "student@test.saas" },
+  { id: "00000000-0000-0000-0000-000000000009", username: "nurse",         password: "saas2026", role: "nurse",          displayName: "Nurse Johnson",             email: "nurse@test.saas" },
+  { id: "00000000-0000-0000-0000-000000000010", username: "accommodations", password: "saas2026", role: "accommodations", displayName: "Ms. Chen (Accommodations)", email: "accommodations@test.saas" },
 ]
 
 export const authOptions: NextAuthOptions = {

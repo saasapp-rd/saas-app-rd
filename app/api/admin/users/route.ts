@@ -4,20 +4,16 @@ import { authOptions }                 from "@/lib/auth"
 import { db }                          from "@/lib/supabase"
 
 const ALLOWED_ROLES = [
-  "teacher", "advisor", "staff", "counselor", "coordinator", "dean",
-  "admin", "super_admin", "student", "parent",
+  "teacher", "advisor", "staff", "counselor", "nurse", "accommodations",
+  "coordinator", "dean", "admin", "super_admin", "student", "parent",
 ]
 
-// Highest-priority role in an array, used to set the primary `role` field
-const ROLE_PRIORITY = [
-  "super_admin", "admin", "dean", "coordinator",
-  "counselor", "teacher", "advisor", "staff", "student", "parent",
-]
+// Hierarchy tier (ordering matters); specialist/peer tier has no internal priority.
+const ROLE_HIERARCHY = ["super_admin", "admin", "dean", "coordinator"]
 
 function primaryRole(roles: string[]): string {
-  for (const r of ROLE_PRIORITY) {
-    if (roles.includes(r)) return r
-  }
+  for (const r of ROLE_HIERARCHY) if (roles.includes(r)) return r
+  // Peer tier: counselor, nurse, accommodations, teacher, advisor, staff — tiebreaker is first-in-array
   return roles[0] ?? "staff"
 }
 

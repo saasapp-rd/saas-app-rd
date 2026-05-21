@@ -12,7 +12,9 @@ const ROLE_DEST: Record<string, string> = {
   dean:         "/dean",
   admin:        "/admin",
   super_admin:  "/admin",
-  student:      "/student",
+  student:        "/student",
+  nurse:          "/missing",
+  accommodations: "/missing",
 }
 
 export default async function DashboardPage() {
