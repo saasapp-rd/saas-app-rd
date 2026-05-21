@@ -55,6 +55,46 @@ function ymd(d: Date): string {
   return `${y}-${m}-${day}`
 }
 
+function fmtTime(iso: string) {
+  return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+}
+
+/**
+ * Shared body for an incident row in the Today list. Extracted so the
+ * student-link and unknown-student variants both render the same
+ * content without duplicating the JSX.
+ */
+function RowBody({ r, lvl, sta }: {
+  r:   IncidentRow
+  lvl: { bg: string; color: string }
+  sta: { bg: string; color: string; label: string }
+}) {
+  return (
+    <>
+      <div className="flex items-center gap-1.5 mb-0.5">
+        <span className="text-sm font-bold" style={{ color: r.student ? "#A6192E" : "#3D3D3D" }}>
+          {r.student ? r.student.last_name + ", " + r.student.first_name : "Unknown"}
+        </span>
+        <span className="text-[10px]" style={{ color: "#999" }}>Gr {r.student?.grade ?? "?"}</span>
+        {r.student && (
+          <span className="text-[9px] font-bold" style={{ color: "#A6192E" }}>↗</span>
+        )}
+      </div>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase"
+              style={{ background: lvl.bg, color: lvl.color }}>{r.level}</span>
+        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase"
+              style={{ background: sta.bg, color: sta.color }}>{sta.label}</span>
+        <span className="text-[9px]" style={{ color: "#999" }}>
+          {fmtTime(r.reported_at)}
+          {r.block_id ? " · Blk " + r.block_id : ""}
+          {r.reporter ? " · " + r.reporter.display_name : ""}
+        </span>
+      </div>
+    </>
+  )
+}
+
 export default async function AnalyticsPage({
   searchParams,
 }: {
@@ -169,9 +209,6 @@ export default async function AnalyticsPage({
   const maxDay   = Math.max(...dayCount, 1)
   const maxBlock = Math.max(...Object.values(blockCount), 1)
 
-  function fmtTime(iso: string) {
-    return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
-  }
   function duration(r: IncidentRow): string {
     if (!r.resolved_at) return "open"
     const m = Math.round((new Date(r.resolved_at).getTime() - new Date(r.reported_at).getTime()) / 60000)
@@ -277,42 +314,51 @@ export default async function AnalyticsPage({
               {todayRows.map(r => {
                 const lvl = LEVEL_STYLE[r.level]  ?? LEVEL_STYLE["routine"]
                 const sta = STATUS_STYLE[r.status] ?? STATUS_STYLE["open"]
+                const studentId = r.student?.id ?? null
                 return (
-                  <Link key={r.id} href={"/coordinator/" + r.id} style={{ textDecoration: "none" }}>
-                    <div className="rounded-xl px-4 py-3 border flex items-center gap-3"
-                         style={{
-                           background:  r.level === "elevated" ? "#FFF8F8" : "#FAFAFA",
-                           borderColor: r.level === "elevated" ? "#FFCCCC" : "#EAEAEA",
-                           borderLeft:  "3px solid " + (r.level === "elevated" ? "#CE2033" : "#EAEAEA"),
-                         }}>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                          <span className="text-sm font-bold" style={{ color: "#3D3D3D" }}>
-                            {r.student ? r.student.last_name + ", " + r.student.first_name : "Unknown"}
-                          </span>
-                          <span className="text-[10px]" style={{ color: "#999" }}>Gr {r.student?.grade ?? "?"}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase"
-                                style={{ background: lvl.bg, color: lvl.color }}>{r.level}</span>
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase"
-                                style={{ background: sta.bg, color: sta.color }}>{sta.label}</span>
-                          <span className="text-[9px]" style={{ color: "#999" }}>
-                            {fmtTime(r.reported_at)}
-                            {r.block_id ? " · Blk " + r.block_id : ""}
-                            {r.reporter ? " · " + r.reporter.display_name : ""}
-                          </span>
-                        </div>
+                  <div key={r.id}
+                       className="rounded-xl border flex items-stretch overflow-hidden"
+                       style={{
+                         background:  r.level === "elevated" ? "#FFF8F8" : "#FAFAFA",
+                         borderColor: r.level === "elevated" ? "#FFCCCC" : "#EAEAEA",
+                         borderLeft:  "3px solid " + (r.level === "elevated" ? "#CE2033" : "#EAEAEA"),
+                       }}>
+                    {/* Left tap target — student name / pills / time
+                        links to that student's missing-data drill-down.
+                        Bigger affordance because patterns analysis is the
+                        primary "why did I click here" intent. */}
+                    {studentId ? (
+                      <Link href={`/students/${studentId}/incidents`}
+                            className="flex-1 min-w-0 px-4 py-3"
+                            style={{ textDecoration: "none" }}>
+                        <RowBody r={r} lvl={lvl} sta={sta} />
+                      </Link>
+                    ) : (
+                      <div className="flex-1 min-w-0 px-4 py-3">
+                        <RowBody r={r} lvl={lvl} sta={sta} />
                       </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-[10px] font-bold"
-                           style={{ color: r.status === "open" ? "#CE2033" : "#999" }}>
-                          {duration(r)}
-                        </p>
-                        <p className="text-[9px]" style={{ color: "#BABABA" }}>&rarr;</p>
-                      </div>
-                    </div>
-                  </Link>
+                    )}
+
+                    {/* Right tap target — duration + explicit "View report"
+                        link to the incident workflow page. */}
+                    <Link href={`/coordinator/${r.id}`}
+                          className="flex-shrink-0 flex flex-col items-end justify-center px-4 py-3 border-l"
+                          style={{
+                            borderColor: r.level === "elevated" ? "#FFCCCC" : "#EAEAEA",
+                            textDecoration: "none",
+                            background: "#fff",
+                            minWidth: 92,
+                          }}>
+                      <span className="text-[10px] font-bold"
+                            style={{ color: r.status === "open" ? "#CE2033" : "#999" }}>
+                        {duration(r)}
+                      </span>
+                      <span className="text-[9px] font-bold mt-0.5"
+                            style={{ color: "#1E5FA6" }}>
+                        View report →
+                      </span>
+                    </Link>
+                  </div>
                 )
               })}
             </div>
