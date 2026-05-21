@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth"
 import { redirect, notFound } from "next/navigation"
 import { db } from "@/lib/supabase"
 import SignOutButton from "@/components/SignOutButton"
+import BackLink from "@/components/BackLink"
 import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 import AddUserForm from "@/components/admin/AddUserForm"
@@ -203,10 +204,7 @@ export default async function UserRolePage({
         </header>
         <TestModeBanner name={session.user.displayName} role={session.user.role} />
         <nav className="px-5 py-2 border-b flex items-center gap-4" style={{ borderColor: "#EAEAEA" }}>
-          <Link href="/admin/users" className="text-xs font-bold"
-                style={{ color: "#A6192E", textDecoration: "none" }}>
-            &larr; Manage Users
-          </Link>
+          <BackLink fallbackHref="/admin/users" />
         </nav>
         <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
           <AddStudentForm />
@@ -270,10 +268,7 @@ export default async function UserRolePage({
       </header>
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
       <nav className="px-5 py-2 border-b flex items-center gap-4" style={{ borderColor: "#EAEAEA" }}>
-        <Link href="/admin/users" className="text-xs font-bold"
-              style={{ color: "#A6192E", textDecoration: "none" }}>
-          &larr; Manage Users
-        </Link>
+        <BackLink fallbackHref="/admin/users" />
       </nav>
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">

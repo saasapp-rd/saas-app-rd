@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/supabase"
 import SignOutButton from "@/components/SignOutButton"
+import BackLink from "@/components/BackLink"
 import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 
@@ -86,10 +87,7 @@ export default async function AdminDailyPage() {
       </header>
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
       <nav className="px-5 py-2 border-b flex items-center gap-4" style={{ borderColor: "#EAEAEA" }}>
-        <Link href="/dashboard" className="text-xs font-bold"
-              style={{ color: "#A6192E", textDecoration: "none" }}>
-          &larr; Dashboard
-        </Link>
+        <BackLink fallbackHref="/dashboard" />
         <Link href="/missing" className="text-xs"
               style={{ color: "#999", textDecoration: "none" }}>
           Live View

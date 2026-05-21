@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/supabase"
 import SignOutButton from "@/components/SignOutButton"
+import BackLink from "@/components/BackLink"
 import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 import LiveFeed from "@/components/LiveFeed"
@@ -89,10 +90,7 @@ export default async function MissingPage() {
       {/* Nav */}
       <nav className="px-5 py-2 border-b flex items-center gap-4 overflow-x-auto"
            style={{ borderColor: "#EAEAEA" }}>
-        <Link href="/dashboard" className="text-xs font-bold whitespace-nowrap"
-              style={{ color: "#A6192E", textDecoration: "none" }}>
-          &larr; Dashboard
-        </Link>
+        <BackLink fallbackHref="/dashboard" />
         {navLinks.filter(l => l.primary).map(l => (
           <Link key={l.href} href={l.href}
                 className="text-xs whitespace-nowrap"

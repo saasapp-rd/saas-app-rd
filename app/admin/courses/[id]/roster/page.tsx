@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth"
 import { redirect, notFound } from "next/navigation"
 import { db } from "@/lib/supabase"
 import SignOutButton from "@/components/SignOutButton"
+import BackLink from "@/components/BackLink"
 import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 import CourseRoster, { RosterStudent } from "@/components/admin/CourseRoster"
@@ -101,10 +102,7 @@ export default async function CourseRosterPage({
       </header>
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
       <nav className="px-5 py-2 border-b flex items-center" style={{ borderColor: "#EAEAEA" }}>
-        <Link href="/admin/courses" className="text-xs font-bold"
-              style={{ color: "#A6192E", textDecoration: "none" }}>
-          &larr; All Courses
-        </Link>
+        <BackLink fallbackHref="/admin/courses" />
       </nav>
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-4">

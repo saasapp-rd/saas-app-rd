@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { db } from "@/lib/supabase"
 import SignOutButton from "@/components/SignOutButton"
+import BackLink from "@/components/BackLink"
 import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 import LiveFeed from "@/components/LiveFeed"
@@ -58,10 +59,7 @@ export default async function CoordinatorPage() {
       </header>
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
       <nav className="px-5 py-2 border-b flex items-center gap-4" style={{ borderColor: "#EAEAEA" }}>
-        <Link href="/missing" className="text-xs font-bold"
-              style={{ color: "#A6192E", textDecoration: "none" }}>
-          &larr; Missing
-        </Link>
+        <BackLink fallbackHref="/missing" />
         <Link href="/dean" className="text-xs"
               style={{ color: "#999", textDecoration: "none" }}>
           Patterns

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import { db } from "@/lib/supabase"
 import { fetchAllPaginated } from "@/lib/dbHelpers"
 import SignOutButton from "@/components/SignOutButton"
+import BackLink from "@/components/BackLink"
 import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 import UserSearch, { SearchUser } from "@/components/admin/UserSearch"
@@ -96,10 +97,7 @@ export default async function UsersPage() {
       </header>
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
       <nav className="px-5 py-2 border-b flex items-center" style={{ borderColor: "#EAEAEA" }}>
-        <Link href="/admin/config" className="text-xs font-bold"
-              style={{ color: "#A6192E", textDecoration: "none" }}>
-          &larr; Admin
-        </Link>
+        <BackLink fallbackHref="/admin/config" />
       </nav>
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-3">
