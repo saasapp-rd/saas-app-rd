@@ -8,8 +8,15 @@ import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 import LiveFeed from "@/components/LiveFeed"
 import PullButton from "@/components/coordinator/PullButton"
+import QuickActionsPanel from "@/components/admin/QuickActionsPanel"
 
 const ALLOWED = ["coordinator","counselor","dean","admin","super_admin"]
+
+const DAILY_LINKS = [
+  { href: "/admin/daily",    label: "Daily Report",   desc: "Today's missing-student log", icon: "📊" },
+  { href: "/analytics",      label: "Analytics",      desc: "Patterns & trends",           icon: "📈" },
+  { href: "/admin/calendar", label: "School Calendar",desc: "Today's day type & rotation", icon: "📅" },
+]
 
 interface Incident {
   id:          string
@@ -26,14 +33,28 @@ export default async function CoordinatorPage() {
   if (!session) redirect("/login")
   if (!ALLOWED.includes(session.user.role)) redirect("/dashboard")
 
-  const { data: incidents } = await db
-    .from("incidents")
-    .select("id, level, status, reported_at, block_id, student:student_id(id, first_name, last_name, grade), reporter:reported_by(display_name)")
-    .in("status", ["open","located"])
-    .neq("report_type", "welfare_concern")
-    .order("reported_at", { ascending: true })
+  const [{ data: incidents }, { data: allStudents }] = await Promise.all([
+    db.from("incidents")
+      .select("id, level, status, reported_at, block_id, student:student_id(id, first_name, last_name, grade), reporter:reported_by(display_name)")
+      .in("status", ["open","located"])
+      .neq("report_type", "welfare_concern")
+      .order("reported_at", { ascending: true }),
+    // Active students for the Quick Actions modal pickers (Report Missing,
+    // Report Welfare Concern). Skip for counselors since they only view
+    // this page and don't take quick actions from it.
+    session.user.role !== "counselor"
+      ? db.from("users")
+          .select("id, first_name, last_name, grade, call_by")
+          .eq("role", "student")
+          .eq("is_active", true)
+          .order("last_name")
+      : { data: [] as { id: string; first_name: string; last_name: string; grade: number; call_by: string | null }[] },
+  ])
 
-  const rows    = (incidents ?? []) as unknown as Incident[]
+  const rows     = (incidents ?? []) as unknown as Incident[]
+  const students = (allStudents ?? []) as {
+    id: string; first_name: string; last_name: string; grade: number; call_by: string | null
+  }[]
   const elev    = rows.filter(r => r.level === "elevated")
   const routine = rows.filter(r => r.level !== "elevated")
 
@@ -67,6 +88,11 @@ export default async function CoordinatorPage() {
       </nav>
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
+
+        {/* Quick actions — coordinators only (counselors view-only here) */}
+        {isCoord && students.length > 0 && (
+          <QuickActionsPanel students={students} />
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-2">
@@ -169,6 +195,28 @@ export default async function CoordinatorPage() {
             </div>
           </div>
         )}
+
+        {/* Daily Tools */}
+        <div>
+          <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-2"
+             style={{ color: "#3D3D3D", opacity: 0.35 }}>
+            Daily Tools
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {DAILY_LINKS.map(({ href, label, desc, icon }) => (
+              <Link key={href} href={href} style={{ textDecoration: "none" }}>
+                <div className="rounded-xl px-4 py-4 border flex flex-col gap-2 h-full"
+                     style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
+                  <span className="text-2xl">{icon}</span>
+                  <div>
+                    <div className="text-xs font-bold" style={{ color: "#3D3D3D" }}>{label}</div>
+                    <div className="text-[10px] mt-0.5" style={{ color: "#999" }}>{desc}</div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
       </main>
     </div>
   )
