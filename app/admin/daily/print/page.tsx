@@ -94,7 +94,7 @@ export default async function DailyPrintPage() {
 
         {rows.length === 0 ? (
           <p style={{ color: "#999", textAlign: "center", padding: "32px" }}>
-            No incidents recorded today.
+            No missing students recorded today.
           </p>
         ) : (
           <table>

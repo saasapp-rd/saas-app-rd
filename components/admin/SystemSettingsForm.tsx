@@ -72,7 +72,7 @@ export default function SystemSettingsForm({
                    value={vals.push_on_missing}
                    onChange={v => setField("push_on_missing", v)}
                    canEdit={canEdit} />
-        <BoolField label="Push: elevated incident"
+        <BoolField label="Push: elevated missing student"
                    value={vals.push_on_elevated}
                    onChange={v => setField("push_on_elevated", v)}
                    canEdit={canEdit} />

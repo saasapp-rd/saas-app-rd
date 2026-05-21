@@ -242,7 +242,7 @@ export default function QuickActionsPanel({
               <span className="text-lg">🔴</span>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-bold" style={{ color: "#A6192E" }}>Report a Missing Student</p>
-                <p className="text-[10px]" style={{ color: "#CE2033", opacity: 0.8 }}>Open a missing student incident immediately</p>
+                <p className="text-[10px]" style={{ color: "#CE2033", opacity: 0.8 }}>Open a missing-student case immediately</p>
               </div>
             </button>
           )}
@@ -264,7 +264,7 @@ export default function QuickActionsPanel({
       {missingModal && (
         <StudentModal
           title="Report Missing Student"
-          subtitle="Opens an incident — you'll be taken to the coordinator view"
+          subtitle="Opens a missing-student case — you'll be taken to the coordinator view"
           apiEndpoint="/api/admin/report-missing"
           accentColor="#A6192E"
           submitLabel={s => `Report ${s.call_by ?? s.first_name ?? ""} ${s.last_name ?? ""} Missing`.trim()}

@@ -72,7 +72,7 @@ export default function StepActions({ incident }: { incident: IncidentSteps }) {
             {incident.located_location ? " — " + incident.located_location : ""}
           </p>
           <p className="text-[10px] mt-0.5" style={{ color: "#1E5FA6", opacity: 0.7 }}>
-            Mark resolved below to close the incident.
+            Mark resolved below to close this case.
           </p>
         </div>
       )}
@@ -178,7 +178,7 @@ export default function StepActions({ incident }: { incident: IncidentSteps }) {
         <div className="flex flex-col gap-2">
           <p className="text-[9px] font-bold tracking-[0.25em] uppercase"
              style={{ color: "#3D3D3D", opacity: 0.35 }}>
-            Close Incident
+            Close Case
           </p>
           <button onClick={() => doAction("resolve")} disabled={!!loading}
                   className="w-full py-3 rounded-xl text-sm font-bold text-white"

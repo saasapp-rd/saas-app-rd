@@ -152,7 +152,7 @@ export default function IncidentDrilldown({
 
       {stats.lastDate && (
         <p className="text-[10px]" style={{ color: "#999" }}>
-          Most recent incident: <span style={{ color: "#3D3D3D" }}>{fmtDateTime(stats.lastDate)}</span>
+          Most recent: <span style={{ color: "#3D3D3D" }}>{fmtDateTime(stats.lastDate)}</span>
         </p>
       )}
 
@@ -216,12 +216,12 @@ export default function IncidentDrilldown({
         </div>
       </div>
 
-      {/* Incident list with per-row delete */}
+      {/* Per-row delete list */}
       <div>
         <div className="flex items-center justify-between mb-2">
           <p className="text-[9px] font-bold tracking-[0.25em] uppercase"
              style={{ color: "#3D3D3D", opacity: 0.35 }}>
-            All Incidents — {incidents.length}
+            All Missing Students — {incidents.length}
             {stats.welfareCount > 0 ? ` (${stats.welfareCount} welfare)` : ""}
           </p>
         </div>
@@ -229,7 +229,7 @@ export default function IncidentDrilldown({
         {incidents.length === 0 ? (
           <div className="rounded-xl px-4 py-8 text-center border"
                style={{ borderColor: "#EAEAEA", background: "#FAFAFA" }}>
-            <p className="text-sm font-bold mb-1" style={{ color: "#3D3D3D" }}>No incidents on record.</p>
+            <p className="text-sm font-bold mb-1" style={{ color: "#3D3D3D" }}>No missing students on record.</p>
             <p className="text-xs" style={{ color: "#999" }}>{studentName} has a clean attendance record.</p>
           </div>
         ) : (

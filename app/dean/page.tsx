@@ -240,7 +240,7 @@ export default async function DeanPage() {
 
           {highFreq.length === 0 && (
             <p className="text-xs text-center py-4" style={{ color: "#999" }}>
-              No students with 3+ incidents in the last 30 days.
+              No students missing 3+ times in the last 30 days.
             </p>
           )}
 

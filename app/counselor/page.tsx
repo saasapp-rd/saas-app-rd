@@ -195,7 +195,7 @@ export default async function CounselorPage() {
             <div className="text-3xl">&#x1F4CB;</div>
             <p className="text-sm font-bold" style={{ color: "#3D3D3D" }}>No flagged students</p>
             <p className="text-xs" style={{ color: "#999" }}>
-              Flag students in their incident record to track them here.
+              Flag students from their profile to track them here.
             </p>
           </div>
         )}

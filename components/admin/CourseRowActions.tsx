@@ -455,7 +455,7 @@ export default function CourseRowActions({
               ) : (
                 <div className="flex flex-col gap-2">
                   <p className="text-xs font-bold text-center" style={{ color: "#CE2033" }}>
-                    Permanently delete {course.name}? Enrollments and incident references will be cleared.
+                    Permanently delete {course.name}? Enrollments and missing-student references will be cleared.
                   </p>
                   <div className="flex gap-2">
                     <button onClick={deleteCourse} disabled={deleting}
