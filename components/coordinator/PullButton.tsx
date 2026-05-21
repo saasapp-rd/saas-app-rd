@@ -12,14 +12,14 @@ export default function PullButton({ inline = false }: { inline?: boolean }) {
           onClick={() => setOpen(true)}
           className="px-5 py-2 rounded-xl text-xs font-bold text-white"
           style={{ background: "#A6192E" }}>
-          + Pull Student
+          + Report Missing Student
         </button>
       ) : (
         <button
           onClick={() => setOpen(true)}
           className="px-3 py-1.5 rounded-lg text-[10px] font-bold text-white"
           style={{ background: "#A6192E" }}>
-          + Pull
+          + Report Missing
         </button>
       )}
 

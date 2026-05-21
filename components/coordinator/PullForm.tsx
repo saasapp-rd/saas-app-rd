@@ -55,7 +55,7 @@ export default function PullForm({ onCancel }: { onCancel: () => void }) {
            style={{ background: "#fff" }}>
 
         <div className="flex items-center justify-between">
-          <p className="text-sm font-black" style={{ color: "#3D3D3D" }}>Pull Student</p>
+          <p className="text-sm font-black" style={{ color: "#3D3D3D" }}>Report Missing Student</p>
           <button onClick={onCancel} style={{ color: "#999", background: "none", border: "none", cursor: "pointer", fontSize: 18 }}>
             &times;
           </button>
@@ -166,7 +166,7 @@ export default function PullForm({ onCancel }: { onCancel: () => void }) {
                 disabled={submitting}
                 className="w-full py-3 rounded-xl text-sm font-bold text-white"
                 style={{ background: "#A6192E", opacity: submitting ? 0.5 : 1 }}>
-                {submitting ? "Opening…" : "Pull Student"}
+                {submitting ? "Opening…" : "Report Missing Student"}
               </button>
             </div>
           </div>

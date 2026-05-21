@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   await sendPushToRole("coordinator", {
-    title: "Coordinator Pull — " + name,
+    title: "Missing Student Reported — " + name,
     body:  reason?.trim() ? reason.trim() : "Pulled by " + session.user.displayName,
   }).catch(() => {})
 

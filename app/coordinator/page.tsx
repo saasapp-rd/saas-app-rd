@@ -93,7 +93,7 @@ export default async function CoordinatorPage() {
         {rows.length === 0 && (
           <div className="rounded-xl px-4 py-8 text-center border" style={{ borderColor: "#EAEAEA" }}>
             <p className="text-sm font-bold mb-1" style={{ color: "#3D3D3D" }}>Queue clear</p>
-            <p className="text-xs mb-3" style={{ color: "#999" }}>No active incidents right now.</p>
+            <p className="text-xs mb-3" style={{ color: "#999" }}>No active missing students right now.</p>
             {isCoord && <PullButton inline />}
           </div>
         )}
