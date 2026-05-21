@@ -271,11 +271,12 @@ export default function UserRowActions({
     setUnassigning(null)
   }
 
-  // Terse one-liner for the row header — lists actual course names.
-  // The view panel below renders a richer list with block tags.
+  // Terse one-liner for the row header — lists the blocks the teacher
+  // covers, since this app cares about block-by-block attendance.
+  // The view panel below renders the full course list (block + name + room).
   const coursesSummary = courses.length === 0
     ? "No courses assigned"
-    : courses.map(c => c.name).join(", ") +
+    : courses.map(c => blockLabel(c.block_number)).join(", ") +
       " · " + courses.length + " course" + (courses.length !== 1 ? "s" : "")
 
   // Show up to 3 role badges in the row header; anything beyond rolls
