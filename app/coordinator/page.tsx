@@ -8,6 +8,7 @@ import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 import LiveFeed from "@/components/LiveFeed"
 import QuickActionsPanel from "@/components/admin/QuickActionsPanel"
+import KnownNotInClassHeader from "@/components/KnownNotInClassHeader"
 import VeracrossPullButton from "@/components/coordinator/VeracrossPullButton"
 
 const ALLOWED = ["coordinator","counselor","dean","admin","super_admin"]
@@ -78,9 +79,10 @@ export default async function CoordinatorPage() {
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
+        <KnownNotInClassHeader />
 
         {/* Quick actions — all roles that can land here can also report */}
-        {students.length > 0 && <QuickActionsPanel students={students} />}
+        {students.length > 0 && <QuickActionsPanel students={students} role={session.user.role} />}
 
         {/* Veracross sync — placeholder until the integration is wired */}
         <VeracrossPullButton />

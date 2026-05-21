@@ -8,6 +8,7 @@ import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 import LiveFeed from "@/components/LiveFeed"
 import QuickActionsPanel from "@/components/admin/QuickActionsPanel"
+import KnownNotInClassHeader from "@/components/KnownNotInClassHeader"
 
 interface Incident {
   id:               string
@@ -94,6 +95,7 @@ export default async function MissingPage() {
       </nav>
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
+        <KnownNotInClassHeader />
 
         {/* Hero count */}
         <div className="rounded-2xl p-5 text-center"
@@ -234,8 +236,8 @@ export default async function MissingPage() {
         {/* Staff CTA — uses the same QuickActionsPanel modal flow as
             the /staff dashboard, so the welfare-concern UX is consistent
             across the two places staff might trigger it from. */}
-        {role === "staff" && students.length > 0 && (
-          <QuickActionsPanel students={students} only="welfare" />
+        {["staff","nurse","accommodations"].includes(role) && students.length > 0 && (
+          <QuickActionsPanel students={students} role={session.user.role} only={role === "staff" ? "welfare" : undefined} />
         )}
       </main>
     </div>

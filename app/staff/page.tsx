@@ -7,6 +7,7 @@ import TestModeBanner from "@/components/TestModeBanner"
 import LiveFeed from "@/components/LiveFeed"
 import WithMeButton from "@/components/WithMeButton"
 import QuickActionsPanel from "@/components/admin/QuickActionsPanel"
+import KnownNotInClassHeader from "@/components/KnownNotInClassHeader"
 import Link from "next/link"
 
 interface Incident {
@@ -60,9 +61,10 @@ export default async function StaffPage() {
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
 
       <main className="flex-1 flex flex-col px-5 py-5 gap-4 max-w-lg mx-auto w-full">
+        <KnownNotInClassHeader />
 
         {/* Quick actions */}
-        {students.length > 0 && <QuickActionsPanel students={students} />}
+        {students.length > 0 && <QuickActionsPanel students={students} role={session.user.role} />}
 
         {/* Missing students — staff can mark "with me" */}
         {incidents.length === 0 ? (

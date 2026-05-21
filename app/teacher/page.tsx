@@ -8,6 +8,7 @@ import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 import StudentRoster from "@/components/teacher/StudentRoster"
 import QuickActionsPanel from "@/components/admin/QuickActionsPanel"
+import KnownNotInClassHeader from "@/components/KnownNotInClassHeader"
 
 interface Student { id: string; first_name: string; last_name: string; grade: number }
 
@@ -88,10 +89,11 @@ export default async function TeacherPage() {
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
+        <KnownNotInClassHeader />
 
         {/* Quick actions */}
         {quickActionStudents.length > 0 && (
-          <QuickActionsPanel students={quickActionStudents} />
+          <QuickActionsPanel students={quickActionStudents} role={session.user.role} />
         )}
 
         {isSchoolHours && period.type !== "block" && (

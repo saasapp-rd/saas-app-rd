@@ -6,6 +6,7 @@ import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
 import LiveFeed from "@/components/LiveFeed"
 import QuickActionsPanel from "@/components/admin/QuickActionsPanel"
+import KnownNotInClassHeader from "@/components/KnownNotInClassHeader"
 import Link from "next/link"
 
 const FLAG_STYLE: Record<string, { bg: string; color: string; label: string }> = {
@@ -114,9 +115,10 @@ export default async function CounselorPage() {
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
+        <KnownNotInClassHeader />
 
         {/* Quick actions */}
-        {students.length > 0 && <QuickActionsPanel students={students} />}
+        {students.length > 0 && <QuickActionsPanel students={students} role={session.user.role} />}
 
         {/* Summary cards */}
         <div className="grid grid-cols-3 gap-2">

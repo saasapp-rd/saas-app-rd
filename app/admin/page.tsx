@@ -6,6 +6,7 @@ import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
 import LiveFeed from "@/components/LiveFeed"
 import QuickActionsPanel from "@/components/admin/QuickActionsPanel"
+import KnownNotInClassHeader from "@/components/KnownNotInClassHeader"
 import Link from "next/link"
 
 export const dynamic = "force-dynamic"
@@ -86,6 +87,7 @@ export default async function AdminDashboard() {
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-3">
+        <KnownNotInClassHeader />
 
         {(openIssuesCount ?? 0) > 0 && (
           <Link href="/admin/review-queue" style={{ textDecoration: "none" }}>
@@ -163,7 +165,7 @@ export default async function AdminDashboard() {
         </div>
 
         {/* ── Quick Actions ── */}
-        <QuickActionsPanel students={students} />
+        <QuickActionsPanel students={students} role={session.user.role} />
 
         {/* ── Daily tools ── */}
         <p className="text-[9px] font-bold tracking-[0.25em] uppercase mt-1"
