@@ -57,3 +57,22 @@ export function pacificDayEndUTC(date: string): string {
   const start = new Date(pacificDayStartUTC(date))
   return new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1000).toISOString()
 }
+
+/**
+ * Converts a Pacific time string "HH:MM" on a YYYY-MM-DD date to a UTC ISO string.
+ * Used to convert period end times (defined as Pacific wall-clock) to absolute UTC.
+ * Handles both PST (UTC-8) and PDT (UTC-7) automatically.
+ */
+export function periodEndToUTC(date: string, pacificTime: string): string {
+  const probe = new Date(`${date}T12:00:00Z`)
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: TZ, hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(probe)
+  const pacificHour = parseInt(parts.find(p => p.type === 'hour')!.value)
+  const offsetH = pacificHour - 12           // e.g. 5-12=-7 (PDT), 4-12=-8 (PST)
+  const [h, m]  = pacificTime.split(':').map(Number)
+  const utcH    = h - offsetH                // subtract negative offset = add absolute hours
+  return new Date(
+    `${date}T${String(utcH).padStart(2, '0')}:${String(m).padStart(2, '0')}:00.000Z`
+  ).toISOString()
+}
