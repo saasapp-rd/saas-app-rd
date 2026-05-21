@@ -92,7 +92,7 @@ export default async function AdminDailyPage() {
         {/* Print / Export hidden — pending a rebuild of the printable view. */}
       </nav>
 
-      <main className="flex-1 px-5 py-5 max-w-2xl mx-auto w-full flex flex-col gap-5">
+      <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
 
         {/* Stats */}
         <div className="grid grid-cols-4 gap-2">

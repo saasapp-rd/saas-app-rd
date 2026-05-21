@@ -75,7 +75,7 @@ export default async function CounselorsPage() {
         <BackLink fallbackHref="/admin/config" />
       </nav>
 
-      <main className="flex-1 px-5 py-5 max-w-2xl mx-auto w-full flex flex-col gap-3">
+      <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-3">
         <div className="rounded-xl px-4 py-3 text-[10px]"
              style={{ background: "#FFFBEB", border: "1px solid #FDE68A", color: "#78350F" }}>
           Assign students to counselors&apos; <strong>caseloads</strong>. A student
