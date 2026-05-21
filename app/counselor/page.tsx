@@ -6,6 +6,7 @@ import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
 import LiveFeed from "@/components/LiveFeed"
 import WelfareConcernLink from "@/components/WelfareConcernLink"
+import QuickActionsPanel from "@/components/admin/QuickActionsPanel"
 import Link from "next/link"
 
 const FLAG_STYLE: Record<string, { bg: string; color: string; label: string }> = {
@@ -35,12 +36,22 @@ export default async function CounselorPage() {
   if (!session) redirect("/login")
   if (!["counselor", "admin", "super_admin"].includes(session.user.role)) redirect("/dashboard")
 
-  // Flagged students
-  const { data: flagRows } = await db
-    .from("student_concern_flags")
-    .select("id, flag_level, public_note, flagged_at, student:student_id(id, first_name, last_name, grade, is_active)")
-    .order("flag_level", { ascending: false })
-    .order("flagged_at", { ascending: false })
+  // Flagged students + active students (for the Quick Actions modal pickers)
+  const [{ data: flagRows }, { data: allStudents }] = await Promise.all([
+    db.from("student_concern_flags")
+      .select("id, flag_level, public_note, flagged_at, student:student_id(id, first_name, last_name, grade, is_active)")
+      .order("flag_level", { ascending: false })
+      .order("flagged_at", { ascending: false }),
+    db.from("users")
+      .select("id, first_name, last_name, grade, call_by")
+      .eq("role", "student")
+      .eq("is_active", true)
+      .order("last_name"),
+  ])
+
+  const students = (allStudents ?? []) as {
+    id: string; first_name: string; last_name: string; grade: number; call_by: string | null
+  }[]
 
   const flags         = ((flagRows ?? []) as unknown as FlagRow[])
     .filter(f => f.student?.is_active !== false)
@@ -118,6 +129,9 @@ export default async function CounselorPage() {
       </nav>
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
+
+        {/* Quick actions */}
+        {students.length > 0 && <QuickActionsPanel students={students} />}
 
         {/* Summary cards */}
         <div className="grid grid-cols-3 gap-2">

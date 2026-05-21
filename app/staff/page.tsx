@@ -7,6 +7,7 @@ import TestModeBanner from "@/components/TestModeBanner"
 import LiveFeed from "@/components/LiveFeed"
 import WithMeButton from "@/components/WithMeButton"
 import WelfareConcernLink from "@/components/WelfareConcernLink"
+import QuickActionsPanel from "@/components/admin/QuickActionsPanel"
 import Link from "next/link"
 
 interface Incident {
@@ -24,15 +25,24 @@ export default async function StaffPage() {
   if (!session) redirect("/login")
   if (!["staff", "admin", "super_admin"].includes(session.user.role)) redirect("/dashboard")
 
-  const { data: raw } = await db
-    .from("incidents")
-    .select("id, level, reported_at, block_id, room, student:student_id(first_name, last_name, grade, is_active), reporter:reported_by(display_name)")
-    .eq("status", "open")
-    .order("level",       { ascending: false })
-    .order("reported_at", { ascending: true  })
+  const [{ data: raw }, { data: allStudents }] = await Promise.all([
+    db.from("incidents")
+      .select("id, level, reported_at, block_id, room, student:student_id(first_name, last_name, grade, is_active), reporter:reported_by(display_name)")
+      .eq("status", "open")
+      .order("level",       { ascending: false })
+      .order("reported_at", { ascending: true  }),
+    db.from("users")
+      .select("id, first_name, last_name, grade, call_by")
+      .eq("role", "student")
+      .eq("is_active", true)
+      .order("last_name"),
+  ])
 
   const incidents = ((raw ?? []) as unknown as Incident[])
     .filter(i => i.student?.is_active !== false)
+  const students = (allStudents ?? []) as {
+    id: string; first_name: string; last_name: string; grade: number; call_by: string | null
+  }[]
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#fff" }}>
@@ -57,6 +67,9 @@ export default async function StaffPage() {
       </nav>
 
       <main className="flex-1 flex flex-col px-5 py-5 gap-4 max-w-lg mx-auto w-full">
+
+        {/* Quick actions */}
+        {students.length > 0 && <QuickActionsPanel students={students} />}
 
         {/* Missing students — staff can mark "with me" */}
         {incidents.length === 0 ? (

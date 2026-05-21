@@ -7,6 +7,7 @@ import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 import StudentRoster from "@/components/teacher/StudentRoster"
+import QuickActionsPanel from "@/components/admin/QuickActionsPanel"
 
 interface Student { id: string; first_name: string; last_name: string; grade: number }
 
@@ -27,14 +28,23 @@ export default async function TeacherPage() {
   if (!session) redirect("/login")
   if (!["teacher", "admin", "super_admin"].includes(session.user.role)) redirect("/dashboard")
 
-  const [period, { data: courses }] = await Promise.all([
+  const [period, { data: courses }, { data: allStudents }] = await Promise.all([
     getCurrentPeriod(),
     db.from("courses")
       .select("id, name, block_number, room")
       .eq("teacher_id", session.user.userId)
       .eq("is_active", true)
       .order("block_number"),
+    db.from("users")
+      .select("id, first_name, last_name, grade, call_by")
+      .eq("role", "student")
+      .eq("is_active", true)
+      .order("last_name"),
   ])
+
+  const quickActionStudents = (allStudents ?? []) as {
+    id: string; first_name: string; last_name: string; grade: number; call_by: string | null
+  }[]
 
   const activeBlockNum = period.type === "block" ? period.blockNumber : null
 
@@ -83,6 +93,11 @@ export default async function TeacherPage() {
       </nav>
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
+
+        {/* Quick actions */}
+        {quickActionStudents.length > 0 && (
+          <QuickActionsPanel students={quickActionStudents} />
+        )}
 
         {isSchoolHours && period.type !== "block" && (
           <div className="rounded-xl px-4 py-3 text-center"
