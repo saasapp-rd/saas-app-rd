@@ -7,7 +7,6 @@ import BackLink from "@/components/BackLink"
 import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 import LiveFeed from "@/components/LiveFeed"
-import PullButton from "@/components/coordinator/PullButton"
 import QuickActionsPanel from "@/components/admin/QuickActionsPanel"
 
 const ALLOWED = ["coordinator","counselor","dean","admin","super_admin"]
@@ -114,8 +113,7 @@ export default async function CoordinatorPage() {
         {rows.length === 0 && (
           <div className="rounded-xl px-4 py-8 text-center border" style={{ borderColor: "#EAEAEA" }}>
             <p className="text-sm font-bold mb-1" style={{ color: "#3D3D3D" }}>Queue clear</p>
-            <p className="text-xs mb-3" style={{ color: "#999" }}>No active missing students right now.</p>
-            {isCoord && <PullButton inline />}
+            <p className="text-xs" style={{ color: "#999" }}>No active missing students right now.</p>
           </div>
         )}
 
