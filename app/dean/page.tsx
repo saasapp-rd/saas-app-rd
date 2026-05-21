@@ -46,6 +46,7 @@ export default async function DeanPage() {
     db.from("incidents")
       .select("id, level, status, reported_at, block_id, student:student_id(id, first_name, last_name, grade)")
       .gte("reported_at", days90)
+      .is("pre_empted_at", null)
       .order("reported_at", { ascending: false }),
     db.from("users")
       .select("id, first_name, last_name, grade, call_by")

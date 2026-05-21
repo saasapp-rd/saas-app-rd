@@ -65,6 +65,7 @@ export default async function CounselorPage() {
       .select("id, student_id, level, block_id, reported_at")
       .in("student_id", flaggedIds)
       .eq("status", "open")
+      .is("pre_empted_at", null)
     ;(open ?? []).forEach((i: OpenIncident) => { openMap[i.student_id] = i })
   }
 
@@ -87,6 +88,7 @@ export default async function CounselorPage() {
     .from("incidents")
     .select("id, level, reported_at, block_id, student:student_id(first_name, last_name, grade, is_active), reporter:reported_by(display_name)")
     .eq("status", "open")
+    .is("pre_empted_at", null)
     .order("level",       { ascending: false })
     .order("reported_at", { ascending: true  })
 

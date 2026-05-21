@@ -39,6 +39,7 @@ export default async function CoordinatorPage() {
       .select("id, level, status, reported_at, block_id, student:student_id(id, first_name, last_name, grade), reporter:reported_by(display_name)")
       .in("status", ["open","located"])
       .neq("report_type", "welfare_concern")
+      .is("pre_empted_at", null)
       .order("reported_at", { ascending: true }),
     // Active students for the Quick Actions modal pickers (Report Missing,
     // Report Welfare Concern).

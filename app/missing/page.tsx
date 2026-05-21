@@ -46,6 +46,7 @@ export default async function MissingPage() {
       .select("id, level, status, report_type, reported_at, block_id, located_location, student:student_id(id, first_name, last_name, grade, is_active), reporter:reported_by(display_name)")
       .in("status", ["open","located"])
       .neq("report_type", "welfare_concern")
+      .is("pre_empted_at", null)
       .order("level",       { ascending: false })  // elevated first
       .order("reported_at", { ascending: true  }),  // then oldest first
     // Staff use the welfare-concern modal on this page; fetch active

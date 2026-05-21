@@ -29,6 +29,7 @@ export default async function StaffPage() {
     db.from("incidents")
       .select("id, level, reported_at, block_id, room, student:student_id(first_name, last_name, grade, is_active), reporter:reported_by(display_name)")
       .eq("status", "open")
+      .is("pre_empted_at", null)
       .order("level",       { ascending: false })
       .order("reported_at", { ascending: true  }),
     db.from("users")
