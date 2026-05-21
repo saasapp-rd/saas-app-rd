@@ -121,7 +121,6 @@ export default function UserRowActions({
   const [courseError, setCourseError] = useState("")
 
   const primary      = primaryRole(savedRoles)
-  const badge        = BADGE_STYLE[primary] ?? BADGE_STYLE["staff"]
   const isTeach      = savedRoles.includes("teacher")
   const isDean       = savedRoles.includes("dean")
   const isPendingDean = pendingRoles.includes("dean")
@@ -279,7 +278,13 @@ export default function UserRowActions({
     : courses.map(c => c.name).join(", ") +
       " · " + courses.length + " course" + (courses.length !== 1 ? "s" : "")
 
-  const extraCount  = savedRoles.length - 1
+  // Show up to 3 role badges in the row header; anything beyond rolls
+  // into a "+N" chip so multi-hat users (teacher + advisor + counselor)
+  // read at a glance instead of hiding behind "+2".
+  const MAX_VISIBLE_ROLES = 3
+  const orderedRoles  = [primary, ...savedRoles.filter(r => r !== primary)]
+  const visibleRoles  = orderedRoles.slice(0, MAX_VISIBLE_ROLES)
+  const hiddenCount   = orderedRoles.length - visibleRoles.length
   const phoneLabel  = (phone && businessPhone) ? "Mobile" : "Phone"
 
   return (
@@ -329,15 +334,24 @@ export default function UserRowActions({
           )}
         </div>
         <div className="flex items-center gap-2 flex-shrink-0 ml-3">
-          <div className="flex items-center gap-1">
-            <span className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase"
-                  style={{ background: badge.bg, color: badge.color }}>
-              {primary === "admin" ? "Administrator" : primary.replace("_", " ")}
-            </span>
-            {extraCount > 0 && (
+          <div className="flex items-center gap-1 flex-wrap justify-end">
+            {visibleRoles.map(r => {
+              const b = BADGE_STYLE[r] ?? { bg: "#EAEAEA", color: "#999" }
+              const label = r === "admin" ? "Administrator"
+                          : r === "super_admin" ? "Super Admin"
+                          : r.replace("_", " ")
+              return (
+                <span key={r}
+                      className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase"
+                      style={{ background: b.bg, color: b.color }}>
+                  {label}
+                </span>
+              )
+            })}
+            {hiddenCount > 0 && (
               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
                     style={{ background: "#EAEAEA", color: "#999" }}>
-                +{extraCount}
+                +{hiddenCount}
               </span>
             )}
           </div>
