@@ -8,6 +8,7 @@ import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 import LiveFeed from "@/components/LiveFeed"
 import QuickActionsPanel from "@/components/admin/QuickActionsPanel"
+import VeracrossPullButton from "@/components/coordinator/VeracrossPullButton"
 
 const ALLOWED = ["coordinator","counselor","dean","admin","super_admin"]
 
@@ -80,6 +81,9 @@ export default async function CoordinatorPage() {
 
         {/* Quick actions — all roles that can land here can also report */}
         {students.length > 0 && <QuickActionsPanel students={students} />}
+
+        {/* Veracross sync — placeholder until the integration is wired */}
+        <VeracrossPullButton />
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-2">
