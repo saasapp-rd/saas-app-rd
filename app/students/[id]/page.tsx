@@ -166,11 +166,8 @@ export default async function StudentProfilePage({
         <SignOutButton />
       </header>
 
-      <nav className="px-5 py-2 border-b flex items-center gap-4" style={{ borderColor: "#EAEAEA" }}>
+      <nav className="px-5 py-2 border-b flex items-center" style={{ borderColor: "#EAEAEA" }}>
         <BackLink fallbackHref="/admin/users/student" />
-        <Link href="/missing" className="text-xs" style={{ color: "#999", textDecoration: "none" }}>
-          All Missing
-        </Link>
       </nav>
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
