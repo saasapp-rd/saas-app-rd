@@ -6,6 +6,7 @@ import SignOutButton from "@/components/SignOutButton"
 import BackLink from "@/components/BackLink"
 import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
+import { todayPacific, fmtTimePacific, fmtDateLabelPacific, pacificDayStartUTC, pacificDayEndUTC } from "@/lib/time"
 
 const ALLOWED = ["admin","super_admin","dean","coordinator"]
 
@@ -39,16 +40,14 @@ export default async function AdminDailyPage() {
   if (!session) redirect("/login")
   if (!ALLOWED.includes(session.user.role)) redirect("/dashboard")
 
-  const today    = new Date().toISOString().split("T")[0]
-  const todayStr = new Date().toLocaleDateString("en-US", {
-    weekday: "long", month: "long", day: "numeric",
-  })
+  const today    = todayPacific()
+  const todayStr = fmtDateLabelPacific(today)
 
   const { data: incidents } = await db
     .from("incidents")
     .select("id, level, status, report_type, reported_at, resolved_at, located_location, located_excused, block_id, student:student_id(first_name, last_name, grade), reporter:reported_by(display_name)")
-    .gte("reported_at", today + "T00:00:00+00:00")
-    .lte("reported_at", today + "T23:59:59+00:00")
+    .gte("reported_at", pacificDayStartUTC(today))
+    .lte("reported_at", pacificDayEndUTC(today))
     .order("reported_at", { ascending: false })
 
   const allRows = (incidents ?? []) as unknown as IncidentRow[]
@@ -63,9 +62,7 @@ export default async function AdminDailyPage() {
   const resolvedCount = rows.filter(r => r.status === "resolved").length
 
   function fmtTime(iso: string) {
-    return new Date(iso).toLocaleTimeString("en-US", {
-      hour: "numeric", minute: "2-digit",
-    })
+    return fmtTimePacific(iso)
   }
 
   function duration(r: IncidentRow): string {

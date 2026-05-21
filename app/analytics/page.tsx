@@ -7,6 +7,7 @@ import TestModeBanner from "@/components/TestModeBanner"
 import DateSelector from "@/components/admin/DateSelector"
 import BackLink from "@/components/BackLink"
 import Link from "next/link"
+import { todayPacific, fmtTimePacific, fmtDateLabelPacific, pacificDayOfWeek, pacificDayStartUTC, pacificDayEndUTC } from "@/lib/time"
 
 export const dynamic = "force-dynamic"
 
@@ -47,17 +48,8 @@ interface StudentStat {
   elevated: number
 }
 
-function ymd(d: Date): string {
-  // Local-time YYYY-MM-DD; toISOString() would return UTC and skew across
-  // the int'l date line at midnight Pacific.
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, "0")
-  const day = String(d.getDate()).padStart(2, "0")
-  return `${y}-${m}-${day}`
-}
-
 function fmtTime(iso: string) {
-  return new Date(iso).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
+  return fmtTimePacific(iso)
 }
 
 /**
@@ -118,16 +110,14 @@ export default async function AnalyticsPage({
     scopedStudentIds = (flags ?? []).map((f: { student_id: string }) => f.student_id)
   }
 
-  const today        = ymd(new Date())
+  const today        = todayPacific()
   // Selected date for the Today tab — defaults to today, accepts any
   // YYYY-MM-DD via ?date= query param. Anything malformed falls back
   // to today.
   const selectedDate = (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) ? dateParam : today
   const isToday      = selectedDate === today
 
-  const selectedLabel = new Date(selectedDate + "T00:00:00").toLocaleDateString("en-US", {
-    weekday: "long", month: "long", day: "numeric",
-  })
+  const selectedLabel = fmtDateLabelPacific(selectedDate)
   const todayStr      = selectedLabel  // legacy var kept to minimize diff
 
   const now    = Date.now()
@@ -140,8 +130,8 @@ export default async function AnalyticsPage({
     let q = db
       .from("incidents")
       .select("id, level, status, report_type, reported_at, resolved_at, located_location, located_excused, block_id, student:student_id(id, first_name, last_name, grade), reporter:reported_by(display_name)")
-      .gte("reported_at", selectedDate + "T00:00:00+00:00")
-      .lte("reported_at", selectedDate + "T23:59:59+00:00")
+      .gte("reported_at", pacificDayStartUTC(selectedDate))
+      .lte("reported_at", pacificDayEndUTC(selectedDate))
       .order("reported_at", { ascending: false })
 
     if (scopedStudentIds !== null) {
@@ -204,7 +194,7 @@ export default async function AnalyticsPage({
   const dayCount: number[]              = Array(7).fill(0)
   const blockCount: Record<number, number> = {}
   for (const r of patternRows) {
-    dayCount[new Date(r.reported_at).getDay()]++
+    dayCount[pacificDayOfWeek(r.reported_at)]++
     if (r.block_id) blockCount[r.block_id] = (blockCount[r.block_id] ?? 0) + 1
   }
   const maxDay   = Math.max(...dayCount, 1)

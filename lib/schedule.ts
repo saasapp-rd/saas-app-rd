@@ -1,4 +1,5 @@
 import { db } from './supabase'
+import { todayPacific } from './time'
 
 // ── Block rotation ─────────────────────────────────────────────────────────────
 // Day 1: blocks 1,3,5,7  |  Day 2: blocks 2,4,6,8
@@ -40,15 +41,17 @@ function timeToMinutes(t: string): number {
 }
 
 function nowTimeString(): string {
-  const now = new Date()
-  const h = now.getHours().toString().padStart(2, '0')
-  const m = now.getMinutes().toString().padStart(2, '0')
-  return `${h}:${m}`
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    hour:     '2-digit',
+    minute:   '2-digit',
+    hour12:   false,
+  }).formatToParts(new Date())
+  return `${parts.find(p => p.type === 'hour')!.value}:${parts.find(p => p.type === 'minute')!.value}`
 }
 
 function todayDateString(): string {
-  const now = new Date()
-  return now.toISOString().split('T')[0]  // YYYY-MM-DD
+  return todayPacific()
 }
 
 // ── Main: get current period ───────────────────────────────────────────────────
