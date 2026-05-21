@@ -117,20 +117,6 @@ export default async function DeanPage() {
         </div>
       </header>
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
-      <nav className="px-5 py-2 border-b flex items-center gap-4" style={{ borderColor: "#EAEAEA" }}>
-        <Link href="/dashboard" className="text-xs font-bold"
-              style={{ color: "#A6192E", textDecoration: "none" }}>
-          Dashboard
-        </Link>
-        <Link href="/missing" className="text-xs"
-              style={{ color: "#999", textDecoration: "none" }}>
-          Live View
-        </Link>
-        <Link href="/analytics" className="text-xs"
-              style={{ color: "#999", textDecoration: "none" }}>
-          Analytics
-        </Link>
-      </nav>
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-6">
 

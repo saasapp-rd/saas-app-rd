@@ -5,6 +5,7 @@ import { db } from "@/lib/supabase"
 import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
 import DateSelector from "@/components/admin/DateSelector"
+import BackLink from "@/components/BackLink"
 import Link from "next/link"
 
 export const dynamic = "force-dynamic"
@@ -230,16 +231,8 @@ export default async function AnalyticsPage({
         <SignOutButton />
       </header>
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
-      <nav className="px-5 py-2 border-b flex items-center gap-4" style={{ borderColor: "#EAEAEA" }}>
-        <Link href="/dashboard" className="text-xs font-bold"
-              style={{ color: "#A6192E", textDecoration: "none" }}>
-          &larr; Dashboard
-        </Link>
-        <Link href="/missing" className="text-xs"
-              style={{ color: "#999", textDecoration: "none" }}>
-          Live View
-        </Link>
-        {/* Print / Export hidden — pending a rebuild of the printable view. */}
+      <nav className="px-5 py-2 border-b flex items-center" style={{ borderColor: "#EAEAEA" }}>
+        <BackLink fallbackHref="/dashboard" />
       </nav>
 
       {/* Tabs */}

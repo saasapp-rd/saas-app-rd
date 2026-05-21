@@ -59,12 +59,6 @@ export default async function StaffPage() {
         <SignOutButton />
       </header>
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
-      <nav className="px-5 py-2 border-b flex items-center" style={{ borderColor: "#EAEAEA" }}>
-        <Link href="/dashboard" className="text-xs font-bold"
-              style={{ color: "#A6192E", textDecoration: "none" }}>
-          Dashboard
-        </Link>
-      </nav>
 
       <main className="flex-1 flex flex-col px-5 py-5 gap-4 max-w-lg mx-auto w-full">
 

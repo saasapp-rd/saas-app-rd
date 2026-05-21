@@ -52,20 +52,7 @@ export default async function MissingPage() {
   const located = rows.filter(r => r.status === "located")
 
   const role     = session.user.role
-  const isCoord  = ["coordinator","counselor","dean","admin","super_admin"].includes(role)
-  const isTeacher = role === "teacher"
-  const isStaff   = role === "staff"
-
-  // Nav links by role
-  const navLinks: { href: string; label: string; primary?: boolean }[] = []
-  if (isCoord)   navLinks.push({ href: "/coordinator", label: "My Queue", primary: true })
-  if (role === "counselor") navLinks.push({ href: "/counselor", label: "Counselor View" })
-  if (role === "dean" || role === "admin" || role === "super_admin")
-                 navLinks.push({ href: "/dean", label: "Patterns" })
-  if (role === "admin" || role === "super_admin")
-                 navLinks.push({ href: "/admin", label: "Admin" })
-  if (isTeacher) navLinks.push({ href: "/teacher", label: "My Roster", primary: true })
-  if (isStaff)   navLinks.push({ href: "/staff", label: "Staff Actions", primary: true })
+  const isCoord = ["coordinator","counselor","dean","admin","super_admin"].includes(role)
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#fff" }}>
@@ -87,17 +74,9 @@ export default async function MissingPage() {
       </header>
       <TestModeBanner name={session.user.displayName} role={session.user.role} />
 
-      {/* Nav */}
-      <nav className="px-5 py-2 border-b flex items-center gap-4 overflow-x-auto"
-           style={{ borderColor: "#EAEAEA" }}>
+      {/* Nav — single Back link, consistent with every other page */}
+      <nav className="px-5 py-2 border-b flex items-center" style={{ borderColor: "#EAEAEA" }}>
         <BackLink fallbackHref="/dashboard" />
-        {navLinks.filter(l => l.primary).map(l => (
-          <Link key={l.href} href={l.href}
-                className="text-xs whitespace-nowrap"
-                style={{ color: "#999", textDecoration: "none" }}>
-            {l.label}
-          </Link>
-        ))}
       </nav>
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
