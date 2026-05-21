@@ -39,6 +39,24 @@ const BLOCK_LABEL: Record<number, string> = {
   9: "Adv",
 }
 
+/**
+ * Extract the block from a Veracross meeting-times string.
+ * Examples:
+ *   "Odd-FwdOdd-Rev-B5-US"  → "Block 5"
+ *   "B7-MS"                 → "Block 7"
+ *   "B9"                    → "Advisory"
+ *   "Odd 1 · Even 2"        → null (no B-token, surfaces the raw string)
+ */
+function parseBlockFromMeetingTimes(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  const m = raw.match(/B(\d+)/i)
+  if (!m) return null
+  const n = Number(m[1])
+  if (n === 9) return "Advisory"
+  if (n >= 1 && n <= 8) return `Block ${n}`
+  return null
+}
+
 type Mode = "none" | "view" | "edit"
 
 export default function CourseRowActions({
@@ -223,17 +241,24 @@ export default function CourseRowActions({
       {mode === "view" && (
         <div className="px-4 py-3 border-t"
              style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
+          {/* View panel skips Name, Block, Teacher, Room — those are
+              already visible in the card's title row above. */}
           <dl className="grid gap-x-3 gap-y-1.5 text-xs"
               style={{ gridTemplateColumns: "auto 1fr" }}>
-            <ViewField label="Name" value={course.name} />
-            <ViewField label="Block" value={blockLabel} />
-            {course.room && <ViewField label="Room" value={course.room} />}
-            <ViewField label="Teacher" value={course.teacher?.display_name ?? "—"} />
             {course.course_code && <ViewField label="Course code" value={course.course_code} mono />}
             {course.class_id && <ViewField label="Class ID" value={course.class_id} mono />}
             {course.school_level && <ViewField label="School level" value={course.school_level} />}
             {course.grade_level && <ViewField label="Grade level" value={course.grade_level} />}
-            {course.meeting_times && <ViewField label="Meeting times" value={course.meeting_times} mono />}
+            {course.meeting_times && (() => {
+              const parsed = parseBlockFromMeetingTimes(course.meeting_times)
+              return (
+                <ViewField
+                  label="Meeting times"
+                  value={parsed ?? course.meeting_times!}
+                  mono={!parsed}
+                />
+              )
+            })()}
             <ViewField label="Enrollments" value={`${course.enrollment_count} student${course.enrollment_count === 1 ? "" : "s"}`} />
             <ViewField label="Status" value={
               needsReview ? "Needs Review (no block assigned)"
