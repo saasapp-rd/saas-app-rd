@@ -6,7 +6,7 @@ import { getCurrentPeriod } from "@/lib/schedule"
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
-  if (!session || !["admin","super_admin","coordinator","counselor","dean"].includes(session.user.role))
+  if (!session || !["admin","super_admin","coordinator","counselor","dean","teacher","staff"].includes(session.user.role))
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { student_id } = await req.json()

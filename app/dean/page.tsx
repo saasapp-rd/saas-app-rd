@@ -7,6 +7,7 @@ import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 import LiveFeed from "@/components/LiveFeed"
 import WelfareConcernLink from "@/components/WelfareConcernLink"
+import QuickActionsPanel from "@/components/admin/QuickActionsPanel"
 
 const ALLOWED = ["coordinator","dean","admin","super_admin"]
 
@@ -40,13 +41,22 @@ export default async function DeanPage() {
   const days90   = new Date(now - 90 * 86400000).toISOString()
   const days30   = new Date(now - 30 * 86400000).toISOString()
 
-  const { data: incidents } = await db
-    .from("incidents")
-    .select("id, level, status, reported_at, block_id, student:student_id(id, first_name, last_name, grade)")
-    .gte("reported_at", days90)
-    .order("reported_at", { ascending: false })
+  const [{ data: incidents }, { data: allStudents }] = await Promise.all([
+    db.from("incidents")
+      .select("id, level, status, reported_at, block_id, student:student_id(id, first_name, last_name, grade)")
+      .gte("reported_at", days90)
+      .order("reported_at", { ascending: false }),
+    db.from("users")
+      .select("id, first_name, last_name, grade, call_by")
+      .eq("role", "student")
+      .eq("is_active", true)
+      .order("last_name"),
+  ])
 
-  const rows = (incidents ?? []) as unknown as IncidentRow[]
+  const rows     = (incidents ?? []) as unknown as IncidentRow[]
+  const students = (allStudents ?? []) as {
+    id: string; first_name: string; last_name: string; grade: number; call_by: string | null
+  }[]
 
   // Open elevated right now
   const openElev = rows.filter(r => r.status === "open" && r.level === "elevated")
@@ -123,6 +133,9 @@ export default async function DeanPage() {
       </nav>
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-6">
+
+        {/* Quick actions */}
+        {students.length > 0 && <QuickActionsPanel students={students} />}
 
         {/* Open elevated right now */}
         {openElev.length > 0 && (

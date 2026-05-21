@@ -40,15 +40,12 @@ export default async function CoordinatorPage() {
       .neq("report_type", "welfare_concern")
       .order("reported_at", { ascending: true }),
     // Active students for the Quick Actions modal pickers (Report Missing,
-    // Report Welfare Concern). Skip for counselors since they only view
-    // this page and don't take quick actions from it.
-    session.user.role !== "counselor"
-      ? db.from("users")
-          .select("id, first_name, last_name, grade, call_by")
-          .eq("role", "student")
-          .eq("is_active", true)
-          .order("last_name")
-      : { data: [] as { id: string; first_name: string; last_name: string; grade: number; call_by: string | null }[] },
+    // Report Welfare Concern).
+    db.from("users")
+      .select("id, first_name, last_name, grade, call_by")
+      .eq("role", "student")
+      .eq("is_active", true)
+      .order("last_name"),
   ])
 
   const rows     = (incidents ?? []) as unknown as Incident[]
@@ -89,10 +86,8 @@ export default async function CoordinatorPage() {
 
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
 
-        {/* Quick actions — coordinators only (counselors view-only here) */}
-        {isCoord && students.length > 0 && (
-          <QuickActionsPanel students={students} />
-        )}
+        {/* Quick actions — all roles that can land here can also report */}
+        {students.length > 0 && <QuickActionsPanel students={students} />}
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-2">

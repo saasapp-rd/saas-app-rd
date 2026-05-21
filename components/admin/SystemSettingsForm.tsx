@@ -53,9 +53,17 @@ export default function SystemSettingsForm({
         <TextField label="Academic year" value={vals.academic_year}
                    onChange={v => setField("academic_year", v)}
                    placeholder="2025-26" canEdit={canEdit} />
-        <TextField label="School name" value={vals.school_name}
-                   onChange={v => setField("school_name", v)}
-                   placeholder="Seattle Academy" canEdit={canEdit} />
+        {/* School name is intentionally hardcoded — this is the
+            Seattle Academy app. Shown for context, not editable. */}
+        <div>
+          <p className="text-[9px] font-bold uppercase tracking-wide mb-1"
+             style={{ color: "#3D3D3D", opacity: 0.45 }}>
+            School
+          </p>
+          <p className="text-sm" style={{ color: "#3D3D3D" }}>
+            Seattle Academy
+          </p>
+        </div>
       </Section>
 
       <Section title="Notification Policy"

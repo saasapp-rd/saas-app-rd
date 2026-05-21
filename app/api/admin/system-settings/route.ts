@@ -13,8 +13,10 @@ import { db } from "@/lib/supabase"
  * are valid for the credential fields (means "clear"); the column
  * defaults to ''.
  */
+// school_name intentionally omitted — this is the Seattle Academy app
+// and the name is hardcoded, not editable through the UI or API.
 const STRING_FIELDS = [
-  "academic_year", "school_name",
+  "academic_year",
   "google_client_id", "google_client_secret",
   "veracross_api_url", "veracross_api_key",
 ] as const
@@ -41,11 +43,8 @@ export async function PATCH(req: NextRequest) {
   if (Object.keys(updates).length === 0)
     return NextResponse.json({ error: "No valid fields to update." }, { status: 400 })
 
-  // Don't allow blanking academic_year / school_name — those are required.
   if ("academic_year" in updates && !updates.academic_year)
     return NextResponse.json({ error: "academic_year cannot be empty." }, { status: 400 })
-  if ("school_name" in updates && !updates.school_name)
-    return NextResponse.json({ error: "school_name cannot be empty." }, { status: 400 })
 
   updates.updated_at = new Date().toISOString()
   updates.updated_by = session.user.userId
