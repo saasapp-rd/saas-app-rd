@@ -22,25 +22,22 @@ export default async function SettingsPage() {
     { count: studentCount },
     { count: courseCount },
     { count: staffCount },
-    { count: parentCount },
   ] = await Promise.all([
     getSystemSettings(),
     db.from("users").select("id", { count: "exact", head: true })
       .eq("role", "student").eq("is_active", true),
     db.from("courses").select("id", { count: "exact", head: true })
       .eq("is_active", true),
-    // Staff = active users who aren't students or parents.
+    // Staff = active users who aren't students. (Parents aren't user
+    // accounts — they're embedded as parent_email / parent_name on
+    // the student row, so role='parent' is essentially unused.)
     db.from("users").select("id", { count: "exact", head: true })
-      .eq("is_active", true)
-      .not("role", "in", "(student,parent)"),
-    db.from("users").select("id", { count: "exact", head: true })
-      .eq("role", "parent").eq("is_active", true),
+      .eq("is_active", true).neq("role", "student"),
   ])
 
   const stats = [
     { label: "Active Students", value: studentCount ?? 0 },
     { label: "Active Staff",    value: staffCount   ?? 0 },
-    { label: "Active Parents",  value: parentCount  ?? 0 },
     { label: "Active Courses",  value: courseCount  ?? 0 },
   ]
 
@@ -67,7 +64,7 @@ export default async function SettingsPage() {
       <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full flex flex-col gap-5">
 
         {/* Live stats */}
-        <div className="grid grid-cols-4 gap-2">
+        <div className="grid grid-cols-3 gap-2">
           {stats.map(s => (
             <div key={s.label} className="rounded-xl p-3 text-center border"
                  style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
