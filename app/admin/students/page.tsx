@@ -25,7 +25,7 @@ export default async function StudentsPage() {
     <div className="min-h-screen flex flex-col" style={{ background: "#fff" }}>
       <header className="px-5 py-3.5 flex items-center justify-between" style={{ background: "#A6192E" }}>
         <div>
-          <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">Admin &mdash; Students</div>
+          <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">Manage Students</div>
           <div className="text-white text-[10px] opacity-70">{students?.length ?? 0} active students</div>
         </div>
         <SignOutButton />

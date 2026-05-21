@@ -105,7 +105,7 @@ export default async function DeanPage() {
               style={{ background: "#A6192E" }}>
         <div>
           <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">
-            Dean View
+            Dashboard
           </div>
           <div className="text-white text-[10px] opacity-70">
             Patterns &amp; attendance analytics

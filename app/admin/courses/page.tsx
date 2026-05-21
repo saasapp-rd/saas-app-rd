@@ -142,7 +142,7 @@ export default async function CoursesPage() {
     <div className="min-h-screen flex flex-col" style={{ background: "#fff" }}>
       <header className="px-5 py-3.5 flex items-center justify-between" style={{ background: "#A6192E" }}>
         <div>
-          <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">Admin &mdash; Courses</div>
+          <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">Manage Courses</div>
           <div className="text-white text-[10px] opacity-70">
             {activeCount} active · {courses.length} total
           </div>

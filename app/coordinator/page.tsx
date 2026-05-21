@@ -66,7 +66,7 @@ export default async function CoordinatorPage() {
       <header className="px-5 py-3.5 flex items-center justify-between"
               style={{ background: "#A6192E" }}>
         <div>
-          <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">Coordinator</div>
+          <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">Dashboard</div>
           <div className="text-white text-[10px] opacity-70">{session.user.displayName}</div>
         </div>
         <div className="flex items-center gap-3">
