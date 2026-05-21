@@ -92,11 +92,7 @@ export default async function AdminDailyPage() {
               style={{ color: "#999", textDecoration: "none" }}>
           Live View
         </Link>
-        <Link href="/admin/daily/print" target="_blank"
-              className="ml-auto text-xs font-bold"
-              style={{ color: "#1E5FA6", textDecoration: "none" }}>
-          Print / Export &#x2197;
-        </Link>
+        {/* Print / Export hidden — pending a rebuild of the printable view. */}
       </nav>
 
       <main className="flex-1 px-5 py-5 max-w-2xl mx-auto w-full flex flex-col gap-5">

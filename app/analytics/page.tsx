@@ -239,13 +239,7 @@ export default async function AnalyticsPage({
               style={{ color: "#999", textDecoration: "none" }}>
           Live View
         </Link>
-        {(session.user.role === "admin" || session.user.role === "super_admin") && (
-          <Link href="/admin/daily/print" target="_blank"
-                className="ml-auto text-xs font-bold"
-                style={{ color: "#1E5FA6", textDecoration: "none" }}>
-            Print / Export &#x2197;
-          </Link>
-        )}
+        {/* Print / Export hidden — pending a rebuild of the printable view. */}
       </nav>
 
       {/* Tabs */}
