@@ -67,7 +67,7 @@ export default async function CalendarPage({
         <BackLink fallbackHref="/admin/config" />
       </nav>
 
-      <main className="flex-1 px-5 py-5 max-w-lg mx-auto w-full">
+      <main className="flex-1 px-5 py-5 max-w-3xl mx-auto w-full">
         <CalendarManager
           year={year}
           month={month}

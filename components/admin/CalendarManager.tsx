@@ -146,10 +146,10 @@ export default function CalendarManager({
         ))}
       </div>
 
-      {/* Grid */}
+      {/* Grid — day number top-left, content below, consistent square-ish cells */}
       <div className="grid grid-cols-7 gap-1">
         {cells.map((day, i) => {
-          if (!day) return <div key={i} />
+          if (!day) return <div key={i} className="min-h-[80px]" />
           const dateStr = `${year}-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}`
           const row     = calMap[dateStr]
           const isToday = dateStr === today
@@ -167,7 +167,7 @@ export default function CalendarManager({
 
           return (
             <button key={i} onClick={() => setSelectedDate(dateStr)}
-              className="rounded-lg p-1 flex flex-col items-center gap-0.5 min-h-[56px] relative"
+              className="rounded-lg p-1.5 flex flex-col items-start min-h-[80px] relative text-left"
               style={{
                 background: bg,
                 border: isSel ? "2px solid #1E5FA6"
@@ -176,23 +176,31 @@ export default function CalendarManager({
                       : "1px solid #EAEAEA",
                 cursor: "pointer",
               }}>
-              <span className="text-xs font-bold"
+              {/* Day number top-left */}
+              <span className="text-sm font-bold leading-none"
                     style={{ color: isToday ? "#A6192E" : "#3D3D3D" }}>
                 {day}
               </span>
-              {isSpecial && (
-                <span className="text-[12px] leading-none" style={{ color: "#92400E" }}>★</span>
-              )}
+
+              {/* Day-type label centered below */}
               {dt && isSchool && !isSpecial && (
-                <span className="text-[9px] font-bold" style={{ color: DAY_TEXT[dt] }}>
+                <span className="mt-auto self-center text-[10px] font-bold leading-none"
+                      style={{ color: DAY_TEXT[dt] }}>
                   D{dt}
                 </span>
               )}
-              {row && !isSchool && (
-                <span className="text-[8px]" style={{ color: "#999" }}>off</span>
+              {isSpecial && (
+                <span className="mt-auto self-center text-base leading-none"
+                      style={{ color: "#92400E" }}>★</span>
               )}
+              {row && !isSchool && (
+                <span className="mt-auto self-center text-[9px] uppercase tracking-wide"
+                      style={{ color: "#999" }}>off</span>
+              )}
+
+              {/* Manual override badge top-right */}
               {isManual && (
-                <span className="absolute top-0.5 right-0.5 text-[7px] font-bold px-1 rounded"
+                <span className="absolute top-1 right-1 text-[7px] font-bold px-1 rounded"
                       style={{ background: "#1E5FA6", color: "#fff" }}>M</span>
               )}
             </button>
