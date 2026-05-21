@@ -86,15 +86,18 @@ export default function CoordinatorBlocks({
                 const key = `${b}:${a.coordinator_id}`
                 return (
                   <span key={a.coordinator_id}
-                        className="text-[11px] font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1.5"
-                        style={{ background: "#EEF6FF", color: "#1E5FA6" }}>
+                        className="font-bold rounded-full inline-flex items-center gap-1"
+                        style={{
+                          background: "#EEF6FF", color: "#1E5FA6",
+                          fontSize: "11px", padding: "3px 8px", lineHeight: 1.2,
+                        }}>
                     {a.name}
                     <button onClick={() => remove(b, a.coordinator_id)}
                             disabled={busyKey === key}
-                            className="text-[12px] leading-none"
                             style={{
                               background: "none", border: "none", color: "#1E5FA6",
-                              cursor: "pointer", padding: 0,
+                              cursor: "pointer", padding: 0, lineHeight: 1,
+                              fontSize: "12px",
                               opacity: busyKey === key ? 0.4 : 1,
                             }}>
                       ✕
@@ -106,15 +109,19 @@ export default function CoordinatorBlocks({
                 <select value=""
                         onChange={e => { if (e.target.value) add(b, e.target.value) }}
                         disabled={busyKey?.startsWith(`${b}:`)}
-                        className="text-[11px] px-2.5 py-1 rounded-full border outline-none"
-                        style={{ borderColor: "#EAEAEA", background: "#fff", color: "#999", cursor: "pointer" }}>
+                        className="rounded-full border outline-none"
+                        style={{
+                          borderColor: "#EAEAEA", background: "#fff", color: "#999",
+                          cursor: "pointer",
+                          fontSize: "11px", padding: "3px 8px", lineHeight: 1.2,
+                        }}>
                   <option value="">+ Add coordinator</option>
                   {available.map(c => (
                     <option key={c.id} value={c.id}>{c.display_name}</option>
                   ))}
                 </select>
               ) : assigned.length > 0 && (
-                <span className="text-[10px]" style={{ color: "#BABABA" }}>
+                <span style={{ color: "#BABABA", fontSize: "10px" }}>
                   All coordinators assigned
                 </span>
               )}

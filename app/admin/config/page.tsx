@@ -13,6 +13,7 @@ const MGMT_LINKS = [
   { href: "/admin/courses",          label: "Manage Courses",          desc: "Create courses, assign teachers, set blocks and rooms",   icon: "📚" },
   { href: "/admin/calendar",         label: "Manage School Calendar",  desc: "Set day types, block rotation, and holidays",             icon: "📅" },
   { href: "/admin/coordinators",     label: "Manage Coordinators",     desc: "Global block assignments — overrides live in the calendar", icon: "🎯" },
+  { href: "/admin/counselors",       label: "Manage Counselors",       desc: "Counselor caseloads — assign students to counselors (multi-counselor OK)", icon: "🧑‍⚕️" },
   // ── Operations ────────────────────────────────────────────────
   { href: "/admin/daily",            label: "Daily Report",            desc: "Today's attendance and missing student log",              icon: "📊" },
   { href: "/analytics",              label: "Analytics",               desc: "Patterns, trends, and attendance data",                   icon: "📈" },
