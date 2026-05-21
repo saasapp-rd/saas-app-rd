@@ -31,12 +31,14 @@ export default function CalendarManager({
   rows,
   prevHref,
   nextHref,
+  canEdit = true,
 }: {
   year:     number
   month:    number
   rows:     DayRow[]
   prevHref: string
   nextHref: string
+  canEdit?: boolean
 }) {
   const router = useRouter()
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
@@ -73,24 +75,35 @@ export default function CalendarManager({
   return (
     <div className="flex flex-col gap-4">
 
-      {/* Sync row */}
-      <div className="rounded-xl border p-3 flex items-center justify-between gap-3"
-           style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
-        <div className="flex-1 min-w-0">
-          <p className="text-xs font-bold" style={{ color: "#3D3D3D" }}>
-            Sync from school feed
-          </p>
-          <p className="text-[10px]" style={{ color: "#999" }}>
-            Pulls day types and special schedules from Seattle Academy&apos;s calendar feed.
-            Manual overrides are preserved.
-          </p>
+      {/* Sync row — admin/super_admin only */}
+      {canEdit && (
+        <div className="rounded-xl border p-3 flex items-center justify-between gap-3"
+             style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold" style={{ color: "#3D3D3D" }}>
+              Sync from school feed
+            </p>
+            <p className="text-[10px]" style={{ color: "#999" }}>
+              Pulls day types and special schedules from Seattle Academy&apos;s calendar feed.
+              Manual overrides are preserved.
+            </p>
+          </div>
+          <button onClick={syncFromFeed} disabled={syncing}
+            className="px-3 py-2 rounded-xl text-xs font-bold text-white flex-shrink-0"
+            style={{ background: "#A6192E", opacity: syncing ? 0.5 : 1, border: "none", cursor: "pointer" }}>
+            {syncing ? "Syncing…" : "Sync now"}
+          </button>
         </div>
-        <button onClick={syncFromFeed} disabled={syncing}
-          className="px-3 py-2 rounded-xl text-xs font-bold text-white flex-shrink-0"
-          style={{ background: "#A6192E", opacity: syncing ? 0.5 : 1, border: "none", cursor: "pointer" }}>
-          {syncing ? "Syncing…" : "Sync now"}
-        </button>
-      </div>
+      )}
+
+      {/* Read-only notice */}
+      {!canEdit && (
+        <div className="rounded-xl border p-3 text-[10px]"
+             style={{ background: "#F4F4F4", borderColor: "#EAEAEA", color: "#666" }}>
+          Read-only view. Day types and special schedules are managed by an
+          administrator.
+        </div>
+      )}
 
       {syncResult && !syncResult.error && (
         <p className="text-xs" style={{ color: "#166534" }}>
@@ -208,17 +221,18 @@ export default function CalendarManager({
         })}
       </div>
 
-      {/* Day editor */}
+      {/* Day editor — admin/super_admin can save; others get a read-only view */}
       {selectedDate && (
         <DayEditor
           dateStr={selectedDate}
           row={selectedRow}
+          canEdit={canEdit}
           onClose={() => setSelectedDate(null)}
           onSaved={() => { setSelectedDate(null); router.refresh() }}
         />
       )}
 
-      {rows.length === 0 && !selectedDate && (
+      {rows.length === 0 && !selectedDate && canEdit && (
         <p className="text-xs text-center mt-2" style={{ color: "#999" }}>
           No calendar data for this month. Click <strong>Sync now</strong> to pull from the feed,
           or click a day to enter it manually.
@@ -229,10 +243,11 @@ export default function CalendarManager({
 }
 
 function DayEditor({
-  dateStr, row, onClose, onSaved,
+  dateStr, row, canEdit, onClose, onSaved,
 }: {
   dateStr: string
   row:     DayRow | undefined
+  canEdit: boolean
   onClose: () => void
   onSaved: () => void
 }) {
@@ -361,23 +376,27 @@ function DayEditor({
 
       {error && <p className="text-xs font-semibold" style={{ color: "#CE2033" }}>{error}</p>}
 
-      <button onClick={save}
-        disabled={saving || (isSchoolDay && !isSpecial && !dayType)}
-        className="w-full py-2 rounded-xl text-sm font-bold text-white"
-        style={{
-          background: "#A6192E",
-          opacity: saving || (isSchoolDay && !isSpecial && !dayType) ? 0.5 : 1,
-          border: "none", cursor: "pointer",
-        }}>
-        {saving ? "Saving…" : "Save (manual override)"}
-      </button>
+      {canEdit && (
+        <>
+          <button onClick={save}
+            disabled={saving || (isSchoolDay && !isSpecial && !dayType)}
+            className="w-full py-2 rounded-xl text-sm font-bold text-white"
+            style={{
+              background: "#A6192E",
+              opacity: saving || (isSchoolDay && !isSpecial && !dayType) ? 0.5 : 1,
+              border: "none", cursor: "pointer",
+            }}>
+            {saving ? "Saving…" : "Save (manual override)"}
+          </button>
 
-      {row?.source === "manual" && (
-        <button onClick={resetToSync} disabled={resetting}
-          className="w-full py-1.5 rounded-xl text-[10px] font-bold"
-          style={{ background: "transparent", color: "#999", border: "1px solid #EAEAEA", cursor: "pointer" }}>
-          {resetting ? "Resetting…" : "Reset — let next sync repopulate"}
-        </button>
+          {row?.source === "manual" && (
+            <button onClick={resetToSync} disabled={resetting}
+              className="w-full py-1.5 rounded-xl text-[10px] font-bold"
+              style={{ background: "transparent", color: "#999", border: "1px solid #EAEAEA", cursor: "pointer" }}>
+              {resetting ? "Resetting…" : "Reset — let next sync repopulate"}
+            </button>
+          )}
+        </>
       )}
     </div>
   )

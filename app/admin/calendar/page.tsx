@@ -23,6 +23,9 @@ function monthHref(year: number, month: number): string {
   return `/admin/calendar?m=${year}-${String(month).padStart(2,"0")}`
 }
 
+const VIEW_ALLOWED = ["admin", "super_admin", "dean", "coordinator"]
+const EDIT_ALLOWED = ["admin", "super_admin"]
+
 export default async function CalendarPage({
   searchParams,
 }: {
@@ -30,7 +33,8 @@ export default async function CalendarPage({
 }) {
   const session = await getServerSession(authOptions)
   if (!session) redirect("/login")
-  if (!["admin", "super_admin"].includes(session.user.role)) redirect("/dashboard")
+  if (!VIEW_ALLOWED.includes(session.user.role)) redirect("/dashboard")
+  const canEdit = EDIT_ALLOWED.includes(session.user.role)
 
   const { m } = await searchParams
   const { year, month } = parseMonth(m)
@@ -56,9 +60,11 @@ export default async function CalendarPage({
       <header className="px-5 py-3.5 flex items-center justify-between" style={{ background: "#A6192E" }}>
         <div>
           <div className="text-white text-xs font-bold tracking-[0.2em] uppercase">
-            Manage School Calendar
+            {canEdit ? "Manage" : "View"} School Calendar
           </div>
-          <div className="text-white text-[10px] opacity-70">Day types &amp; special schedules</div>
+          <div className="text-white text-[10px] opacity-70">
+            Day types &amp; special schedules{canEdit ? "" : " · read-only"}
+          </div>
         </div>
         <SignOutButton />
       </header>
@@ -74,6 +80,7 @@ export default async function CalendarPage({
           rows={rows}
           prevHref={monthHref(prevMonth.y, prevMonth.m)}
           nextHref={monthHref(nextMonth.y, nextMonth.m)}
+          canEdit={canEdit}
         />
       </main>
     </div>

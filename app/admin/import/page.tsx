@@ -10,7 +10,7 @@ import CsvImportSection from "@/components/admin/CsvImportSection"
 export default async function ImportPage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect("/login")
-  if (!["admin", "super_admin"].includes(session.user.role)) redirect("/dashboard")
+  if (session.user.role !== "super_admin") redirect("/dashboard")
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#fff" }}>
