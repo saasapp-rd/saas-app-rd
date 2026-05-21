@@ -272,9 +272,11 @@ export default function UserRowActions({
     setUnassigning(null)
   }
 
+  // Terse one-liner for the row header — lists actual course names.
+  // The view panel below renders a richer list with block tags.
   const coursesSummary = courses.length === 0
     ? "No courses assigned"
-    : courses.map(c => blockLabel(c.block_number)).join(", ") +
+    : courses.map(c => c.name).join(", ") +
       " · " + courses.length + " course" + (courses.length !== 1 ? "s" : "")
 
   const extraCount  = savedRoles.length - 1
@@ -361,7 +363,7 @@ export default function UserRowActions({
           {/* View panel shows only fields NOT already visible in the row
               header (display name, email, role badge are repeated there).
               Deeper details — phone, job title, dean-grade scope,
-              Veracross ID — surface here. */}
+              course list — surface here. */}
           <dl className="grid gap-x-3 gap-y-1.5 text-xs"
               style={{ gridTemplateColumns: "auto 1fr" }}>
             {phone && <ViewField label={businessPhone ? "Mobile phone" : "Phone"} value={phone} />}
@@ -371,13 +373,36 @@ export default function UserRowActions({
               <ViewField label="Grade levels"
                          value={(deanGrades && deanGrades.length > 0) ? deanGrades.join(", ") : "—"} />
             )}
-            {isTeach && courses.length > 0 && (
-              <ViewField label="Courses" value={coursesSummary} />
-            )}
-            {veracrossId && (
-              <ViewField label="Veracross ID" value={veracrossId} mono />
-            )}
           </dl>
+
+          {/* Course list — one row per course, with block tag for context. */}
+          {isTeach && courses.length > 0 && (
+            <div className="mt-3">
+              <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-1.5"
+                 style={{ color: "#3D3D3D", opacity: 0.45 }}>
+                Courses — {courses.length}
+              </p>
+              <div className="flex flex-col gap-1">
+                {courses.map(c => (
+                  <div key={c.id} className="flex items-center gap-2 rounded-lg px-2 py-1"
+                       style={{ background: "#fff", border: "1px solid #EAEAEA" }}>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded flex-shrink-0"
+                          style={{ background: "#EAEAEA", color: "#3D3D3D" }}>
+                      {blockLabel(c.block_number)}
+                    </span>
+                    <span className="text-xs flex-1 truncate" style={{ color: "#3D3D3D" }}>
+                      {c.name}
+                    </span>
+                    {c.room && (
+                      <span className="text-[10px] flex-shrink-0" style={{ color: "#999" }}>
+                        {c.room}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="mt-3 flex justify-end">
             <button onClick={toggleEdit}
               className="text-[10px] font-semibold px-3 py-1.5 rounded-lg"
