@@ -218,7 +218,7 @@ export default async function MissingPage() {
         )}
 
         {/* Staff CTA */}
-        {isStaff && (
+        {role === "staff" && (
           <div className="rounded-xl px-4 py-4 border text-center"
                style={{ borderColor: "#EAEAEA", background: "#FAFAFA" }}>
             <p className="text-xs font-bold mb-1" style={{ color: "#3D3D3D" }}>
