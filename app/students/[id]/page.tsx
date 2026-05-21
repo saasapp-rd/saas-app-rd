@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth"
 import { redirect, notFound } from "next/navigation"
 import { db } from "@/lib/supabase"
 import SignOutButton from "@/components/SignOutButton"
+import BackLink from "@/components/BackLink"
 import Link from "next/link"
 import FlagManager from "@/components/counselor/FlagManager"
 import StudentSchedule from "@/components/admin/StudentSchedule"
@@ -166,11 +167,7 @@ export default async function StudentProfilePage({
       </header>
 
       <nav className="px-5 py-2 border-b flex items-center gap-4" style={{ borderColor: "#EAEAEA" }}>
-        <Link href="/admin/users/student"
-              className="text-xs font-bold"
-              style={{ color: "#A6192E", textDecoration: "none" }}>
-          &larr; Back
-        </Link>
+        <BackLink fallbackHref="/admin/users/student" />
         <Link href="/missing" className="text-xs" style={{ color: "#999", textDecoration: "none" }}>
           All Missing
         </Link>

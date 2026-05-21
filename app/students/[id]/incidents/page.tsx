@@ -4,6 +4,7 @@ import { redirect, notFound } from "next/navigation"
 import { db } from "@/lib/supabase"
 import { fetchAllPaginated } from "@/lib/dbHelpers"
 import SignOutButton from "@/components/SignOutButton"
+import BackLink from "@/components/BackLink"
 import Link from "next/link"
 import IncidentDrilldown, { type IncidentRow } from "@/components/admin/IncidentDrilldown"
 import StudentProfileHeader from "@/components/admin/StudentProfileHeader"
@@ -99,11 +100,7 @@ export default async function StudentIncidentsPage({
       </header>
 
       <nav className="px-5 py-2 border-b flex items-center gap-4" style={{ borderColor: "#EAEAEA" }}>
-        <Link href={`/students/${id}`}
-              className="text-xs font-bold"
-              style={{ color: "#A6192E", textDecoration: "none" }}>
-          &larr; Schedule
-        </Link>
+        <BackLink fallbackHref={`/students/${id}`} />
       </nav>
 
       <main className="flex-1 px-5 py-5 max-w-2xl mx-auto w-full flex flex-col gap-5">

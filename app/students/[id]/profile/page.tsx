@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth"
 import { redirect, notFound } from "next/navigation"
 import { db } from "@/lib/supabase"
 import SignOutButton from "@/components/SignOutButton"
+import BackLink from "@/components/BackLink"
 import Link from "next/link"
 
 export const dynamic = "force-dynamic"
@@ -62,10 +63,7 @@ export default async function StudentFullProfilePage({
       </header>
 
       <nav className="px-5 py-2 border-b flex items-center gap-4 flex-wrap" style={{ borderColor: "#EAEAEA" }}>
-        <Link href={`/admin/users/student`} className="text-xs font-bold"
-              style={{ color: "#A6192E", textDecoration: "none" }}>
-          &larr; All students
-        </Link>
+        <BackLink fallbackHref="/admin/users/student" />
         <Link href={`/students/${id}`} className="text-xs"
               style={{ color: "#999", textDecoration: "none" }}>
           Schedule
