@@ -8,6 +8,7 @@ import BackLink from "@/components/BackLink"
 import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 import UserSearch, { SearchUser } from "@/components/admin/UserSearch"
+import BackfillAdvisorsButton from "@/components/admin/BackfillAdvisorsButton"
 
 export const dynamic = "force-dynamic"
 
@@ -160,6 +161,8 @@ export default async function UsersPage() {
             </div>
           </div>
         </Link>
+
+        <BackfillAdvisorsButton />
       </main>
     </div>
   )
