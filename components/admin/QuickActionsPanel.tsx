@@ -4,9 +4,9 @@ import { useRouter } from "next/navigation"
 
 interface Student {
   id:         string
-  first_name: string
-  last_name:  string
-  grade:      number
+  first_name: string | null
+  last_name:  string | null
+  grade:      number | null
   call_by:    string | null
 }
 
@@ -35,14 +35,18 @@ function StudentModal({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
+    // last_name / first_name come from the DB and may be null on
+    // partially-imported student rows. Coalesce to "" so sort + filter
+    // never call .localeCompare / .toLowerCase on null.
     const list = [...students].sort((a, b) =>
-      a.last_name.localeCompare(b.last_name) || a.first_name.localeCompare(b.first_name)
+      (a.last_name ?? "").localeCompare(b.last_name ?? "") ||
+      (a.first_name ?? "").localeCompare(b.first_name ?? "")
     )
     if (!q) return list
     return list.filter(s =>
-      s.last_name.toLowerCase().includes(q) ||
-      s.first_name.toLowerCase().includes(q) ||
-      (s.call_by ?? "").toLowerCase().includes(q)
+      (s.last_name  ?? "").toLowerCase().includes(q) ||
+      (s.first_name ?? "").toLowerCase().includes(q) ||
+      (s.call_by    ?? "").toLowerCase().includes(q)
     )
   }, [query, students])
 
@@ -142,7 +146,7 @@ function StudentModal({
                     cursor: "pointer", textAlign: "left",
                   }}>
                   <span style={{ fontSize: 13, fontWeight: isSelected ? 700 : 400, color: isSelected ? accentColor : "#3D3D3D" }}>
-                    {s.last_name}, {s.call_by ?? s.first_name}
+                    {s.last_name ?? "—"}, {s.call_by ?? s.first_name ?? "—"}
                   </span>
                   <span style={{ fontSize: 11, color: "#BABABA", flexShrink: 0, marginLeft: 8 }}>
                     Gr {s.grade}
@@ -237,7 +241,7 @@ export default function QuickActionsPanel({ students }: { students: Student[] })
           subtitle="Flag a student for counselor follow-up"
           apiEndpoint="/api/admin/report-welfare"
           accentColor="#92400E"
-          submitLabel={s => `Flag ${s.call_by ?? s.first_name} ${s.last_name}`}
+          submitLabel={s => `Flag ${s.call_by ?? s.first_name ?? ""} ${s.last_name ?? ""}`.trim()}
           students={students}
           onClose={() => setWelModal(false)}
         />
@@ -249,7 +253,7 @@ export default function QuickActionsPanel({ students }: { students: Student[] })
           subtitle="Opens an incident — you'll be taken to the coordinator view"
           apiEndpoint="/api/admin/report-missing"
           accentColor="#A6192E"
-          submitLabel={s => `Report ${s.call_by ?? s.first_name} ${s.last_name} Missing`}
+          submitLabel={s => `Report ${s.call_by ?? s.first_name ?? ""} ${s.last_name ?? ""} Missing`.trim()}
           students={students}
           onClose={() => setMissingModal(false)}
         />
