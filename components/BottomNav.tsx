@@ -20,38 +20,38 @@ const NAV: Record<string, NavItem[]> = {
   super_admin: [
     { href: "/admin",        label: "Dashboard", icon: "🏠", activeOn: "exact" },
     { href: "/missing",      label: "Live",      icon: "👁"  },
-    { href: "/analytics",    label: "Analytics", icon: "📊", activeOn: "sub", activePrefix: "/analytics" },
+    { href: "/analytics",    label: "Analytics", icon: "📊" },
     { href: "/admin/config", label: "Admin",     icon: "⚙️", activeOn: "sub", activePrefix: "/admin" },
   ],
   admin: [
     { href: "/admin",        label: "Dashboard", icon: "🏠", activeOn: "exact" },
     { href: "/missing",      label: "Live",      icon: "👁"  },
-    { href: "/analytics",    label: "Analytics", icon: "📊", activeOn: "sub", activePrefix: "/analytics" },
+    { href: "/analytics",    label: "Analytics", icon: "📊" },
     { href: "/admin/config", label: "Admin",     icon: "⚙️", activeOn: "sub", activePrefix: "/admin" },
   ],
   dean: [
     { href: "/dean",         label: "Dashboard", icon: "🏠", activeOn: "exact" },
     { href: "/missing",      label: "Live",      icon: "👁"  },
-    { href: "/analytics",    label: "Analytics", icon: "📊", activeOn: "sub", activePrefix: "/analytics" },
+    { href: "/analytics",    label: "Analytics", icon: "📊" },
     { href: "/admin/config", label: "Admin",     icon: "⚙️", activeOn: "sub", activePrefix: "/admin" },
   ],
   coordinator: [
-    { href: "/coordinator",  label: "Dashboard", icon: "🏠", activeOn: "sub", activePrefix: "/coordinator" },
+    { href: "/coordinator",  label: "Dashboard", icon: "🏠" },
     { href: "/missing",      label: "Live",      icon: "👁"  },
-    { href: "/analytics",    label: "Analytics", icon: "📊", activeOn: "sub", activePrefix: "/analytics" },
+    { href: "/analytics",    label: "Analytics", icon: "📊" },
     { href: "/admin/config", label: "Admin",     icon: "⚙️", activeOn: "sub", activePrefix: "/admin" },
   ],
   counselor: [
     { href: "/counselor",    label: "Dashboard", icon: "🏠", activeOn: "exact" },
     { href: "/missing",      label: "Live",      icon: "👁"  },
-    { href: "/analytics",    label: "Analytics", icon: "📊", activeOn: "sub", activePrefix: "/analytics" },
+    { href: "/analytics",    label: "Analytics", icon: "📊" },
   ],
   teacher: [
-    { href: "/teacher",      label: "Classes",   icon: "📓", activeOn: "sub", activePrefix: "/teacher" },
+    { href: "/teacher",      label: "Classes",   icon: "📓" },
     { href: "/missing",      label: "Live",      icon: "👁"  },
   ],
   staff: [
-    { href: "/staff",        label: "Dashboard", icon: "🏠", activeOn: "sub", activePrefix: "/staff" },
+    { href: "/staff",        label: "Dashboard", icon: "🏠" },
     { href: "/missing",      label: "Live",      icon: "👁"  },
   ],
 }

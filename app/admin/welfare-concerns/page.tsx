@@ -26,7 +26,10 @@ function timeAgo(iso: string) {
 export default async function WelfareConcernsPage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect("/login")
-  if (!["admin", "super_admin"].includes(session.user.role)) redirect("/dashboard")
+  // Welfare concerns are a counseling / dean workflow — coordinators
+  // intentionally excluded; they handle the operational missing-student
+  // queue, not wellness escalations.
+  if (!["admin", "super_admin", "dean", "counselor"].includes(session.user.role)) redirect("/dashboard")
 
   // Welfare concerns = incidents with report_type = 'welfare_concern'
   // Show last 90 days

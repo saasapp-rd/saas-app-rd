@@ -44,7 +44,7 @@ const MGMT_LINKS: MgmtLink[] = [
     icon: "📊", roles: ["super_admin","admin","dean","coordinator","counselor"] },
   { href: "/admin/welfare-concerns", label: "Welfare Concerns",
     desc: "View all submitted welfare concern reports",
-    icon: "⚠️", roles: ["super_admin","admin","dean","coordinator","counselor"] },
+    icon: "⚠️", roles: ["super_admin","admin","dean","counselor"] },
   { href: "/admin/review-queue",     label: "Review Queue",
     desc: "Data-quality issues from imports needing admin attention",
     icon: "📝", roles: ["super_admin","admin"] },

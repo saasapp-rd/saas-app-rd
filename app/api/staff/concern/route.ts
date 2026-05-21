@@ -45,10 +45,12 @@ export async function POST(req: NextRequest) {
     body:  fullName + " — reported by " + session.user.displayName,
     url:   "/coordinator",
   }
+  // Coordinator intentionally NOT notified — welfare concerns are a
+  // counseling / dean follow-up workflow, separate from the missing-
+  // student queue coordinators run.
   await Promise.allSettled([
-    sendPushToRole("coordinator", payload),
-    sendPushToRole("dean",        payload),
-    sendPushToRole("counselor",   payload),
+    sendPushToRole("dean",      payload),
+    sendPushToRole("counselor", payload),
   ])
 
   return NextResponse.json(incident, { status: 201 })
