@@ -41,6 +41,21 @@ export default async function SettingsPage() {
     { label: "Active Courses",  value: courseCount  ?? 0 },
   ]
 
+  // ── Timezone display ──────────────────────────────────────────────────────
+  const TZ = "America/Los_Angeles"
+  const now = new Date()
+  const tzLong  = new Intl.DateTimeFormat("en-US", { timeZone: TZ, timeZoneName: "long"  })
+    .formatToParts(now).find(p => p.type === "timeZoneName")?.value ?? ""
+  const tzShort = new Intl.DateTimeFormat("en-US", { timeZone: TZ, timeZoneName: "short" })
+    .formatToParts(now).find(p => p.type === "timeZoneName")?.value ?? ""
+  const offsetStr  = tzShort === "PDT" ? "UTC−7" : "UTC−8"
+  const nowTimeStr = now.toLocaleTimeString("en-US", {
+    timeZone: TZ, hour: "numeric", minute: "2-digit", second: "2-digit",
+  })
+  const nowDateStr = now.toLocaleDateString("en-US", {
+    timeZone: TZ, weekday: "long", month: "long", day: "numeric", year: "numeric",
+  })
+
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "#fff" }}>
       <header className="px-5 py-3.5 flex items-center justify-between"
@@ -73,6 +88,21 @@ export default async function SettingsPage() {
                    style={{ color: "#999" }}>{s.label}</div>
             </div>
           ))}
+        </div>
+
+        {/* Timezone info — read-only, always visible */}
+        <div className="rounded-xl border px-4 py-3"
+             style={{ background: "#F7F7F7", borderColor: "#EAEAEA" }}>
+          <p className="text-[9px] font-bold tracking-[0.25em] uppercase mb-1.5"
+             style={{ color: "#3D3D3D", opacity: 0.4 }}>
+            Server Timezone
+          </p>
+          <p className="text-sm font-semibold" style={{ color: "#3D3D3D" }}>
+            {tzLong} ({tzShort}) &middot; {offsetStr}
+          </p>
+          <p className="text-[10px] mt-0.5" style={{ color: "#999" }}>
+            America/Los_Angeles &middot; {nowDateStr} &middot; {nowTimeStr}
+          </p>
         </div>
 
         {!canEdit && (
