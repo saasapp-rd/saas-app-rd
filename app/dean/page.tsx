@@ -7,6 +7,7 @@ import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 import LiveFeed from "@/components/LiveFeed"
 import QuickActionsPanel from "@/components/admin/QuickActionsPanel"
+import VeracrossPullButton from "@/components/coordinator/VeracrossPullButton"
 
 const ALLOWED = ["coordinator","dean","admin","super_admin"]
 
@@ -121,6 +122,9 @@ export default async function DeanPage() {
 
         {/* Quick actions */}
         {students.length > 0 && <QuickActionsPanel students={students} />}
+
+        {/* Veracross sync — placeholder until the integration is wired */}
+        <VeracrossPullButton />
 
         {/* Open elevated right now */}
         {openElev.length > 0 && (
