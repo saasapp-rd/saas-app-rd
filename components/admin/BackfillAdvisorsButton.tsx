@@ -3,12 +3,13 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 
 interface Result {
-  scanned?:    number
-  matched?:    number
-  added?:      number
-  alreadyHad?: number
-  message?:    string
-  error?:      string
+  ok?:           boolean
+  updates?:      number
+  pass1Added?:   number
+  pass2Demoted?: number
+  pass3Added?:   number
+  message?:      string
+  error?:        string
 }
 
 export default function BackfillAdvisorsButton() {
@@ -36,12 +37,14 @@ export default function BackfillAdvisorsButton() {
          style={{ background: "#FAFAFA", borderColor: "#EAEAEA" }}>
       <p className="text-[9px] font-bold tracking-[0.25em] uppercase"
          style={{ color: "#3D3D3D", opacity: 0.45 }}>
-        Maintenance
+        Maintenance — Reconcile Roles
       </p>
       <p className="text-xs" style={{ color: "#3D3D3D" }}>
-        Backfill <strong>advisor</strong> role on every active teacher whose
-        advisory course (block 9) carries their name. Idempotent — safe to
-        re-run.
+        Three sweeps in one pass: anyone assigned an active course gets
+        <strong> teacher</strong>; anyone tagged <strong>teacher</strong> with no class is
+        demoted to <strong>staff</strong>; advisory (block 9) teachers whose course
+        name carries their name pick up <strong>advisor</strong>. Idempotent — safe
+        to re-run.
       </p>
 
       {!confirm ? (
@@ -51,7 +54,7 @@ export default function BackfillAdvisorsButton() {
             background: "#EAEAEA", color: "#3D3D3D",
             border: "none", cursor: "pointer",
           }}>
-          Run backfill
+          Run reconcile
         </button>
       ) : (
         <div className="flex gap-2">
