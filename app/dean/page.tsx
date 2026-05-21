@@ -6,7 +6,6 @@ import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 import LiveFeed from "@/components/LiveFeed"
-import WelfareConcernLink from "@/components/WelfareConcernLink"
 import QuickActionsPanel from "@/components/admin/QuickActionsPanel"
 
 const ALLOWED = ["coordinator","dean","admin","super_admin"]
@@ -280,7 +279,6 @@ export default async function DeanPage() {
           </div>
         </div>
 
-        <WelfareConcernLink />
       </main>
     </div>
   )

@@ -6,7 +6,6 @@ import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
 import LiveFeed from "@/components/LiveFeed"
 import WithMeButton from "@/components/WithMeButton"
-import WelfareConcernLink from "@/components/WelfareConcernLink"
 import QuickActionsPanel from "@/components/admin/QuickActionsPanel"
 import Link from "next/link"
 
@@ -118,7 +117,6 @@ export default async function StaffPage() {
           </div>
         )}
 
-        <WelfareConcernLink />
       </main>
     </div>
   )

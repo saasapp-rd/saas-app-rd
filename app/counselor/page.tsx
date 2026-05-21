@@ -5,7 +5,6 @@ import { db } from "@/lib/supabase"
 import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
 import LiveFeed from "@/components/LiveFeed"
-import WelfareConcernLink from "@/components/WelfareConcernLink"
 import QuickActionsPanel from "@/components/admin/QuickActionsPanel"
 import Link from "next/link"
 
@@ -235,7 +234,6 @@ export default async function CounselorPage() {
           </div>
         )}
 
-        <WelfareConcernLink />
       </main>
     </div>
   )

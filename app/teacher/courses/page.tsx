@@ -6,7 +6,6 @@ import { getCurrentPeriod } from "@/lib/schedule"
 import SignOutButton from "@/components/SignOutButton"
 import BackLink from "@/components/BackLink"
 import TestModeBanner from "@/components/TestModeBanner"
-import WelfareConcernLink from "@/components/WelfareConcernLink"
 import CourseRosterCard from "@/components/teacher/CourseRosterCard"
 import Link from "next/link"
 
@@ -94,7 +93,6 @@ export default async function TeacherCoursesPage() {
           ))
         )}
 
-        <WelfareConcernLink />
       </main>
     </div>
   )
