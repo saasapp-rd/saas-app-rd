@@ -7,6 +7,7 @@ import BackLink from "@/components/BackLink"
 import TestModeBanner from "@/components/TestModeBanner"
 import Link from "next/link"
 import LiveFeed from "@/components/LiveFeed"
+import QuickActionsPanel from "@/components/admin/QuickActionsPanel"
 
 interface Incident {
   id:               string
@@ -39,19 +40,32 @@ export default async function MissingPage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect("/login")
 
-  const { data: incidents } = await db
-    .from("incidents")
-    .select("id, level, status, report_type, reported_at, block_id, located_location, student:student_id(id, first_name, last_name, grade, is_active), reporter:reported_by(display_name)")
-    .in("status", ["open","located"])
-    .neq("report_type", "welfare_concern")
-    .order("level",       { ascending: false })  // elevated first
-    .order("reported_at", { ascending: true  })   // then oldest first
+  const [{ data: incidents }, { data: allStudents }] = await Promise.all([
+    db.from("incidents")
+      .select("id, level, status, report_type, reported_at, block_id, located_location, student:student_id(id, first_name, last_name, grade, is_active), reporter:reported_by(display_name)")
+      .in("status", ["open","located"])
+      .neq("report_type", "welfare_concern")
+      .order("level",       { ascending: false })  // elevated first
+      .order("reported_at", { ascending: true  }),  // then oldest first
+    // Staff use the welfare-concern modal on this page; fetch active
+    // students for the picker. Other roles skip the lookup.
+    session.user.role === "staff"
+      ? db.from("users")
+          .select("id, first_name, last_name, grade, call_by")
+          .eq("role", "student")
+          .eq("is_active", true)
+          .order("last_name")
+      : { data: [] as { id: string; first_name: string; last_name: string; grade: number; call_by: string | null }[] },
+  ])
 
   const rows    = ((incidents ?? []) as unknown as Incident[]).filter(i => i.student?.is_active !== false)
   const open    = rows.filter(r => r.status === "open")
   const located = rows.filter(r => r.status === "located")
+  const students = (allStudents ?? []) as {
+    id: string; first_name: string; last_name: string; grade: number; call_by: string | null
+  }[]
 
-  const role     = session.user.role
+  const role    = session.user.role
   const isCoord = ["coordinator","counselor","dean","admin","super_admin"].includes(role)
 
   return (
@@ -217,19 +231,11 @@ export default async function MissingPage() {
           </div>
         )}
 
-        {/* Staff CTA */}
-        {role === "staff" && (
-          <div className="rounded-xl px-4 py-4 border text-center"
-               style={{ borderColor: "#EAEAEA", background: "#FAFAFA" }}>
-            <p className="text-xs font-bold mb-1" style={{ color: "#3D3D3D" }}>
-              See a student who needs help?
-            </p>
-            <Link href="/staff/concern"
-                  className="inline-block mt-1 px-5 py-2 rounded-xl text-xs font-bold text-white"
-                  style={{ background: "#A6192E", textDecoration: "none" }}>
-              Report Welfare Concern
-            </Link>
-          </div>
+        {/* Staff CTA — uses the same QuickActionsPanel modal flow as
+            the /staff dashboard, so the welfare-concern UX is consistent
+            across the two places staff might trigger it from. */}
+        {role === "staff" && students.length > 0 && (
+          <QuickActionsPanel students={students} only="welfare" />
         )}
       </main>
     </div>

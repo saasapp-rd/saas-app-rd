@@ -196,9 +196,19 @@ function StudentModal({
   )
 }
 
-export default function QuickActionsPanel({ students }: { students: Student[] }) {
+export default function QuickActionsPanel({
+  students,
+  only,
+}: {
+  students: Student[]
+  /** Limit to a single button (e.g. "welfare" on /missing for staff). */
+  only?:    "welfare" | "missing"
+}) {
   const [welModal,     setWelModal]     = useState(false)
   const [missingModal, setMissingModal] = useState(false)
+
+  const showWelfare = only !== "missing"
+  const showMissing = only !== "welfare"
 
   return (
     <>
@@ -211,27 +221,31 @@ export default function QuickActionsPanel({ students }: { students: Student[] })
         </div>
         <div className="px-4 py-3 flex flex-col gap-2" style={{ background: "#fff" }}>
 
-          <button
-            onClick={() => setWelModal(true)}
-            className="w-full rounded-xl px-4 py-3 flex items-center gap-3 text-left"
-            style={{ background: "#FFFBEB", border: "1px solid #FDE68A", cursor: "pointer" }}>
-            <span className="text-lg">⚠️</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold" style={{ color: "#92400E" }}>Report Welfare Concern</p>
-              <p className="text-[10px]" style={{ color: "#B45309" }}>Flag a student for counselor follow-up</p>
-            </div>
-          </button>
+          {showWelfare && (
+            <button
+              onClick={() => setWelModal(true)}
+              className="w-full rounded-xl px-4 py-3 flex items-center gap-3 text-left"
+              style={{ background: "#FFFBEB", border: "1px solid #FDE68A", cursor: "pointer" }}>
+              <span className="text-lg">⚠️</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold" style={{ color: "#92400E" }}>Report Welfare Concern</p>
+                <p className="text-[10px]" style={{ color: "#B45309" }}>Flag a student for counselor follow-up</p>
+              </div>
+            </button>
+          )}
 
-          <button
-            onClick={() => setMissingModal(true)}
-            className="w-full rounded-xl px-4 py-3 flex items-center gap-3 text-left"
-            style={{ background: "#FFF0F0", border: "2px solid #CE2033", cursor: "pointer" }}>
-            <span className="text-lg">🔴</span>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold" style={{ color: "#A6192E" }}>Report a Missing Student</p>
-              <p className="text-[10px]" style={{ color: "#CE2033", opacity: 0.8 }}>Open a missing student incident immediately</p>
-            </div>
-          </button>
+          {showMissing && (
+            <button
+              onClick={() => setMissingModal(true)}
+              className="w-full rounded-xl px-4 py-3 flex items-center gap-3 text-left"
+              style={{ background: "#FFF0F0", border: "2px solid #CE2033", cursor: "pointer" }}>
+              <span className="text-lg">🔴</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-bold" style={{ color: "#A6192E" }}>Report a Missing Student</p>
+                <p className="text-[10px]" style={{ color: "#CE2033", opacity: 0.8 }}>Open a missing student incident immediately</p>
+              </div>
+            </button>
+          )}
         </div>
       </div>
 
