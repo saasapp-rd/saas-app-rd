@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth"
 import { redirect, notFound } from "next/navigation"
 import { db } from "@/lib/supabase"
 import SignOutButton from "@/components/SignOutButton"
+import TestModeBanner from "@/components/TestModeBanner"
 import BackLink from "@/components/BackLink"
 import Link from "next/link"
 
@@ -72,6 +73,7 @@ export default async function CourseDetailPage({
         </div>
         <SignOutButton />
       </header>
+      <TestModeBanner role={session.user.role} />
 
       <nav className="px-5 py-2 border-b flex items-center gap-4" style={{ borderColor: "#EAEAEA" }}>
         <BackLink fallbackHref="/admin/courses" />
