@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import { db } from "@/lib/supabase"
 import SignOutButton from "@/components/SignOutButton"
 import TestModeBanner from "@/components/TestModeBanner"
+import DateSelector from "@/components/admin/DateSelector"
 import Link from "next/link"
 
 export const dynamic = "force-dynamic"
@@ -45,12 +46,21 @@ interface StudentStat {
   elevated: number
 }
 
+function ymd(d: Date): string {
+  // Local-time YYYY-MM-DD; toISOString() would return UTC and skew across
+  // the int'l date line at midnight Pacific.
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, "0")
+  const day = String(d.getDate()).padStart(2, "0")
+  return `${y}-${m}-${day}`
+}
+
 export default async function AnalyticsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tab?: string }>
+  searchParams: Promise<{ tab?: string; date?: string }>
 }) {
-  const { tab = "today" } = await searchParams
+  const { tab = "today", date: dateParam } = await searchParams
 
   const session = await getServerSession(authOptions)
   if (!session) redirect("/login")
@@ -67,10 +77,18 @@ export default async function AnalyticsPage({
     scopedStudentIds = (flags ?? []).map((f: { student_id: string }) => f.student_id)
   }
 
-  const todayStr = new Date().toLocaleDateString("en-US", {
+  const today        = ymd(new Date())
+  // Selected date for the Today tab — defaults to today, accepts any
+  // YYYY-MM-DD via ?date= query param. Anything malformed falls back
+  // to today.
+  const selectedDate = (dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam)) ? dateParam : today
+  const isToday      = selectedDate === today
+
+  const selectedLabel = new Date(selectedDate + "T00:00:00").toLocaleDateString("en-US", {
     weekday: "long", month: "long", day: "numeric",
   })
-  const today  = new Date().toISOString().split("T")[0]
+  const todayStr      = selectedLabel  // legacy var kept to minimize diff
+
   const now    = Date.now()
   const days90 = new Date(now - 90 * 86400000).toISOString()
   const days30 = new Date(now - 30 * 86400000).toISOString()
@@ -81,8 +99,8 @@ export default async function AnalyticsPage({
     let q = db
       .from("incidents")
       .select("id, level, status, report_type, reported_at, resolved_at, located_location, located_excused, block_id, student:student_id(id, first_name, last_name, grade), reporter:reported_by(display_name)")
-      .gte("reported_at", today + "T00:00:00+00:00")
-      .lte("reported_at", today + "T23:59:59+00:00")
+      .gte("reported_at", selectedDate + "T00:00:00+00:00")
+      .lte("reported_at", selectedDate + "T23:59:59+00:00")
       .order("reported_at", { ascending: false })
 
     if (scopedStudentIds !== null) {
@@ -195,17 +213,24 @@ export default async function AnalyticsPage({
 
       {/* Tabs */}
       <div className="px-5 pt-4 flex gap-1 max-w-2xl mx-auto w-full">
-        {(["today", "patterns"] as const).map(t => (
-          <Link key={t} href={`/analytics?tab=${t}`}
-                className="px-4 py-2 rounded-xl text-xs font-bold capitalize"
-                style={{
-                  background:  tab === t ? "#A6192E" : "#F0F0F0",
-                  color:       tab === t ? "#fff"     : "#999",
-                  textDecoration: "none",
-                }}>
-            {t === "today" ? `Today — ${todayStr}` : "Patterns (90 days)"}
-          </Link>
-        ))}
+        {(["today", "patterns"] as const).map(t => {
+          // Keep the selected date when navigating to/from the Today tab
+          // so prev/next browsing survives a tab toggle.
+          const href = t === "today" && !isToday
+            ? `/analytics?tab=${t}&date=${selectedDate}`
+            : `/analytics?tab=${t}`
+          return (
+            <Link key={t} href={href}
+                  className="px-4 py-2 rounded-xl text-xs font-bold capitalize"
+                  style={{
+                    background:  tab === t ? "#A6192E" : "#F0F0F0",
+                    color:       tab === t ? "#fff"     : "#999",
+                    textDecoration: "none",
+                  }}>
+              {t === "today" ? (isToday ? `Today — ${selectedLabel}` : selectedLabel) : "Patterns (90 days)"}
+            </Link>
+          )
+        })}
       </div>
 
       <main className="flex-1 px-5 py-5 max-w-2xl mx-auto w-full flex flex-col gap-5">
@@ -213,6 +238,8 @@ export default async function AnalyticsPage({
         {/* ── TODAY TAB ─────────────────────────────────────────────── */}
         {tab === "today" && (
           <>
+            <DateSelector selectedDate={selectedDate} todayIso={today} />
+
             {isCounselor && scopedStudentIds?.length === 0 && (
               <div className="rounded-xl px-4 py-6 text-center border" style={{ borderColor: "#EAEAEA" }}>
                 <p className="text-sm font-bold mb-1" style={{ color: "#3D3D3D" }}>No flagged students</p>
@@ -239,7 +266,9 @@ export default async function AnalyticsPage({
 
             {todayRows.length === 0 && (scopedStudentIds === null || scopedStudentIds.length > 0) && (
               <div className="rounded-xl px-4 py-8 text-center border" style={{ borderColor: "#EAEAEA" }}>
-                <p className="text-sm font-bold mb-1" style={{ color: "#3D3D3D" }}>No missing students today</p>
+                <p className="text-sm font-bold mb-1" style={{ color: "#3D3D3D" }}>
+                  {isToday ? "No missing students today" : `No missing students on ${selectedLabel}`}
+                </p>
                 <p className="text-xs" style={{ color: "#999" }}>All students accounted for.</p>
               </div>
             )}
