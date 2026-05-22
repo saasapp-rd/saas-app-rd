@@ -12,6 +12,7 @@ import Link from "next/link"
 
 interface Incident {
   id:          string
+  student_id:  string
   level:       string
   reported_at: string
   block_id:    number | null
@@ -27,7 +28,7 @@ export default async function StaffPage() {
 
   const [{ data: raw }, { data: allStudents }] = await Promise.all([
     db.from("incidents")
-      .select("id, level, reported_at, block_id, room, student:student_id(first_name, last_name, grade, is_active), reporter:reported_by(display_name)")
+      .select("id, student_id, level, reported_at, block_id, room, student:student_id(first_name, last_name, grade, is_active), reporter:reported_by(display_name)")
       .eq("status", "open")
       .is("pre_empted_at", null)
       .order("level",       { ascending: false })
@@ -94,9 +95,19 @@ export default async function StaffPage() {
                        }}>
                     <div className="flex items-center justify-between mb-1.5">
                       <div>
-                        <span className="text-sm font-bold" style={{ color: "#3D3D3D" }}>
-                          {s ? s.last_name + ", " + s.first_name : "Unknown"}
-                        </span>
+                        {s && inc.student_id ? (
+                          <Link href={`/students/${inc.student_id}`}
+                                style={{ textDecoration: "none" }}>
+                            <span className="text-sm font-bold"
+                                  style={{ color: "#3D3D3D", borderBottom: "1px solid #BABABA" }}>
+                              {s.last_name}, {s.first_name}
+                            </span>
+                          </Link>
+                        ) : (
+                          <span className="text-sm font-bold" style={{ color: "#3D3D3D" }}>
+                            {s ? s.last_name + ", " + s.first_name : "Unknown"}
+                          </span>
+                        )}
                         {s && (
                           <span className="text-[10px] ml-1.5" style={{ color: "#999" }}>
                             Gr {s.grade}
