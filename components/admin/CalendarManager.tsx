@@ -222,11 +222,9 @@ export default function CalendarManager({
                 minHeight:   68,
                 width:       "100%",
                 background:  bg,
-                borderRight: "1px solid #EAEAEA",
-                borderBottom:"1px solid #EAEAEA",
                 boxShadow:   outline,
                 cursor:      "pointer",
-                border:      "none",       /* reset UA button border */
+                border:      "none",
                 borderRight: "1px solid #EAEAEA",
                 borderBottom:"1px solid #EAEAEA",
                 textAlign:   "left",
