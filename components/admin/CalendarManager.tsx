@@ -149,72 +149,93 @@ export default function CalendarManager({
         </span>
       </div>
 
-      {/* Day-of-week headers */}
-      <div className="grid grid-cols-7 gap-1">
+      {/* Single unified 7-col grid: header row + all date cells */}
+      <div className="grid grid-cols-7 border-l border-t"
+           style={{ borderColor: "#EAEAEA" }}>
+
+        {/* Day-of-week header row — 7 cells, no click */}
         {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => (
-          <div key={d} className="text-center text-[9px] font-bold uppercase"
-               style={{ color: "#3D3D3D", opacity: 0.35 }}>
+          <div key={d}
+               className="text-center text-[9px] font-bold uppercase py-1.5 border-r border-b"
+               style={{ color: "#3D3D3D", opacity: 0.4, borderColor: "#EAEAEA", background: "#FAFAFA" }}>
             {d}
           </div>
         ))}
-      </div>
 
-      {/* Grid — day number top-left, content below, consistent square-ish cells */}
-      <div className="grid grid-cols-7 gap-1">
+        {/* Date cells */}
         {cells.map((day, i) => {
-          if (!day) return <div key={i} className="min-h-[80px]" />
-          const dateStr = `${year}-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}`
-          const row     = calMap[dateStr]
-          const isToday = dateStr === today
-          const isSel   = dateStr === selectedDate
-          const dt      = row?.day_type
-          const isSchool = row?.is_school_day ?? false
+          if (!day) {
+            return (
+              <div key={i}
+                   className="border-r border-b min-h-[72px]"
+                   style={{ borderColor: "#EAEAEA", background: "#fff" }} />
+            )
+          }
+
+          const dateStr   = `${year}-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}`
+          const row       = calMap[dateStr]
+          const isToday   = dateStr === today
+          const isSel     = dateStr === selectedDate
+          const dt        = row?.day_type
+          const isSchool  = row?.is_school_day ?? false
           const isSpecial = row?.is_special ?? false
           const isManual  = row?.source === "manual"
 
-          let bg = "#F9FAFB"
+          let bg = "#fff"
           if (row && isSchool) {
             if (isSpecial) bg = "#FFFBEB"
-            else if (dt) bg = DAY_COLOR[dt]
+            else if (dt)   bg = DAY_COLOR[dt]
+          } else if (row && !isSchool) {
+            bg = "#F9FAFB"
           }
 
+          // Selected / today use a colored inset border instead of bg override
+          const insetBorder = isSel     ? "inset 0 0 0 2px #1E5FA6"
+                            : isToday   ? "inset 0 0 0 2px #A6192E"
+                            : "none"
+
           return (
-            <button key={i} onClick={() => setSelectedDate(dateStr)}
-              className="rounded-lg p-1.5 flex flex-col items-start min-h-[80px] relative text-left"
+            <button
+              key={i}
+              onClick={() => setSelectedDate(dateStr)}
+              className="relative flex flex-col items-start p-1.5 border-r border-b min-h-[72px] w-full text-left"
               style={{
-                background: bg,
-                border: isSel ? "2px solid #1E5FA6"
-                      : isToday ? "2px solid #A6192E"
-                      : isSpecial ? "1px solid #FDE68A"
-                      : "1px solid #EAEAEA",
-                cursor: "pointer",
+                background:  bg,
+                borderColor: "#EAEAEA",
+                boxShadow:   insetBorder,
+                cursor:      "pointer",
               }}>
-              {/* Day number top-left */}
-              <span className="text-sm font-bold leading-none"
+
+              {/* Date number — top-left */}
+              <span className="text-xs font-bold leading-none"
                     style={{ color: isToday ? "#A6192E" : "#3D3D3D" }}>
                 {day}
               </span>
 
-              {/* Day-type label centered below */}
-              {dt && isSchool && !isSpecial && (
-                <span className="mt-auto self-center text-[10px] font-bold leading-none"
-                      style={{ color: DAY_TEXT[dt] }}>
-                  D{dt}
-                </span>
-              )}
-              {isSpecial && (
-                <span className="mt-auto self-center text-base leading-none"
-                      style={{ color: "#92400E" }}>★</span>
-              )}
-              {row && !isSchool && (
-                <span className="mt-auto self-center text-[9px] uppercase tracking-wide"
-                      style={{ color: "#999" }}>off</span>
-              )}
+              {/* Day-type badge — centered in the lower half */}
+              <div className="flex-1 flex items-center justify-center w-full">
+                {dt && isSchool && !isSpecial && (
+                  <span className="text-[11px] font-black"
+                        style={{ color: DAY_TEXT[dt] }}>
+                    D{dt}
+                  </span>
+                )}
+                {isSpecial && (
+                  <span className="text-sm" style={{ color: "#92400E" }}>★</span>
+                )}
+                {row && !isSchool && (
+                  <span className="text-[9px] uppercase tracking-wide" style={{ color: "#BABABA" }}>
+                    off
+                  </span>
+                )}
+              </div>
 
-              {/* Manual override badge top-right */}
+              {/* Manual-override badge — top-right */}
               {isManual && (
                 <span className="absolute top-1 right-1 text-[7px] font-bold px-1 rounded"
-                      style={{ background: "#1E5FA6", color: "#fff" }}>M</span>
+                      style={{ background: "#1E5FA6", color: "#fff" }}>
+                  M
+                </span>
               )}
             </button>
           )
