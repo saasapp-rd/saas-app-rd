@@ -149,28 +149,44 @@ export default function CalendarManager({
         </span>
       </div>
 
-      {/* Single unified 7-col grid: header row + all date cells */}
-      <div className="grid grid-cols-7 border-l border-t"
-           style={{ borderColor: "#EAEAEA" }}>
+      {/* Unified 7-column calendar grid — inline styles to bypass Tailwind JIT */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(7, 1fr)",
+        borderLeft:  "1px solid #EAEAEA",
+        borderTop:   "1px solid #EAEAEA",
+      }}>
 
-        {/* Day-of-week header row — 7 cells, no click */}
-        {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => (
-          <div key={d}
-               className="text-center text-[9px] font-bold uppercase py-1.5 border-r border-b"
-               style={{ color: "#3D3D3D", opacity: 0.4, borderColor: "#EAEAEA", background: "#FAFAFA" }}>
+        {/* Day-of-week header row */}
+        {(["Sun","Mon","Tue","Wed","Thu","Fri","Sat"] as const).map(d => (
+          <div key={d} style={{
+            textAlign:      "center",
+            fontSize:       9,
+            fontWeight:     700,
+            textTransform:  "uppercase",
+            letterSpacing:  "0.1em",
+            padding:        "6px 2px",
+            color:          "#3D3D3D",
+            opacity:        0.4,
+            background:     "#FAFAFA",
+            borderRight:    "1px solid #EAEAEA",
+            borderBottom:   "1px solid #EAEAEA",
+          }}>
             {d}
           </div>
         ))}
 
         {/* Date cells */}
         {cells.map((day, i) => {
-          if (!day) {
-            return (
-              <div key={i}
-                   className="border-r border-b min-h-[72px]"
-                   style={{ borderColor: "#EAEAEA", background: "#fff" }} />
-            )
-          }
+          /* Empty leading/trailing cells */
+          if (!day) return (
+            <div key={i} style={{
+              minHeight:   68,
+              background:  "#fff",
+              borderRight: "1px solid #EAEAEA",
+              borderBottom:"1px solid #EAEAEA",
+            }} />
+          )
 
           const dateStr   = `${year}-${String(month).padStart(2,"0")}-${String(day).padStart(2,"0")}`
           const row       = calMap[dateStr]
@@ -186,54 +202,77 @@ export default function CalendarManager({
             if (isSpecial) bg = "#FFFBEB"
             else if (dt)   bg = DAY_COLOR[dt]
           } else if (row && !isSchool) {
-            bg = "#F9FAFB"
+            bg = "#F4F4F4"
           }
 
-          // Selected / today use a colored inset border instead of bg override
-          const insetBorder = isSel     ? "inset 0 0 0 2px #1E5FA6"
-                            : isToday   ? "inset 0 0 0 2px #A6192E"
-                            : "none"
+          const outline = isSel   ? "inset 0 0 0 2px #1E5FA6"
+                        : isToday ? "inset 0 0 0 2px #A6192E"
+                        : "none"
 
           return (
             <button
               key={i}
               onClick={() => setSelectedDate(dateStr)}
-              className="relative flex flex-col items-start p-1.5 border-r border-b min-h-[72px] w-full text-left"
               style={{
+                position:    "relative",
+                display:     "flex",
+                flexDirection:"column",
+                alignItems:  "flex-start",
+                padding:     "5px 4px 4px",
+                minHeight:   68,
+                width:       "100%",
                 background:  bg,
-                borderColor: "#EAEAEA",
-                boxShadow:   insetBorder,
+                borderRight: "1px solid #EAEAEA",
+                borderBottom:"1px solid #EAEAEA",
+                boxShadow:   outline,
                 cursor:      "pointer",
+                border:      "none",       /* reset UA button border */
+                borderRight: "1px solid #EAEAEA",
+                borderBottom:"1px solid #EAEAEA",
+                textAlign:   "left",
               }}>
 
               {/* Date number — top-left */}
-              <span className="text-xs font-bold leading-none"
-                    style={{ color: isToday ? "#A6192E" : "#3D3D3D" }}>
+              <span style={{
+                fontSize:   11,
+                fontWeight: 700,
+                lineHeight: 1,
+                color:      isToday ? "#A6192E" : "#3D3D3D",
+              }}>
                 {day}
               </span>
 
-              {/* Day-type badge — centered in the lower half */}
-              <div className="flex-1 flex items-center justify-center w-full">
-                {dt && isSchool && !isSpecial && (
-                  <span className="text-[11px] font-black"
-                        style={{ color: DAY_TEXT[dt] }}>
-                    D{dt}
-                  </span>
-                )}
-                {isSpecial && (
-                  <span className="text-sm" style={{ color: "#92400E" }}>★</span>
-                )}
-                {row && !isSchool && (
-                  <span className="text-[9px] uppercase tracking-wide" style={{ color: "#BABABA" }}>
-                    off
-                  </span>
-                )}
-              </div>
+              {/* Day-type / status — centered vertically in remaining space */}
+              <span style={{
+                flex:       1,
+                display:    "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                width:      "100%",
+                fontSize:   12,
+                fontWeight: 900,
+                color:      dt && isSchool && !isSpecial ? DAY_TEXT[dt]
+                          : isSpecial ? "#92400E"
+                          : "#BABABA",
+              }}>
+                {dt && isSchool && !isSpecial && `D${dt}`}
+                {isSpecial && "★"}
+                {row && !isSchool && "off"}
+              </span>
 
               {/* Manual-override badge — top-right */}
               {isManual && (
-                <span className="absolute top-1 right-1 text-[7px] font-bold px-1 rounded"
-                      style={{ background: "#1E5FA6", color: "#fff" }}>
+                <span style={{
+                  position:   "absolute",
+                  top:        3,
+                  right:      3,
+                  fontSize:   7,
+                  fontWeight: 700,
+                  padding:    "1px 3px",
+                  borderRadius: 3,
+                  background: "#1E5FA6",
+                  color:      "#fff",
+                }}>
                   M
                 </span>
               )}
