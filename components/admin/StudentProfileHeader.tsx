@@ -263,7 +263,7 @@ function EditModal({
       <div onClick={e => e.stopPropagation()}
         className="w-full sm:max-w-md flex flex-col rounded-t-2xl sm:rounded-2xl"
         style={{
-          maxHeight: "85vh", overscrollBehavior: "contain",
+          maxHeight: "85dvh", overscrollBehavior: "contain",
           background: "#fff",
           boxShadow: "0 25px 50px -12px rgba(0,0,0,0.5)",
         }}>

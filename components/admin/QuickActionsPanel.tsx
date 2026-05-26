@@ -57,7 +57,9 @@ function ModalShell({ onClose, children }: { onClose: () => void; children: Reac
       padding: "20px",
     }}>
       <div onClick={e => e.stopPropagation()} style={{
-        width: "100%", maxWidth: 480, maxHeight: "85vh",
+        // dvh (not vh) tracks the visible viewport on mobile, so the footer
+        // button stays on-screen when the Safari toolbar / keyboard shows.
+        width: "100%", maxWidth: 480, maxHeight: "85dvh",
         background: "#fff", borderRadius: 20,
         display: "flex", flexDirection: "column", overflow: "hidden",
       }}>
@@ -97,7 +99,8 @@ function StudentPicker({
     <>
       <input value={query}
         onChange={e => { setQuery(e.target.value); onSelect("") }}
-        placeholder="Search by name…" autoFocus
+        placeholder="Search by name…"
+        /* no autoFocus: on mobile it pops the keyboard on open, hiding the list + footer button */
         style={{
           padding: "11px 14px", borderRadius: 12,
           border: "1px solid #EAEAEA", background: "#FAFAFA",
@@ -112,6 +115,8 @@ function StudentPicker({
       </p>
       <div style={{
         flex: 1, overflowY: "auto", minHeight: 0,
+        // contain stops touch-scroll from chaining to the page behind the modal
+        overscrollBehavior: "contain", WebkitOverflowScrolling: "touch",
         borderTop: "1px solid #F0F0F0", borderBottom: "1px solid #F0F0F0",
       }}>
         {filtered.length === 0 ? (
@@ -343,7 +348,7 @@ function CheckInModal({ students, role, onClose }: {
           </p>
         </div>
 
-        <div style={{ flex: 1, overflowY: "auto", minHeight: 0, padding: "0 20px 12px" }}>
+        <div style={{ flex: 1, overflowY: "auto", minHeight: 0, overscrollBehavior: "contain", WebkitOverflowScrolling: "touch", padding: "0 20px 12px" }}>
           {/* General categories */}
           <p style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.2em", textTransform: "uppercase",
                       color: "#3D3D3D", opacity: 0.4, margin: "10px 0 8px" }}>General</p>
