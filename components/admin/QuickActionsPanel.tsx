@@ -179,7 +179,10 @@ function StudentModal({
 
   return (
     <ModalShell onClose={onClose}>
-      <div style={{ padding: "14px 20px 14px", flexShrink: 0, display: "flex", flexDirection: "column", gap: 0 }}>
+      {/* flex:1 + minHeight:0 so the StudentPicker's scroll list is height-bounded
+          (was flexShrink:0, which let the list grow to full height and pushed the
+          footer button off-screen). */}
+      <div style={{ padding: "14px 20px 14px", flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 0 }}>
         <p style={{ fontWeight: 800, fontSize: 15, color: "#3D3D3D", margin: "0 0 3px" }}>{title}</p>
         <p style={{ fontSize: 11, color: "#999", margin: "0 0 12px" }}>{subtitle}</p>
         <StudentPicker students={students} selectedId={selId} accentColor={accentColor} onSelect={setSelId} />
@@ -304,7 +307,9 @@ function CheckInModal({ students, role, onClose }: {
   if (step === "student") {
     return (
       <ModalShell onClose={onClose}>
-        <div style={{ padding: "14px 20px 14px", flexShrink: 0, display: "flex", flexDirection: "column" }}>
+        {/* flex:1 + minHeight:0 so the StudentPicker scroll list stays bounded and
+            the footer button remains visible (was flexShrink:0). */}
+        <div style={{ padding: "14px 20px 14px", flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
           <p style={{ fontWeight: 800, fontSize: 15, color: "#166534", margin: "0 0 3px" }}>
             ✓ Student is with me
           </p>
